@@ -1,0 +1,300 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012, Erlang Solutions Ltd.
+%%% @author Krzysztof Rutka <krzysztof.rutka@erlang-solutions.com>
+%%%-----------------------------------------------------------------------------
+
+%%%-----------------------------------------------------------------------------
+%%% Controller-to-Switch Messages
+%%%-----------------------------------------------------------------------------
+
+%%% Features -------------------------------------------------------------------
+
+%% Features request
+-define(FEATURES_REQUEST_SIZE, 8).
+-record(features_request, {
+          header :: #header{}
+         }).
+
+%% Switch features (Features reply)
+-define(SWITCH_FEATURES_SIZE, 32).
+-record(switch_features, {
+          header :: #header{},
+          datapath_id :: binary(),
+          n_buffers :: integer(),
+          n_tables :: integer(),
+          capabilities :: binary(),
+          ports = [] :: [#port{}]
+         }).
+
+%%% Configuration --------------------------------------------------------------
+
+%% Switch configuration
+-record(switch_config, {
+          header :: #header{},
+          flags,
+          miss_send_len :: integer()
+         }).
+
+%%% Modify-State ---------------------------------------------------------------
+
+%% Configure/Modify behavior of a flow table
+-record(table_mod, {
+          header :: #header{},
+          table_id,
+          config
+         }).
+
+%% Flow setup and teardown (controller -> datapath)
+-record(flow_mod, {
+          header :: #header{},
+          cookie,
+          cookie_mask,
+          table_id,
+          command,
+          idle_timeout,
+          hard_timeout,
+          priority,
+          buffer_id,
+          out_port,
+          out_group,
+          flags,
+          match :: #match{},
+          instructions :: list()
+         }).
+
+%% Bucket for use in groups
+-record(bucket, {
+          length :: integer(),
+          weight :: integer(),
+          watch_port,
+          watch_group,
+          actions :: [#action_header{}]
+         }).
+
+%% Group setup and teardown (controller -> datapath)
+-record(group_mod, {
+          header :: #header{},
+          command,
+          type,
+          group_id,
+          buckets = [#bucket{}]
+         }).
+
+%% Modify behavior of the physical port
+-record(port_mod, {
+          header :: #header{},
+          port_no,
+          hw_addr,
+          config,
+          mask,
+          advertise
+         }).
+
+%%% Read-State -----------------------------------------------------------------
+
+-record(stats_request, {}).
+-record(stats_reply, {}).
+-record(desc_stats, {}).
+-record(flow_stats_request, {}).
+-record(flow_stats, {}).
+-record(aggregate_stats_request, {}).
+-record(aggregate_stats_reply, {}).
+-record(table_stats, {}).
+-record(port_stats_request, {}).
+-record(port_stats, {}).
+-record(queue_stats_request, {}).
+-record(queue_stats, {}).
+-record(group_stats_request, {}).
+-record(group_stats, {}).
+-record(bucket_counter, {}).
+-record(group_desc_stats, {}).
+%% and more...
+
+%%% Packet-out -----------------------------------------------------------------
+
+%% Send packet (controller -> datapath)
+-record(packet_out, {
+          header :: #header{},
+          buffer_id,
+          in_port,
+          actions_len,
+          actions :: [#action_header{}]
+         }).
+
+%%% Barrier ----------------------------------------------------------
+
+-record(barrier, {
+          header :: #header{}
+         }).
+
+%%%-----------------------------------------------------------------------------
+%%% Asynchronous Messages
+%%%-----------------------------------------------------------------------------
+
+%% Packet received on port (datapath -> controller)
+-record(packet_in, {
+          header :: #header{},
+          buffer_id,
+          total_len,
+          reason,
+          table_id,
+          match :: #match{},
+          data
+         }).
+
+%% Flow removed
+-record(flow_removed, {
+          header :: #header{},
+          cookie,
+          priority,
+          reason,
+          table_id,
+          duration_sec :: integer(),
+          duration_nsec :: integer(),
+          idle_timeout :: integer(),
+          hard_timeout :: integer(),
+          packet_count :: integer(),
+          byte_count :: integer(),
+          match :: #match{}
+         }).
+
+%% A physical port has changed in the datapath
+-record(port_status, {
+          header :: #header{},
+          reason,
+          desc :: #port{}
+         }).
+
+%% Error message
+-define(ERROR_MSG_SIZE, 12).
+-record(error_msg, {
+          header :: #header{},
+          type :: integer(),
+          code :: integer(),
+          data :: binary()
+         }).
+
+%% Error types
+-define(OFPET_HELLO_FAILED, 0).
+-define(OFPET_BAD_REQUEST, 1).
+-define(OFPET_BAD_ACTION, 2).
+-define(OFPET_BAD_INSTRUCTION, 3).
+-define(OFPET_BAD_MATCH, 4).
+-define(OFPET_FLOW_MOD_FAILED, 5).
+-define(OFPET_GROUP_MOD_FAILED, 6).
+-define(OFPET_PORT_MOD_FAILED, 7).
+-define(OFPET_TABLE_MOD_FAILED, 8).
+-define(OFPET_QUEUE_OP_FAILED, 9).
+-define(OFPET_SWITCH_CONFIG_FAILED, 10).
+-define(OFPET_ROLE_REQUEST_FAILED, 11).
+-define(OFPET_EXPERIMENTER, 16#ffff).
+
+%% Hello Failed error codes
+-define(OFPHFC_INCOMPATIBLE, 0).
+-define(OFPHFC_EPERM, 1).
+
+%% Bad Request error codes
+-define(OFPBRC_BAD_VERSION, 0).
+-define(OFPBRC_BAD_TYPE, 1).
+-define(OFPBRC_BAD_STAT, 2).
+-define(OFPBRC_BAD_EXPERIMENTER, 3).
+-define(OFPBRC_BAD_EXP_TYPE, 4).
+-define(OFPBRC_EPERM, 5).
+-define(OFPBRC_BAD_LEN, 6).
+-define(OFPBRC_BUFFER_EMPTY, 7).
+-define(OFPBRC_BUFFER_UNKNOWN, 8).
+-define(OFPBRC_BAD_TABLE_ID, 9).
+-define(OFPBRC_IS_SLAVE, 10).
+-define(OFPBRC_BAD_PORT, 11).
+-define(OFPBRC_BAD_PACKET, 12).
+
+%% Bad Action error codes
+-define(OFPBAC_BAD_TYPE, 0).
+-define(OFPBAC_BAD_LEN, 1).
+-define(OFPBAC_BAD_EXPERIMENTER, 2).
+-define(OFPBAC_BAD_EXP_TYPE, 3).
+-define(OFPBAC_BAD_OUT_PORT, 4).
+-define(OFPBAC_BAD_ARGUMENT, 5).
+-define(OFPBAC_EPERM, 6).
+-define(OFPBAC_TOO_MANY, 7).
+-define(OFPBAC_BAD_QUEUE, 8).
+-define(OFPBAC_BAD_OUT_GROUP, 9).
+-define(OFPBAC_MATCH_INCONSISTENT, 10).
+-define(OFPBAC_UNSUPPORTED_ORDER, 11).
+-define(OFPBAC_BAD_TAG, 12).
+-define(OFPBAC_BAD_SET_TYPE, 13).
+-define(OFPBAC_BAD_SET_LEN, 14).
+-define(OFPBAC_BAD_SET_ARGUMENT, 15).
+
+%% Bad Instruction error codes
+-define(OFPBIC_UNKNOWN_INST, 0).
+-define(OFPBIC_UNSUP_INST, 1).
+-define(OFPBIC_BAD_TABLE_ID, 2).
+-define(OFPBIC_UNSUP_METADATA, 3).
+-define(OFPBIC_UNSUP_METADATA_MASK, 4).
+-define(OFPBIC_BAD_EXPERIMENTER, 5).
+-define(OFPBIC_BAD_EXP_TYPE, 6).
+-define(OFPBIC_BAD_LEN, 7).
+-define(OFPBIC_EPERM, 8).
+
+%% Bad Match error codes
+-define(OFPBMC_BAD_TYPE, 0).
+-define(OFPBMC_BAD_LEN, 1).
+-define(OFPBMC_BAD_TAG, 2).
+-define(OFPBMC_BAD_DL_ADDR_MASK, 3).
+-define(OFPBMC_BAD_NW_ADDR_MASK, 4).
+-define(OFPBMC_BAD_WILDCARDS, 5).
+-define(OFPBMC_BAD_FIELD, 6).
+-define(OFPBMC_BAD_VALUE, 7).
+-define(OFPBMC_BAD_MASK, 8).
+-define(OFPBMC_BAD_PREREQ, 9).
+-define(OFPBMC_DUP_FIELD, 10).
+-define(OFPBMC_EPERM, 11).
+
+%% Flow Mod Failed error codes
+%% Group Mod Failed error codes
+%% Port Mod Failed error codes
+%% Table Mod Failed error codes
+%% Queue Op Failed error codes
+%% Switch Config Failed error codes
+%% Role Request Failed error codes
+
+%% Experimenter error message
+-record(error_experimenter_msg, {
+          header :: #header{},
+          type :: integer(),
+          exp_type :: integer(),
+          experimenter :: integer(),
+          data :: binary()
+         }).
+
+%%%-----------------------------------------------------------------------------
+%%% Symmetric Messages
+%%%-----------------------------------------------------------------------------
+
+%% Hello message
+-define(HELLO_SIZE, 8).
+-record(hello, {
+          header :: #header{}
+         }).
+
+%% Echo Request
+-define(ECHO_REQUEST_SIZE, 8).
+-record(echo_request, {
+          header :: #header{},
+          data :: binary()
+         }).
+
+%% Echo Reply
+-define(ECHO_REPLY_SIZE, 8).
+-record(echo_reply, {
+          header :: #header{},
+          data :: binary()
+         }).
+
+%% Experimenter
+-record(experimenter_header, {
+          header :: #header{},
+          experimenter,
+          exp_type
+         }).
