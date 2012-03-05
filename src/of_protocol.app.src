@@ -1,0 +1,11 @@
+{application, of_protocol,
+ [
+  {description, "OpenFlow Protocol 1.2 library"},
+  {vsn, "1.2.1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {env, []}
+ ]}.
