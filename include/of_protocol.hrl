@@ -24,9 +24,18 @@
           datapath_id :: binary(),
           n_buffers :: integer(),
           n_tables :: integer(),
-          capabilities :: binary(),
+          capabilities :: [atom()],
           ports = [] :: [#port{}]
          }).
+
+%% Capabilities supported by the datapath
+-define(OFPC_FLOW_STATS, 0).
+-define(OFPC_TABLE_STATS, 1).
+-define(OFPC_PORT_STATS, 2).
+-define(OFPC_GROUP_STATS, 3).
+-define(OFPC_IP_REASM, 5).
+-define(OFPC_QUEUE_STATS, 6).
+-define(OFPC_PORT_BLOCKED, 8).
 
 %%% Configuration --------------------------------------------------------------
 

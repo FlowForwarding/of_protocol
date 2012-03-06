@@ -32,18 +32,58 @@
 %% Description of a port
 -define(PORT_SIZE, 64).
 -record(port, {
-          no :: integer(),
-          hw_addr,
+          port_no :: integer(),
+          hw_addr :: [integer()],
           name :: binary(),
-          config,
-          state,
-          curr,
-          advertised,
-          supported,
-          peer,
-          curr_speed,
-          max_speed
+          config = [] :: [atom()],
+          state = [] :: [atom()],
+          curr = [] :: [atom()],
+          advertised = [] :: [atom()],
+          supported = [] :: [atom()],
+          peer = [] :: [atom()],
+          curr_speed = 0 :: integer(),
+          max_speed = 0 :: integer()
          }).
+
+%% Flags to indicate behavior of the physical port
+-define(OFPPC_PORT_DOWN, 0).
+-define(OFPPC_NO_RECV, 2).
+-define(OFPPC_NO_FWD, 5).
+-define(OFPPC_NO_PACKET_IN, 6).
+
+%% Current state of the physical port
+-define(OFPPS_LINK_DOWN, 0).
+-define(OFPPS_BLOCKED, 1).
+-define(OFPPS_LIVE, 2).
+
+%% Port numbering; Reserved ports
+-define(OFPP_MAX, 16#ffffff00).
+-define(OFPP_IN_PORT, 16#fffffff8).
+-define(OFPP_TABLE, 16#fffffff9).
+-define(OFPP_NORMAL, 16#fffffffa).
+-define(OFPP_FLOOD, 16#fffffffb).
+-define(OFPP_ALL, 16#fffffffc).
+-define(OFPP_CONTROLLER, 16#fffffffd).
+-define(OFPP_LOCAL, 16#fffffffe).
+-define(OFPP_ANY, 16#ffffffff).
+
+%% Features of ports available in a datapath
+-define(OFPPF_10MB_HD, 0).
+-define(OFPPF_10MB_FD, 1).
+-define(OFPPF_100MB_HD, 2).
+-define(OFPPF_100MB_FD, 3).
+-define(OFPPF_1GB_HD, 4).
+-define(OFPPF_1GB_FD, 5).
+-define(OFPPF_10GB_FD, 6).
+-define(OFPPF_40GB_FD, 7).
+-define(OFPPF_100GB_FD, 8).
+-define(OFPPF_1TB_FD, 9).
+-define(OFPPF_OTHER, 10).
+-define(OFPPF_COPPER, 11).
+-define(OFPPF_FIBER, 12).
+-define(OFPPF_AUTONEG, 13).
+-define(OFPPF_PAUSE, 14).
+-define(OFPPF_PAUSE_ASYM, 15).
 
 %%% Queue Structures -----------------------------------------------------------
 
