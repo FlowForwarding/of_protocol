@@ -11,7 +11,7 @@
 -define(HEADER_SIZE, 8).
 -record(header, {
           version = 3 :: integer(),
-          type :: integer(),
+          type :: atom(),
           length :: integer(),
           xid :: integer()
          }).

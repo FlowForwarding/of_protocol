@@ -3,6 +3,8 @@
 %%% @author Krzysztof Rutka <krzysztof.rutka@erlang-solutions.com>
 %%%-----------------------------------------------------------------------------
 
+-include("ofp_structures.hrl").
+
 %%%-----------------------------------------------------------------------------
 %%% Controller-to-Switch Messages
 %%%-----------------------------------------------------------------------------
@@ -169,8 +171,8 @@
 -define(ERROR_MSG_SIZE, 12).
 -record(error_msg, {
           header :: #header{},
-          type :: integer(),
-          code :: integer(),
+          type :: atom(),
+          code :: atom(),
           data :: binary()
          }).
 
@@ -252,12 +254,58 @@
 -define(OFPBMC_EPERM, 11).
 
 %% Flow Mod Failed error codes
+-define(OFPFMFC_UNKNOWN, 0).
+-define(OFPFMFC_TABLE_FULL, 1).
+-define(OFPFMFC_BAD_TABLE_ID, 2).
+-define(OFPFMFC_OVERLAP, 3).
+-define(OFPFMFC_EPERM, 4).
+-define(OFPFMFC_BAD_TIMEOUT, 5).
+-define(OFPFMFC_BAD_COMMAND, 6).
+-define(OFPFMFC_BAD_FLAGS, 7).
+
 %% Group Mod Failed error codes
+-define(OFPGMFC_GROUP_EXISTS, 0).
+-define(OFPGMFC_INVALID_GROUP, 1).
+-define(OFPGMFC_WEIGHT_UNSUPPORTED, 2).
+-define(OFPGMFC_OUT_OF_GROUPS, 3).
+-define(OFPGMFC_OUT_OF_BUCKETS, 4).
+-define(OFPGMFC_CHAINING_UNSUPPORTED, 5).
+-define(OFPGMFC_WATCH_UNSUPPORTED, 6).
+-define(OFPGMFC_LOOP, 7).
+-define(OFPGMFC_UNKNOWN_GROUP, 8).
+-define(OFPGMFC_CHAINED_GROUP, 9).
+-define(OFPGMFC_BAD_TYPE, 10).
+-define(OFPGMFC_BAD_COMMAND, 11).
+-define(OFPGMFC_BAD_BUCKET, 12).
+-define(OFPGMFC_BAD_WATCH, 13).
+-define(OFPGMFC_EPERM, 14).
+
 %% Port Mod Failed error codes
+-define(OFPPMFC_BAD_PORT, 0).
+-define(OFPPMFC_BAD_HW_ADDR, 1).
+-define(OFPPMFC_BAD_CONFIG, 2).
+-define(OFPPMFC_BAD_ADVERTISE, 3).
+-define(OFPPMFC_EPERM, 4).
+
 %% Table Mod Failed error codes
+-define(OFPTMFC_BAD_TABLE, 0).
+-define(OFPTMFC_BAD_CONFIG, 1).
+-define(OFPTMFC_EPERM, 2).
+
 %% Queue Op Failed error codes
+-define(OFPQOFC_BAD_PORT, 0).
+-define(OFPQOFC_BAD_QUEUE, 1).
+-define(OFPQOFC_EPERM, 2).
+
 %% Switch Config Failed error codes
+-define(OFPSCFC_BAD_FLAGS, 0).
+-define(OFPSCFC_BAD_LEN, 1).
+-define(OFPSCFC_EPERM, 2).
+
 %% Role Request Failed error codes
+-define(OFPRRFC_STALE, 0).
+-define(OFPRRFC_UNSUP, 1).
+-define(OFPRRFC_BAD_ROLE, 2).
 
 %% Experimenter error message
 -record(error_experimenter_msg, {
