@@ -129,6 +129,13 @@
           oxm_fields
          }).
 
+-record(oxm_field, {
+          class :: atom(),
+          field :: integer(),
+          has_mask :: boolean(),
+          length :: integer()
+         }).
+
 %%% Flow Instruction Structures ------------------------------------------------
 
 
