@@ -14,13 +14,13 @@
 %% Features request
 -define(FEATURES_REQUEST_SIZE, 8).
 -record(features_request, {
-          header :: #header{}
+          header = #header{} :: #header{}
          }).
 
 %% Switch features (Features reply)
 -define(FEATURES_REPLY_SIZE, 32).
 -record(features_reply, {
-          header :: #header{},
+          header = #header{} :: #header{},
           datapath_id :: binary(),
           n_buffers :: integer(),
           n_tables :: integer(),
@@ -41,17 +41,17 @@
 
 %% Switch configuration
 -record(get_config_request, {
-          header :: #header{}
+          header = #header{} :: #header{}
          }).
 
 -record(get_config_reply, {
-          header :: #header{},
+          header = #header{} :: #header{},
           flags,
           miss_send_len :: integer()
          }).
 
 -record(set_config, {
-          header :: #header{},
+          header = #header{} :: #header{},
           flags,
           miss_send_len :: integer()
          }).
@@ -60,14 +60,14 @@
 
 %% Configure/Modify behavior of a flow table
 -record(table_mod, {
-          header :: #header{},
+          header = #header{} :: #header{},
           table_id,
           config
          }).
 
 %% Flow setup and teardown (controller -> datapath)
 -record(flow_mod, {
-          header :: #header{},
+          header = #header{} :: #header{},
           cookie,
           cookie_mask,
           table_id,
@@ -94,7 +94,7 @@
 
 %% Group setup and teardown (controller -> datapath)
 -record(group_mod, {
-          header :: #header{},
+          header = #header{} :: #header{},
           command,
           type,
           group_id,
@@ -103,7 +103,7 @@
 
 %% Modify behavior of the physical port
 -record(port_mod, {
-          header :: #header{},
+          header = #header{} :: #header{},
           port_no,
           hw_addr,
           config,
@@ -135,7 +135,7 @@
 
 %% Send packet (controller -> datapath)
 -record(packet_out, {
-          header :: #header{},
+          header = #header{} :: #header{},
           buffer_id,
           in_port,
           actions_len,
@@ -145,16 +145,16 @@
 %%% Barrier ----------------------------------------------------------
 
 -record(barrier, {
-          header :: #header{}
+          header = #header{} :: #header{}
          }).
 
 %%%-----------------------------------------------------------------------------
 %%% Asynchronous Messages
 %%%-----------------------------------------------------------------------------
 
-%% Packet received on port (datapath -> controller)
+%% Packet received on port
 -record(packet_in, {
-          header :: #header{},
+          header = #header{} :: #header{},
           buffer_id,
           total_len,
           reason,
@@ -165,7 +165,7 @@
 
 %% Flow removed
 -record(flow_removed, {
-          header :: #header{},
+          header = #header{} :: #header{},
           cookie,
           priority,
           reason,
@@ -181,7 +181,7 @@
 
 %% A physical port has changed in the datapath
 -record(port_status, {
-          header :: #header{},
+          header = #header{} :: #header{},
           reason,
           desc :: #port{}
          }).
@@ -189,7 +189,7 @@
 %% Error message
 -define(ERROR_MSG_SIZE, 12).
 -record(error_msg, {
-          header :: #header{},
+          header = #header{} :: #header{},
           type :: atom(),
           code :: atom(),
           data :: binary()
@@ -328,7 +328,7 @@
 
 %% Experimenter error message
 -record(error_experimenter_msg, {
-          header :: #header{},
+          header = #header{} :: #header{},
           type :: integer(),
           exp_type :: integer(),
           experimenter :: integer(),
@@ -342,26 +342,26 @@
 %% Hello message
 -define(HELLO_SIZE, 8).
 -record(hello, {
-          header :: #header{}
+          header = #header{} :: #header{}
          }).
 
 %% Echo Request
 -define(ECHO_REQUEST_SIZE, 8).
 -record(echo_request, {
-          header :: #header{},
+          header = #header{} :: #header{},
           data :: binary()
          }).
 
 %% Echo Reply
 -define(ECHO_REPLY_SIZE, 8).
 -record(echo_reply, {
-          header :: #header{},
+          header = #header{} :: #header{},
           data :: binary()
          }).
 
 %% Experimenter
 -record(experimenter_header, {
-          header :: #header{},
+          header = #header{} :: #header{},
           experimenter,
           exp_type
          }).
