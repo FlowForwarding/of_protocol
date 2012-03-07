@@ -66,11 +66,11 @@ encode2(#features_request{}) ->
     HeaderBin = encode_struct(#header{type = features_request,
                                       length = ?FEATURES_REQUEST_SIZE}),
     << HeaderBin/binary >>;
-encode2(#switch_features{datapath_id = DataPathID, n_buffers = NBuffers,
+encode2(#features_reply{datapath_id = DataPathID, n_buffers = NBuffers,
                         n_tables = NTables, capabilities = Capabilities,
                         ports = Ports}) ->
     PortsBin = encode_list(Ports),
-    Length = size(PortsBin) + ?SWITCH_FEATURES_SIZE,
+    Length = size(PortsBin) + ?FEATURES_REPLY_SIZE,
     HeaderBin = encode_struct(#header{type = features_reply,
                                       length = Length}),
     << HeaderBin/binary, DataPathID:8/binary, NBuffers:32/integer,
@@ -106,15 +106,15 @@ decode(echo_reply, Header = #header{length = Length}, Binary) ->
 decode(features_request, Header, _) ->
     #features_request{header = Header};
 decode(features_reply, Header = #header{length = Length}, Binary) ->
-    PortsLength = Length - ?SWITCH_FEATURES_SIZE,
+    PortsLength = Length - ?FEATURES_REPLY_SIZE,
     << DataPathID:8/binary, NBuffers:32/integer, NTables:8/integer,
        0:24/integer, Capabilities:4/binary, 0:32/integer,
        PortsBin:PortsLength/binary >> = Binary,
     Ports = [decode_port(PortBin)
              || PortBin <- split_binaries(PortsBin, ?PORT_SIZE)],
-    #switch_features{header = Header, datapath_id = DataPathID,
-                     n_buffers = NBuffers, n_tables = NTables,
-                     capabilities = Capabilities, ports = Ports}.
+    #features_reply{header = Header, datapath_id = DataPathID,
+                    n_buffers = NBuffers, n_tables = NTables,
+                    capabilities = Capabilities, ports = Ports}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions

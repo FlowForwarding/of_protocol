@@ -18,8 +18,8 @@
          }).
 
 %% Switch features (Features reply)
--define(SWITCH_FEATURES_SIZE, 32).
--record(switch_features, {
+-define(FEATURES_REPLY_SIZE, 32).
+-record(features_reply, {
           header :: #header{},
           datapath_id :: binary(),
           n_buffers :: integer(),
@@ -40,7 +40,17 @@
 %%% Configuration --------------------------------------------------------------
 
 %% Switch configuration
--record(switch_config, {
+-record(get_config_request, {
+          header :: #header{}
+         }).
+
+-record(get_config_reply, {
+          header :: #header{},
+          flags,
+          miss_send_len :: integer()
+         }).
+
+-record(set_config, {
           header :: #header{},
           flags,
           miss_send_len :: integer()
