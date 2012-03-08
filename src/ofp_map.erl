@@ -11,7 +11,7 @@
          bad_instruction/1, bad_match/1, flow_mod_failed/1, group_mod_failed/1,
          port_mod_failed/1, table_mod_failed/1, queue_op_failed/1,
          switch_config_failed/1, role_request_failed/1, capability/1,
-         port_config/1, port_state/1, port_feature/1]).
+         port_config/1, port_state/1, port_feature/1, configuration/1]).
 
 -include("of_protocol.hrl").
 
@@ -33,6 +33,12 @@ msg_type(features_request)           -> ?OFPT_FEATURES_REQUEST;
 msg_type(?OFPT_FEATURES_REQUEST)     -> features_request;
 msg_type(features_reply)             -> ?OFPT_FEATURES_REPLY;
 msg_type(?OFPT_FEATURES_REPLY)       -> features_reply;
+msg_type(get_config_request)         -> ?OFPT_GET_CONFIG_REQUEST;
+msg_type(?OFPT_GET_CONFIG_REQUEST)   -> get_config_request;
+msg_type(get_config_reply)           -> ?OFPT_GET_CONFIG_REPLY;
+msg_type(?OFPT_GET_CONFIG_REPLY)     -> get_config_reply;
+msg_type(set_config)                 -> ?OFPT_SET_CONFIG;
+msg_type(?OFPT_SET_CONFIG)           -> set_config;
 %% TODO: Add more
 msg_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
 msg_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
@@ -363,3 +369,14 @@ port_feature(pause_asym)                 -> ?OFPPF_PAUSE_ASYM;
 port_feature(?OFPPF_PAUSE_ASYM)          -> pause_asym;
 port_feature(Type) when is_atom(Type)    -> throw({bad_type, Type});
 port_feature(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+configuration(frag_drop)                       -> ?OFPC_FRAG_DROP;
+configuration(?OFPC_FRAG_DROP)                 -> frag_drop;
+configuration(frag_reasm)                      -> ?OFPC_FRAG_REASM;
+configuration(?OFPC_FRAG_REASM)                -> frag_reasm;
+configuration(invalid_ttl_to_controller)       -> ?OFPC_INVALID_TTL_TO_CONTROLLER;
+configuration(?OFPC_INVALID_TTL_TO_CONTROLLER) -> invalid_ttl_to_controller;
+configuration(frag_mask)                       -> ?OFPC_FRAG_MASK;
+configuration(?OFPC_FRAG_MASK)                 -> frag_mask;
+configuration(Type) when is_atom(Type)         -> throw({bad_type, Type});
+configuration(Type) when is_integer(Type)      -> throw({bad_value, Type}).

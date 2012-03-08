@@ -116,6 +116,21 @@ encode2(#features_reply{header = Header, datapath_mac = DataPathMac,
     << HeaderBin/binary, DataPathMac:6/binary, DataPathID:16/integer,
        NBuffers:32/integer, NTables:8/integer, 0:24/integer, CapaBin:4/binary,
        0:32/integer, PortsBin/binary >>;
+encode2(#get_config_request{header = Header}) ->
+    HeaderBin = encode_struct(Header#header{type = get_config_request,
+                                            length = ?GET_CONFIG_REQUEST_SIZE}),
+    << HeaderBin/binary >>;
+encode2(#get_config_reply{header = Header, flags = Flags,
+                          miss_send_len = Miss}) ->
+    FlagsBin = flags_to_binary(configuration, Flags, 2),
+    HeaderBin = encode_struct(Header#header{type = get_config_reply,
+                                            length = ?GET_CONFIG_REPLY_SIZE}),
+    << HeaderBin/binary, FlagsBin:2/binary, Miss:16/integer >>;
+encode2(#set_config{header = Header, flags = Flags, miss_send_len = Miss}) ->
+    FlagsBin = flags_to_binary(configuration, Flags, 2),
+    HeaderBin = encode_struct(Header#header{type = set_config,
+                                            length = ?SET_CONFIG_SIZE}),
+    << HeaderBin/binary, FlagsBin:2/binary, Miss:16/integer >>;
 encode2(Other) ->
     throw({bad_message, Other}).
 
@@ -185,7 +200,18 @@ decode(features_reply, Header = #header{length = Length}, Binary) ->
     {#features_reply{header = Header, datapath_mac = DataPathMac,
                      datapath_id = DataPathID, n_buffers = NBuffers,
                      n_tables = NTables, capabilities = Capabilities,
-                     ports = Ports}, Rest}.
+                     ports = Ports}, Rest};
+decode(get_config_request, Header, Rest) ->
+    {#get_config_request{header = Header}, Rest};
+decode(get_config_reply, Header, Binary) ->
+    << FlagsBin:2/binary, Miss:16/integer, Rest/binary >> = Binary,
+    Flags = binary_to_flags(configuration, FlagsBin),
+    {#get_config_reply{header = Header, flags = Flags,
+                       miss_send_len = Miss}, Rest};
+decode(set_config, Header, Binary) ->
+    << FlagsBin:2/binary, Miss:16/integer, Rest/binary >> = Binary,
+    Flags = binary_to_flags(configuration, FlagsBin),
+    {#set_config{header = Header, flags = Flags, miss_send_len = Miss}, Rest}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions

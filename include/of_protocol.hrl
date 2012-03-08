@@ -40,22 +40,34 @@
 
 %%% Configuration --------------------------------------------------------------
 
-%% Switch configuration
+%% Configuration request
+-define(GET_CONFIG_REQUEST_SIZE, 8).
 -record(get_config_request, {
           header = #header{} :: #header{}
          }).
 
+%% Configuration reply
+-define(GET_CONFIG_REPLY_SIZE, 12).
 -record(get_config_reply, {
           header = #header{} :: #header{},
-          flags,
+          flags = [] :: [atom()],
           miss_send_len :: integer()
          }).
 
+%% Set configuration
+-define(SET_CONFIG_SIZE, 12).
 -record(set_config, {
           header = #header{} :: #header{},
-          flags,
+          flags = [] :: [atom()],
           miss_send_len :: integer()
          }).
+
+%% Configuration flags
+-define(OFPC_FRAG_NORMAL, 0).
+-define(OFPC_FRAG_DROP, 0).
+-define(OFPC_FRAG_REASM, 1).
+-define(OFPC_INVALID_TTL_TO_CONTROLLER, 2).
+-define(OFPC_FRAG_MASK, 3).
 
 %%% Modify-State ---------------------------------------------------------------
 
