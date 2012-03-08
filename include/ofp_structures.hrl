@@ -133,7 +133,7 @@
           class :: atom(),
           field :: integer(),
           has_mask :: boolean(),
-          length :: integer()
+          length :: integer() %% bits
          }).
 
 %%% Flow Instruction Structures ------------------------------------------------
