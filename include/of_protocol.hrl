@@ -139,7 +139,6 @@
           header = #header{} :: #header{},
           buffer_id,
           in_port,
-          actions_len,
           actions :: [#action_header{}]
          }).
 
