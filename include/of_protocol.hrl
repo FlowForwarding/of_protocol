@@ -114,22 +114,81 @@
 
 %%% Read-State -----------------------------------------------------------------
 
--record(stats_request, {}).
+-record(stats_request, {
+          header = #header{} :: #header{},
+          type :: atom(),
+          flags :: list(atom()),
+          body :: term() %% request type dependent
+         }).
+
 -record(stats_reply, {}).
--record(desc_stats, {}).
--record(flow_stats_request, {}).
+
+-record(flow_stats_request, {
+          table_id :: integer(),
+          out_port :: integer(),
+          out_group :: integer(),
+          cookie :: integer(),
+          cookie_mask :: integer(),
+          match :: #match{}}).
+
 -record(flow_stats, {}).
--record(aggregate_stats_request, {}).
+
+-record(aggregate_stats_request, {
+          table_id :: integer(),
+          out_port :: integer(),
+          out_group :: integer(),
+          cookie :: integer(),
+          cookie_mask :: integer(),
+          match :: #match{}}).
+
 -record(aggregate_stats_reply, {}).
--record(table_stats, {}).
--record(port_stats_request, {}).
+
+-record(table_stats, {
+          table_id :: integer(),
+          name :: binary(),
+          match :: list(),
+          wildcards :: list(),
+          write_actions :: list(),
+          apply_actions :: list(),
+          write_setfields :: list(),
+          apply_setfields :: list(),
+          metadata_match :: integer(),
+          metadata_write :: integer(),
+          instructions :: list(),
+          config :: list(),
+          max_entries :: integer(),
+          active_count :: integer(),
+          lookup_count :: integer(),
+          matched_count :: integer()
+         }).
+
+-record(port_stats_request, {
+          port_no :: integer()
+         }).
+
 -record(port_stats, {}).
--record(queue_stats_request, {}).
+
+-record(queue_stats_request, {
+          port_no :: integer(),
+          queue_id :: integer()
+         }).
+
 -record(queue_stats, {}).
--record(group_stats_request, {}).
+
+-record(group_stats_request, {
+          group_id :: integer()
+         }).
+
 -record(group_stats, {}).
 -record(bucket_counter, {}).
 -record(group_desc_stats, {}).
+
+-record(experimenter_stats_header, {
+          experimenter :: integer(),
+          exp_type :: integer(),
+          additional_data :: binary()
+         }).
+
 %% and more...
 
 %%% Packet-out -----------------------------------------------------------------
