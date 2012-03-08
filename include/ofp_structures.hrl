@@ -13,7 +13,7 @@
           version = 3 :: integer(),
           type :: atom(),
           length :: integer(),
-          xid :: integer()
+          xid = undefined :: integer()
          }).
 
 -define(OFPT_HELLO, 0).

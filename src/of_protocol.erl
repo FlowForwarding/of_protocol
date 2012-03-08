@@ -12,7 +12,7 @@
 -include("of_protocol.hrl").
 
 -define(VERSION, << 1:1/integer, 3:7/integer >>).
--define(XID, << 1:32/integer >>).
+-define(XID, 1).
 
 %%%-----------------------------------------------------------------------------
 %%% API functions
@@ -29,7 +29,7 @@ encode(Record) ->
     end.
 
 %% @doc Decode binary to erlang representation.
--spec decode(binary()) -> record().
+-spec decode(binary()) -> {record(), binary()} | {error, term()}.
 decode(<< HeaderBin:8/binary, Rest/binary >>) ->
     try
         Header = decode_header(HeaderBin),
@@ -44,9 +44,15 @@ decode(<< HeaderBin:8/binary, Rest/binary >>) ->
 %%%-----------------------------------------------------------------------------
 
 %% @doc Encode structures
-encode_struct(#header{type = Type, length = Length}) ->
+encode_struct(#header{type = Type, length = Length, xid = Xid}) ->
     TypeInt = ofp_map:msg_type(Type),
-    << ?VERSION/binary, TypeInt:8/integer, Length:16/integer, ?XID/binary >>;
+    Xid2 = case Xid of
+               undefined ->
+                   ?XID;
+               Value ->
+                   Value
+           end,
+    << ?VERSION/binary, TypeInt:8/integer, Length:16/integer, Xid2:32/integer >>;
 encode_struct(#port{port_no = PortNo, hw_addr = HWAddr, name = Name,
                     config = Config, state = State, curr = Curr,
                     advertised = Advertised, supported = Supported,
@@ -138,46 +144,48 @@ decode_port(Binary) ->
          max_speed = MaxSpeed}.
 
 %% @doc Actual decoding of the messages
-decode(hello, Header, _) ->
-    #hello{header = Header};
+decode(hello, Header, Rest) ->
+    {#hello{header = Header}, Rest};
 decode(error, Header = #header{length = Length}, Binary) ->
-    << TypeInt:16/integer, Rest/binary >> = Binary,
+    << TypeInt:16/integer, More/binary >> = Binary,
     Type = ofp_map:error_type(TypeInt),
     case Type of
         experimenter ->
             DataLength = Length - ?ERROR_EXPERIMENTER_MSG_SIZE,
             << ExpTypeInt:16/integer, Experimenter:32/integer,
-               Data:DataLength/binary >> = Rest,
-            #error_experimenter_msg{header = Header, exp_type = ExpTypeInt,
-                                    experimenter = Experimenter, data = Data};
+               Data:DataLength/binary, Rest/binary >> = More,
+            {#error_experimenter_msg{header = Header, exp_type = ExpTypeInt,
+                                     experimenter = Experimenter,
+                                     data = Data}, Rest};
         _ ->
             DataLength = Length - ?ERROR_MSG_SIZE,
-            << CodeInt:16/integer, Data:DataLength/binary >> = Rest,
+            << CodeInt:16/integer, Data:DataLength/binary, Rest/binary >> = More,
             Code = ofp_map:Type(CodeInt),
-            #error_msg{header = Header, type = Type, code = Code, data = Data}
+            {#error_msg{header = Header, type = Type,
+                        code = Code, data = Data}, Rest}
     end;
 decode(echo_request, Header = #header{length = Length}, Binary) ->
     DataLength = Length - ?ECHO_REQUEST_SIZE,
-    << Data:DataLength/binary >> = Binary,
-    #echo_request{header = Header, data = Data};
+    << Data:DataLength/binary, Rest/binary >> = Binary,
+    {#echo_request{header = Header, data = Data}, Rest};
 decode(echo_reply, Header = #header{length = Length}, Binary) ->
     DataLength = Length - ?ECHO_REPLY_SIZE,
-    << Data:DataLength/binary >> = Binary,
-    #echo_reply{header = Header, data = Data};
-decode(features_request, Header, _) ->
-    #features_request{header = Header};
+    << Data:DataLength/binary, Rest/binary >> = Binary,
+    {#echo_reply{header = Header, data = Data}, Rest};
+decode(features_request, Header, Rest) ->
+    {#features_request{header = Header}, Rest};
 decode(features_reply, Header = #header{length = Length}, Binary) ->
     PortsLength = Length - ?FEATURES_REPLY_SIZE,
     << DataPathMac:6/binary, DataPathID:16/integer, NBuffers:32/integer,
        NTables:8/integer, 0:24/integer, CapaBin:4/binary, 0:32/integer,
-       PortsBin:PortsLength/binary >> = Binary,
+       PortsBin:PortsLength/binary, Rest/binary >> = Binary,
     Capabilities = binary_to_flags(capability, CapaBin),
     Ports = [decode_port(PortBin)
              || PortBin <- split_binaries(PortsBin, ?PORT_SIZE)],
-    #features_reply{header = Header, datapath_mac = DataPathMac,
-                    datapath_id = DataPathID, n_buffers = NBuffers,
-                    n_tables = NTables, capabilities = Capabilities,
-                    ports = Ports}.
+    {#features_reply{header = Header, datapath_mac = DataPathMac,
+                     datapath_id = DataPathID, n_buffers = NBuffers,
+                     n_tables = NTables, capabilities = Capabilities,
+                     ports = Ports}, Rest}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions
