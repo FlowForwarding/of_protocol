@@ -47,7 +47,10 @@
 
 %% Flags to indicate behavior of the physical port
 -define(OFPPC_PORT_DOWN, 0).
+-define(OFPPC_NO_STP, 1).
 -define(OFPPC_NO_RECV, 2).
+-define(OFPPC_NO_RECV_STP, 3).
+-define(OFPPC_NO_FLOOD, 4).
 -define(OFPPC_NO_FWD, 5).
 -define(OFPPC_NO_PACKET_IN, 6).
 

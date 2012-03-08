@@ -305,8 +305,14 @@ capability(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 port_config(port_down)                  -> ?OFPPC_PORT_DOWN;
 port_config(?OFPPC_PORT_DOWN)           -> port_down;
+port_config(no_stp)                     -> ?OFPPC_NO_STP;
+port_config(?OFPPC_NO_STP)              -> no_stp;
 port_config(no_recv)                    -> ?OFPPC_NO_RECV;
 port_config(?OFPPC_NO_RECV)             -> no_recv;
+port_config(no_recv_stp)                -> ?OFPPC_NO_RECV_STP;
+port_config(?OFPPC_NO_RECV_STP)         -> no_recv_stp;
+port_config(no_flood)                   -> ?OFPPC_NO_FLOOD;
+port_config(?OFPPC_NO_FLOOD)            -> no_flood;
 port_config(no_fwd)                     -> ?OFPPC_NO_FWD;
 port_config(?OFPPC_NO_FWD)              -> no_fwd;
 port_config(no_packet_in)               -> ?OFPPC_NO_PACKET_IN;
