@@ -21,7 +21,8 @@
 -define(FEATURES_REPLY_SIZE, 32).
 -record(features_reply, {
           header = #header{} :: #header{},
-          datapath_id :: binary(),
+          datapath_mac :: binary(),
+          datapath_id :: integer(),
           n_buffers :: integer(),
           n_tables :: integer(),
           capabilities :: [atom()],
@@ -327,9 +328,9 @@
 -define(OFPRRFC_BAD_ROLE, 2).
 
 %% Experimenter error message
+-define(ERROR_EXPERIMENTER_MSG_SIZE, 16).
 -record(error_experimenter_msg, {
           header = #header{} :: #header{},
-          type :: integer(),
           exp_type :: integer(),
           experimenter :: integer(),
           data :: binary()

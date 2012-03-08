@@ -7,7 +7,7 @@
 -module(ofp_map).
 
 %% Mapping functions
--export([type/1, error_type/1, hello_failed/1, bad_request/1, bad_action/1,
+-export([msg_type/1, error_type/1, hello_failed/1, bad_request/1, bad_action/1,
          bad_instruction/1, bad_match/1, flow_mod_failed/1, group_mod_failed/1,
          port_mod_failed/1, table_mod_failed/1, queue_op_failed/1,
          switch_config_failed/1, role_request_failed/1, capability/1,
@@ -19,23 +19,23 @@
 %%% Mapping functions
 %%%-----------------------------------------------------------------------------
 
-type(hello)                      -> ?OFPT_HELLO;
-type(?OFPT_HELLO)                -> hello;
-type(error)                      -> ?OFPT_ERROR;
-type(?OFPT_ERROR)                -> error;
-type(echo_request)               -> ?OFPT_ECHO_REQUEST;
-type(?OFPT_ECHO_REQUEST)         -> echo_request;
-type(echo_reply)                 -> ?OFPT_ECHO_REPLY;
-type(?OFPT_ECHO_REPLY)           -> echo_reply;
-type(experimenter)               -> ?OFPT_EXPERIMENTER;
-type(?OFPT_EXPERIMENTER)         -> experimenter;
-type(features_request)           -> ?OFPT_FEATURES_REQUEST;
-type(?OFPT_FEATURES_REQUEST)     -> features_request;
-type(features_reply)             -> ?OFPT_FEATURES_REPLY;
-type(?OFPT_FEATURES_REPLY)       -> features_reply;
+msg_type(hello)                      -> ?OFPT_HELLO;
+msg_type(?OFPT_HELLO)                -> hello;
+msg_type(error)                      -> ?OFPT_ERROR;
+msg_type(?OFPT_ERROR)                -> error;
+msg_type(echo_request)               -> ?OFPT_ECHO_REQUEST;
+msg_type(?OFPT_ECHO_REQUEST)         -> echo_request;
+msg_type(echo_reply)                 -> ?OFPT_ECHO_REPLY;
+msg_type(?OFPT_ECHO_REPLY)           -> echo_reply;
+msg_type(experimenter)               -> ?OFPT_EXPERIMENTER;
+msg_type(?OFPT_EXPERIMENTER)         -> experimenter;
+msg_type(features_request)           -> ?OFPT_FEATURES_REQUEST;
+msg_type(?OFPT_FEATURES_REQUEST)     -> features_request;
+msg_type(features_reply)             -> ?OFPT_FEATURES_REPLY;
+msg_type(?OFPT_FEATURES_REPLY)       -> features_reply;
 %% TODO: Add more
-type(Type) when is_atom(Type)    -> throw({bad_type, Type});
-type(Type) when is_integer(Type) -> throw({bad_value, Type}).
+msg_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
+msg_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 error_type(hello_failed)                -> ?OFPET_HELLO_FAILED;
 error_type(?OFPET_HELLO_FAILED)         -> hello_failed;

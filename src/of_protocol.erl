@@ -19,15 +19,25 @@
 %%%-----------------------------------------------------------------------------
 
 %% @doc Encode erlang representation to binary.
--spec encode(record()) -> binary().
+-spec encode(record()) -> binary() | {error, term()}.
 encode(Record) ->
-    encode2(Record).
+    try
+        encode2(Record)
+    catch
+        _:Exception ->
+            {error, Exception}
+    end.
 
 %% @doc Decode binary to erlang representation.
 -spec decode(binary()) -> record().
 decode(<< HeaderBin:8/binary, Rest/binary >>) ->
-    Header = decode_header(HeaderBin),
-    decode(Header#header.type, Header, Rest).
+    try
+        Header = decode_header(HeaderBin),
+        decode(Header#header.type, Header, Rest)
+    catch
+        _:Exception ->
+            {error, Exception}
+    end.
 
 %%%-----------------------------------------------------------------------------
 %%% Actual encode/decode functions
@@ -35,53 +45,65 @@ decode(<< HeaderBin:8/binary, Rest/binary >>) ->
 
 %% @doc Encode structures
 encode_struct(#header{type = Type, length = Length}) ->
-    TypeInt = ofp_map:type(Type),
+    TypeInt = ofp_map:msg_type(Type),
     << ?VERSION/binary, TypeInt:8/integer, Length:16/integer, ?XID/binary >>;
 encode_struct(#port{}) ->
     << 0:(?PORT_SIZE*8)/integer >>.
 
 %% @doc Actual encoding of the messages
-encode2(#hello{}) ->
-    HeaderBin = encode_struct(#header{type = hello,
-                                      length = ?HEADER_SIZE}),
+encode2(#hello{header = Header}) ->
+    HeaderBin = encode_struct(Header#header{type = hello,
+                                            length = ?HEADER_SIZE}),
     << HeaderBin/binary >>;
-encode2(#error_msg{type = Type, code = Code, data = Data}) ->
+encode2(#error_msg{header = Header, type = Type, code = Code, data = Data}) ->
     Length = size(Data) + ?ERROR_MSG_SIZE,
-    HeaderBin = encode_struct(#header{type = error,
-                                      length = Length}),
+    HeaderBin = encode_struct(Header#header{type = error,
+                                            length = Length}),
     TypeInt = ofp_map:error_type(Type),
     CodeInt = ofp_map:Type(Code),
     << HeaderBin/binary, TypeInt:16/integer, CodeInt:16/integer, Data/binary >>;
-encode2(#echo_request{data = Data}) ->
+encode2(#error_experimenter_msg{header = Header, exp_type = ExpTypeInt,
+                                experimenter = Experimenter, data = Data}) ->
+    Length = size(Data) + ?ERROR_EXPERIMENTER_MSG_SIZE,
+    HeaderBin = encode_struct(Header#header{type = error,
+                                            length = Length}),
+    TypeInt = ofp_map:error_type(experimenter),
+    << HeaderBin/binary, TypeInt:16/integer, ExpTypeInt:16/integer,
+       Experimenter:32/integer, Data/binary >>;
+encode2(#echo_request{header = Header, data = Data}) ->
     Length = size(Data) + ?ECHO_REQUEST_SIZE,
-    HeaderBin = encode_struct(#header{type = echo_request,
-                                      length = Length}),
+    HeaderBin = encode_struct(Header#header{type = echo_request,
+                                            length = Length}),
     << HeaderBin/binary, Data/binary >>;
-encode2(#echo_reply{data = Data}) ->
+encode2(#echo_reply{header = Header, data = Data}) ->
     Length = size(Data) + ?ECHO_REPLY_SIZE,
-    HeaderBin = encode_struct(#header{type = echo_reply,
-                                      length = Length}),
+    HeaderBin = encode_struct(Header#header{type = echo_reply,
+                                            length = Length}),
     << HeaderBin/binary, Data/binary >>;
-encode2(#features_request{}) ->
-    HeaderBin = encode_struct(#header{type = features_request,
-                                      length = ?FEATURES_REQUEST_SIZE}),
+encode2(#features_request{header = Header}) ->
+    HeaderBin = encode_struct(Header#header{type = features_request,
+                                            length = ?FEATURES_REQUEST_SIZE}),
     << HeaderBin/binary >>;
-encode2(#features_reply{datapath_id = DataPathID, n_buffers = NBuffers,
+encode2(#features_reply{header = Header, datapath_mac = DataPathMac,
+                        datapath_id = DataPathID, n_buffers = NBuffers,
                         n_tables = NTables, capabilities = Capabilities,
                         ports = Ports}) ->
     PortsBin = encode_list(Ports),
+    CapaBin = flags_to_binary(capability, Capabilities, 4),
     Length = size(PortsBin) + ?FEATURES_REPLY_SIZE,
-    HeaderBin = encode_struct(#header{type = features_reply,
-                                      length = Length}),
-    << HeaderBin/binary, DataPathID:8/binary, NBuffers:32/integer,
-       NTables:8/integer, 0:24/integer, Capabilities:4/binary,
-       0:32/integer, PortsBin/binary >>.
+    HeaderBin = encode_struct(Header#header{type = features_reply,
+                                            length = Length}),
+    << HeaderBin/binary, DataPathMac:6/binary, DataPathID:16/integer,
+       NBuffers:32/integer, NTables:8/integer, 0:24/integer, CapaBin:4/binary,
+       0:32/integer, PortsBin/binary >>;
+encode2(Other) ->
+    throw({bad_message, Other}).
 
 %% @doc Decode structures
 decode_header(Binary) ->
     << _:1/integer, Version:7/integer, TypeInt:8/integer,
        Length:16/integer, XID:32/integer >> = Binary,
-    Type = ofp_map:type(TypeInt),
+    Type = ofp_map:msg_type(TypeInt),
     #header{version = Version, type = Type, length = Length, xid = XID}.
 decode_port(_Binary) ->
     #port{}.
@@ -90,11 +112,21 @@ decode_port(_Binary) ->
 decode(hello, Header, _) ->
     #hello{header = Header};
 decode(error, Header = #header{length = Length}, Binary) ->
-    DataLength = Length - ?ERROR_MSG_SIZE,
-    << TypeInt:16/integer, CodeInt:16/integer, Data:DataLength/binary >> = Binary,
+    << TypeInt:16/integer, Rest/binary >> = Binary,
     Type = ofp_map:error_type(TypeInt),
-    Code = ofp_map:Type(CodeInt),
-    #error_msg{header = Header, type = Type, code = Code, data = Data};
+    case Type of
+        experimenter ->
+            DataLength = Length - ?ERROR_EXPERIMENTER_MSG_SIZE,
+            << ExpTypeInt:16/integer, Experimenter:32/integer,
+               Data:DataLength/binary >> = Rest,
+            #error_experimenter_msg{header = Header, exp_type = ExpTypeInt,
+                                    experimenter = Experimenter, data = Data};
+        _ ->
+            DataLength = Length - ?ERROR_MSG_SIZE,
+            << CodeInt:16/integer, Data:DataLength/binary >> = Rest,
+            Code = ofp_map:Type(CodeInt),
+            #error_msg{header = Header, type = Type, code = Code, data = Data}
+    end;
 decode(echo_request, Header = #header{length = Length}, Binary) ->
     DataLength = Length - ?ECHO_REQUEST_SIZE,
     << Data:DataLength/binary >> = Binary,
@@ -107,14 +139,16 @@ decode(features_request, Header, _) ->
     #features_request{header = Header};
 decode(features_reply, Header = #header{length = Length}, Binary) ->
     PortsLength = Length - ?FEATURES_REPLY_SIZE,
-    << DataPathID:8/binary, NBuffers:32/integer, NTables:8/integer,
-       0:24/integer, Capabilities:4/binary, 0:32/integer,
+    << DataPathMac:6/binary, DataPathID:16/integer, NBuffers:32/integer,
+       NTables:8/integer, 0:24/integer, CapaBin:4/binary, 0:32/integer,
        PortsBin:PortsLength/binary >> = Binary,
+    Capabilities = binary_to_flags(capability, CapaBin),
     Ports = [decode_port(PortBin)
              || PortBin <- split_binaries(PortsBin, ?PORT_SIZE)],
-    #features_reply{header = Header, datapath_id = DataPathID,
-                    n_buffers = NBuffers, n_tables = NTables,
-                    capabilities = Capabilities, ports = Ports}.
+    #features_reply{header = Header, datapath_mac = DataPathMac,
+                    datapath_id = DataPathID, n_buffers = NBuffers,
+                    n_tables = NTables, capabilities = Capabilities,
+                    ports = Ports}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions
@@ -139,24 +173,28 @@ split_binaries(Binaries, List, Size) ->
     split_binaries(Rest, [Binary | List], Size).
 
 flags_to_binary(Type, Flags, Size) ->
-    flags_to_binary2(Type, Flags, << 0:(Size*8)/integer >>).
+    flags_to_binary2(Type, Flags, << 0:(Size*8)/integer >>, Size).
 
-flags_to_binary2(_, [], Binary) ->
+flags_to_binary2(_, [], Binary, _) ->
     Binary;
-flags_to_binary2(Type, [Flag | Rest], Binary) ->
-    Bit = ?MODULE:Type(Flag),
-    NewBinary = (Binary bor (1 bsl Bit)),
-    flags_to_binary2(Type, Rest, NewBinary).
+flags_to_binary2(Type, [Flag | Rest], Binary, Size) ->
+    BitSize = Size*8,
+    << Binary2:BitSize/integer >> = Binary,
+    Bit = ofp_map:Type(Flag),
+    NewBinary = (Binary2 bor (1 bsl Bit)),
+    flags_to_binary2(Type, Rest, << NewBinary:BitSize/integer >>, Size).
 
 binary_to_flags(Type, Binary) ->
-    binary_to_flags(Type, Binary, size(Binary)*8-1, []).
+    BitSize = size(Binary) * 8,
+    << Integer:BitSize/integer >> = Binary,
+    binary_to_flags(Type, Integer, BitSize-1, []).
 
-binary_to_flags(_, _, -1, Flags) ->
-    Flags;
-binary_to_flags(Type, << Binary/integer >>, Bit, Flags) ->
-    case 0 /= (Binary band (1 bsl Bit)) of
+binary_to_flags(Type, Integer, Bit, Flags) when Bit >= 0 ->
+    case 0 /= (Integer band (1 bsl Bit)) of
         true ->
-            binary_to_flags(Type, Binary, Bit - 1, [ofp_map:Type(Bit) | Flags]);
+            binary_to_flags(Type, Integer, Bit - 1, [ofp_map:Type(Bit) | Flags]);
         false ->
-            binary_to_flags(Type, Binary, Bit - 1, Flags)
-    end.
+            binary_to_flags(Type, Integer, Bit - 1, Flags)
+    end;
+binary_to_flags(_, _, _, Flags) ->
+    lists:reverse(Flags).
