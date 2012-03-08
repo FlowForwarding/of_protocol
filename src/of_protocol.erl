@@ -47,8 +47,22 @@ decode(<< HeaderBin:8/binary, Rest/binary >>) ->
 encode_struct(#header{type = Type, length = Length}) ->
     TypeInt = ofp_map:msg_type(Type),
     << ?VERSION/binary, TypeInt:8/integer, Length:16/integer, ?XID/binary >>;
-encode_struct(#port{}) ->
-    << 0:(?PORT_SIZE*8)/integer >>.
+encode_struct(#port{port_no = PortNo, hw_addr = HWAddr, name = Name,
+                    config = Config, state = State, curr = Curr,
+                    advertised = Advertised, supported = Supported,
+                    peer = Peer, curr_speed = CurrSpeed,
+                    max_speed = MaxSpeed}) ->
+    ConfigBin = flags_to_binary(port_config, Config, 4),
+    StateBin = flags_to_binary(port_state, State, 4),
+    CurrBin = flags_to_binary(port_feature, Curr, 4),
+    AdvertisedBin = flags_to_binary(port_feature, Advertised, 4),
+    SupportedBin = flags_to_binary(port_feature, Supported, 4),
+    PeerBin = flags_to_binary(port_feature, Peer, 4),
+    Padding = (16 - size(Name)) * 8,
+    << PortNo:32/integer, 0:32/integer, HWAddr:6/binary, 0:16/integer,
+       Name/binary, 0:Padding/integer, ConfigBin:4/binary, StateBin:4/binary,
+       CurrBin:4/binary, AdvertisedBin:4/binary, SupportedBin:4/binary,
+       PeerBin:4/binary, CurrSpeed:32/integer, MaxSpeed:32/integer >>.
 
 %% @doc Actual encoding of the messages
 encode2(#hello{header = Header}) ->
@@ -105,8 +119,23 @@ decode_header(Binary) ->
        Length:16/integer, XID:32/integer >> = Binary,
     Type = ofp_map:msg_type(TypeInt),
     #header{version = Version, type = Type, length = Length, xid = XID}.
-decode_port(_Binary) ->
-    #port{}.
+decode_port(Binary) ->
+    << PortNo:32/integer, 0:32/integer, HWAddr:6/binary, 0:16/integer,
+       Name:16/binary, ConfigBin:4/binary, StateBin:4/binary,
+       CurrBin:4/binary, AdvertisedBin:4/binary, SupportedBin:4/binary,
+       PeerBin:4/binary, CurrSpeed:32/integer,
+       MaxSpeed:32/integer >> = Binary,
+    Config = binary_to_flags(port_config, ConfigBin),
+    State = binary_to_flags(port_state, StateBin),
+    Curr = binary_to_flags(port_feature, CurrBin),
+    Advertised = binary_to_flags(port_feature, AdvertisedBin),
+    Supported = binary_to_flags(port_feature, SupportedBin),
+    Peer = binary_to_flags(port_feature, PeerBin),
+    Name2 = rstrip(Name),
+    #port{port_no = PortNo, hw_addr = HWAddr, name = Name2, config = Config,
+         state = State, curr = Curr, advertised = Advertised,
+         supported = Supported, peer = Peer, curr_speed = CurrSpeed,
+         max_speed = MaxSpeed}.
 
 %% @doc Actual decoding of the messages
 decode(hello, Header, _) ->
@@ -173,16 +202,16 @@ split_binaries(Binaries, List, Size) ->
     split_binaries(Rest, [Binary | List], Size).
 
 flags_to_binary(Type, Flags, Size) ->
-    flags_to_binary2(Type, Flags, << 0:(Size*8)/integer >>, Size).
+    flags_to_binary(Type, Flags, << 0:(Size*8)/integer >>, Size).
 
-flags_to_binary2(_, [], Binary, _) ->
+flags_to_binary(_, [], Binary, _) ->
     Binary;
-flags_to_binary2(Type, [Flag | Rest], Binary, Size) ->
+flags_to_binary(Type, [Flag | Rest], Binary, Size) ->
     BitSize = Size*8,
     << Binary2:BitSize/integer >> = Binary,
     Bit = ofp_map:Type(Flag),
     NewBinary = (Binary2 bor (1 bsl Bit)),
-    flags_to_binary2(Type, Rest, << NewBinary:BitSize/integer >>, Size).
+    flags_to_binary(Type, Rest, << NewBinary:BitSize/integer >>, Size).
 
 binary_to_flags(Type, Binary) ->
     BitSize = size(Binary) * 8,
@@ -198,3 +227,16 @@ binary_to_flags(Type, Integer, Bit, Flags) when Bit >= 0 ->
     end;
 binary_to_flags(_, _, _, Flags) ->
     lists:reverse(Flags).
+
+rstrip(Binary) ->
+    rstrip(Binary, size(Binary) - 1).
+
+rstrip(Binary, Byte) when Byte >= 0 ->
+    case binary:at(Binary, Byte) of
+        0 ->
+            rstrip(Binary, Byte - 1);
+        _ ->
+            binary:part(Binary, 0, Byte + 2)
+    end;
+rstrip(_, _) ->
+    <<"\0">>.

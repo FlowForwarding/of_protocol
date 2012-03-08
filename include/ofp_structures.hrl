@@ -33,7 +33,7 @@
 -define(PORT_SIZE, 64).
 -record(port, {
           port_no :: integer(),
-          hw_addr :: [integer()],
+          hw_addr :: binary(),
           name :: binary(),
           config = [] :: [atom()],
           state = [] :: [atom()],

@@ -11,7 +11,7 @@
          bad_instruction/1, bad_match/1, flow_mod_failed/1, group_mod_failed/1,
          port_mod_failed/1, table_mod_failed/1, queue_op_failed/1,
          switch_config_failed/1, role_request_failed/1, capability/1,
-         port_config/1]).
+         port_config/1, port_state/1, port_feature/1]).
 
 -include("of_protocol.hrl").
 
@@ -319,3 +319,47 @@ port_config(no_packet_in)               -> ?OFPPC_NO_PACKET_IN;
 port_config(?OFPPC_NO_PACKET_IN)        -> no_packet_in;
 port_config(Type) when is_atom(Type)    -> throw({bad_type, Type});
 port_config(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+port_state(link_down)                  -> ?OFPPS_LINK_DOWN;
+port_state(?OFPPS_LINK_DOWN)           -> link_down;
+port_state(blocked)                    -> ?OFPPS_BLOCKED;
+port_state(?OFPPS_BLOCKED)             -> blocked;
+port_state(live)                       -> ?OFPPS_LIVE;
+port_state(?OFPPS_LIVE)                -> live;
+port_state(Type) when is_atom(Type)    -> throw({bad_type, Type});
+port_state(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+port_feature('10mb_hd')                  -> ?OFPPF_10MB_HD;
+port_feature(?OFPPF_10MB_HD)             -> '10mb_hd';
+port_feature('10mb_fd')                  -> ?OFPPF_10MB_FD;
+port_feature(?OFPPF_10MB_FD)             -> '10mb_fd';
+port_feature('100mb_hd')                 -> ?OFPPF_100MB_HD;
+port_feature(?OFPPF_100MB_HD)            -> '100mb_hd';
+port_feature('100mb_fd')                 -> ?OFPPF_100MB_FD;
+port_feature(?OFPPF_100MB_FD)            -> '100mb_fd';
+port_feature('1gb_hd')                   -> ?OFPPF_1GB_HD;
+port_feature(?OFPPF_1GB_HD)              -> '1gb_hd';
+port_feature('1gb_fd')                   -> ?OFPPF_1GB_FD;
+port_feature(?OFPPF_1GB_FD)              -> '1gb_fd';
+port_feature('10gb_fd')                  -> ?OFPPF_10GB_FD;
+port_feature(?OFPPF_10GB_FD)             -> '10gb_fd';
+port_feature('40gb_fd')                  -> ?OFPPF_40GB_FD;
+port_feature(?OFPPF_40GB_FD)             -> '40gb_fd';
+port_feature('100gb_fd')                 -> ?OFPPF_100GB_FD;
+port_feature(?OFPPF_100GB_FD)            -> '100gb_fd';
+port_feature('1tb_fd')                   -> ?OFPPF_1TB_FD;
+port_feature(?OFPPF_1TB_FD)              -> '1tb_fd';
+port_feature(other)                      -> ?OFPPF_OTHER;
+port_feature(?OFPPF_OTHER)               -> other;
+port_feature(copper)                     -> ?OFPPF_COPPER;
+port_feature(?OFPPF_COPPER)              -> copper;
+port_feature(fiber)                      -> ?OFPPF_FIBER;
+port_feature(?OFPPF_FIBER)               -> fiber;
+port_feature(autoneg)                    -> ?OFPPF_AUTONEG;
+port_feature(?OFPPF_AUTONEG)             -> autoneg;
+port_feature(pause)                      -> ?OFPPF_PAUSE;
+port_feature(?OFPPF_PAUSE)               -> pause;
+port_feature(pause_asym)                 -> ?OFPPF_PAUSE_ASYM;
+port_feature(?OFPPF_PAUSE_ASYM)          -> pause_asym;
+port_feature(Type) when is_atom(Type)    -> throw({bad_type, Type});
+port_feature(Type) when is_integer(Type) -> throw({bad_value, Type}).

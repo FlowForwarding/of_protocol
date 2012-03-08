@@ -25,7 +25,7 @@
           datapath_id :: integer(),
           n_buffers :: integer(),
           n_tables :: integer(),
-          capabilities :: [atom()],
+          capabilities = [] :: [atom()],
           ports = [] :: [#port{}]
          }).
 
