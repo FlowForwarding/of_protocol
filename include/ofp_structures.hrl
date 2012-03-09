@@ -11,11 +11,10 @@
 -define(HEADER_SIZE, 8).
 -record(header, {
           version = 3 :: integer(),
-          type :: atom(),
-          length :: integer(),
-          xid = undefined :: integer()
+          xid :: integer()
          }).
 
+%% Message types
 -define(OFPT_HELLO, 0).
 -define(OFPT_ERROR, 1).
 -define(OFPT_ECHO_REQUEST, 2).
@@ -26,6 +25,22 @@
 -define(OFPT_GET_CONFIG_REQUEST, 7).
 -define(OFPT_GET_CONFIG_REPLY, 8).
 -define(OFPT_SET_CONFIG, 9).
+-define(OFPT_PACKET_IN, 10).
+-define(OFPT_FLOW_REMOVED, 11).
+-define(OFPT_PORT_STATUS, 12).
+-define(OFPT_PACKET_OUT, 13).
+-define(OFPT_FLOW_MOD, 14).
+-define(OFPT_GROUP_MOD, 15).
+-define(OFPT_PORT_MOD, 16).
+-define(OFPT_TABLE_MOD, 17).
+-define(OFPT_STATS_REQUEST, 18).
+-define(OFPT_STATS_REPLY, 19).
+-define(OFPT_BARRIER_REQUEST, 20).
+-define(OFPT_BARRIER_REPLY, 21).
+-define(OFPT_QUEUE_GET_CONFIG_REQUEST, 22).
+-define(OFPT_QUEUE_GET_CONFIG_REPLY, 23).
+-define(OFPT_ROLE_REQUEST, 24).
+-define(OFPT_ROLE_REPLY, 25).
 
 %%% Port Structures ------------------------------------------------------------
 
@@ -125,19 +140,69 @@
 
 %%% Flow Match Structures ------------------------------------------------------
 
-%% Fields to match against flows
--record(match, {
-          type :: integer(),
-          length :: integer(),
-          oxm_fields
-         }).
-
 -record(oxm_field, {
           class :: atom(),
-          field :: integer(),
+          field :: atom(),
           has_mask :: boolean(),
-          length :: integer() %% bits
+          value :: binary(),
+          mask :: binary()
          }).
+
+%% OXM Class IDs
+-define(OFPXMC_NXM_0, 0).
+-define(OFPXMC_NXM_1, 1).
+-define(OFPXMC_OPENFLOW_BASIC, 16#8000).
+-define(OFPXMC_EXPERIMENTER, 16#ffff).
+
+%% OXM Flow match field types
+-define(OFPXMT_OFB_IN_PORT, 0).
+-define(OFPXMT_OFB_IN_PHY_PORT, 1).
+-define(OFPXMT_OFB_METADATA, 2).
+-define(OFPXMT_OFB_ETH_DST, 3).
+-define(OFPXMT_OFB_ETH_SRC, 4).
+-define(OFPXMT_OFB_ETH_TYPE, 5).
+-define(OFPXMT_OFB_VLAN_VID, 6).
+-define(OFPXMT_OFB_VLAN_PCP, 7).
+-define(OFPXMT_OFB_IP_DSCP, 8).
+-define(OFPXMT_OFB_IP_ECN, 9).
+-define(OFPXMT_OFB_IP_PROTO, 10).
+-define(OFPXMT_OFB_IPV4_SRC, 11).
+-define(OFPXMT_OFB_IPV4_DST, 12).
+-define(OFPXMT_OFB_TCP_SRC, 13).
+-define(OFPXMT_OFB_TCP_DST, 14).
+-define(OFPXMT_OFB_UDP_SRC, 15).
+-define(OFPXMT_OFB_UDP_DST, 16).
+-define(OFPXMT_OFB_SCTP_SRC, 17).
+-define(OFPXMT_OFB_SCTP_DST, 18).
+-define(OFPXMT_OFB_ICMPV4_TYPE, 19).
+-define(OFPXMT_OFB_ICMPV4_CODE, 20).
+-define(OFPXMT_OFB_ARP_OP, 21).
+-define(OFPXMT_OFB_ARP_SPA, 22).
+-define(OFPXMT_OFB_ARP_TPA, 23).
+-define(OFPXMT_OFB_ARP_SHA, 24).
+-define(OFPXMT_OFB_ARP_THA, 25).
+-define(OFPXMT_OFB_IPV6_SRC, 26).
+-define(OFPXMT_OFB_IPV6_DST, 27).
+-define(OFPXMT_OFB_IPV6_FLABEL, 28).
+-define(OFPXMT_OFB_ICMPV6_TYPE, 29).
+-define(OFPXMT_OFB_ICMPV6_CODE, 30).
+-define(OFPXMT_OFB_IPV6_ND_TARGET, 31).
+-define(OFPXMT_OFB_IPV6_ND_SLL, 32).
+-define(OFPXMT_OFB_IPV6_ND_TLL, 33).
+-define(OFPXMT_OFB_MPLS_LABEL, 34).
+-define(OFPXMT_OFB_MPLS_TC, 35).
+
+%% Fields to match against flows
+-define(MATCH_SIZE, 8).
+-record(match, {
+          type :: atom(),
+          tlv_fields = [] :: [#oxm_field{}],
+          oxm_fields :: binary()
+         }).
+
+%% Match type
+-define(OFPMT_STANDARD, 0).
+-define(OFPMT_OXM, 1).
 
 %%% Flow Instruction Structures ------------------------------------------------
 

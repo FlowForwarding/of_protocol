@@ -294,15 +294,20 @@
 %%%-----------------------------------------------------------------------------
 
 %% Packet received on port
+-define(PACKET_IN_SIZE, 24).
 -record(packet_in, {
           header = #header{} :: #header{},
-          buffer_id,
-          total_len,
-          reason,
-          table_id,
-          match :: #match{},
-          data
+          buffer_id :: integer(),
+          total_len :: integer(),
+          reason :: atom(),
+          table_id :: integer(),
+          match :: #match{}
          }).
+
+%% Reason packet is being sent
+-define(OFPR_NO_MATCH, 0).
+-define(OFPR_ACTION, 1).
+-define(OFPR_INVALID_TTL, 2).
 
 %% Flow removed
 -record(flow_removed, {

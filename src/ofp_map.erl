@@ -11,7 +11,8 @@
          bad_instruction/1, bad_match/1, flow_mod_failed/1, group_mod_failed/1,
          port_mod_failed/1, table_mod_failed/1, queue_op_failed/1,
          switch_config_failed/1, role_request_failed/1, capability/1,
-         port_config/1, port_state/1, port_feature/1, configuration/1]).
+         port_config/1, port_state/1, port_feature/1, configuration/1,
+         reason/1, match_type/1, oxm_class/1, oxm_type/1]).
 
 -include("of_protocol.hrl").
 
@@ -19,29 +20,60 @@
 %%% Mapping functions
 %%%-----------------------------------------------------------------------------
 
-msg_type(hello)                      -> ?OFPT_HELLO;
-msg_type(?OFPT_HELLO)                -> hello;
-msg_type(error)                      -> ?OFPT_ERROR;
-msg_type(?OFPT_ERROR)                -> error;
-msg_type(echo_request)               -> ?OFPT_ECHO_REQUEST;
-msg_type(?OFPT_ECHO_REQUEST)         -> echo_request;
-msg_type(echo_reply)                 -> ?OFPT_ECHO_REPLY;
-msg_type(?OFPT_ECHO_REPLY)           -> echo_reply;
-msg_type(experimenter)               -> ?OFPT_EXPERIMENTER;
-msg_type(?OFPT_EXPERIMENTER)         -> experimenter;
-msg_type(features_request)           -> ?OFPT_FEATURES_REQUEST;
-msg_type(?OFPT_FEATURES_REQUEST)     -> features_request;
-msg_type(features_reply)             -> ?OFPT_FEATURES_REPLY;
-msg_type(?OFPT_FEATURES_REPLY)       -> features_reply;
-msg_type(get_config_request)         -> ?OFPT_GET_CONFIG_REQUEST;
-msg_type(?OFPT_GET_CONFIG_REQUEST)   -> get_config_request;
-msg_type(get_config_reply)           -> ?OFPT_GET_CONFIG_REPLY;
-msg_type(?OFPT_GET_CONFIG_REPLY)     -> get_config_reply;
-msg_type(set_config)                 -> ?OFPT_SET_CONFIG;
-msg_type(?OFPT_SET_CONFIG)           -> set_config;
-%% TODO: Add more
-msg_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
-msg_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
+msg_type(hello)                          -> ?OFPT_HELLO;
+msg_type(?OFPT_HELLO)                    -> hello;
+msg_type(error)                          -> ?OFPT_ERROR;
+msg_type(?OFPT_ERROR)                    -> error;
+msg_type(echo_request)                   -> ?OFPT_ECHO_REQUEST;
+msg_type(?OFPT_ECHO_REQUEST)             -> echo_request;
+msg_type(echo_reply)                     -> ?OFPT_ECHO_REPLY;
+msg_type(?OFPT_ECHO_REPLY)               -> echo_reply;
+msg_type(experimenter)                   -> ?OFPT_EXPERIMENTER;
+msg_type(?OFPT_EXPERIMENTER)             -> experimenter;
+msg_type(features_request)               -> ?OFPT_FEATURES_REQUEST;
+msg_type(?OFPT_FEATURES_REQUEST)         -> features_request;
+msg_type(features_reply)                 -> ?OFPT_FEATURES_REPLY;
+msg_type(?OFPT_FEATURES_REPLY)           -> features_reply;
+msg_type(get_config_request)             -> ?OFPT_GET_CONFIG_REQUEST;
+msg_type(?OFPT_GET_CONFIG_REQUEST)       -> get_config_request;
+msg_type(get_config_reply)               -> ?OFPT_GET_CONFIG_REPLY;
+msg_type(?OFPT_GET_CONFIG_REPLY)         -> get_config_reply;
+msg_type(set_config)                     -> ?OFPT_SET_CONFIG;
+msg_type(?OFPT_SET_CONFIG)               -> set_config;
+msg_type(packet_in)                      -> ?OFPT_PACKET_IN;
+msg_type(?OFPT_PACKET_IN)                -> packet_in;
+msg_type(flow_removed)                   -> ?OFPT_FLOW_REMOVED;
+msg_type(?OFPT_FLOW_REMOVED)             -> flow_removed;
+msg_type(port_status)                    -> ?OFPT_PORT_STATUS;
+msg_type(?OFPT_PORT_STATUS)              -> port_status;
+msg_type(packet_out)                     -> ?OFPT_PACKET_OUT;
+msg_type(?OFPT_PACKET_OUT)               -> packet_out;
+msg_type(flow_mod)                       -> ?OFPT_FLOW_MOD;
+msg_type(?OFPT_FLOW_MOD)                 -> flow_mod;
+msg_type(group_mod)                      -> ?OFPT_GROUP_MOD;
+msg_type(?OFPT_GROUP_MOD)                -> group_mod;
+msg_type(port_mod)                       -> ?OFPT_PORT_MOD;
+msg_type(?OFPT_PORT_MOD)                 -> port_mod;
+msg_type(table_mod)                      -> ?OFPT_TABLE_MOD;
+msg_type(?OFPT_TABLE_MOD)                -> table_mod;
+msg_type(stats_request)                  -> ?OFPT_STATS_REQUEST;
+msg_type(?OFPT_STATS_REQUEST)            -> stats_request;
+msg_type(stats_reply)                    -> ?OFPT_STATS_REPLY;
+msg_type(?OFPT_STATS_REPLY)              -> stats_reply;
+msg_type(barrier_request)                -> ?OFPT_BARRIER_REQUEST;
+msg_type(?OFPT_BARRIER_REQUEST)          -> barrier_request;
+msg_type(barrier_reply)                  -> ?OFPT_BARRIER_REPLY;
+msg_type(?OFPT_BARRIER_REPLY)            -> barrier_reply;
+msg_type(queue_get_config_request)       -> ?OFPT_QUEUE_GET_CONFIG_REQUEST;
+msg_type(?OFPT_QUEUE_GET_CONFIG_REQUEST) -> queue_get_config_request;
+msg_type(queue_get_config_reply)         -> ?OFPT_QUEUE_GET_CONFIG_REPLY;
+msg_type(?OFPT_QUEUE_GET_CONFIG_REPLY)   -> queue_get_config_reply;
+msg_type(role_request)                   -> ?OFPT_ROLE_REQUEST;
+msg_type(?OFPT_ROLE_REQUEST)             -> role_request;
+msg_type(role_reply)                     -> ?OFPT_ROLE_REPLY;
+msg_type(?OFPT_ROLE_REPLY)               -> role_reply;
+msg_type(Type) when is_atom(Type)        -> throw({bad_type, Type});
+msg_type(Type) when is_integer(Type)     -> throw({bad_value, Type}).
 
 error_type(hello_failed)                -> ?OFPET_HELLO_FAILED;
 error_type(?OFPET_HELLO_FAILED)         -> hello_failed;
@@ -380,3 +412,105 @@ configuration(frag_mask)                       -> ?OFPC_FRAG_MASK;
 configuration(?OFPC_FRAG_MASK)                 -> frag_mask;
 configuration(Type) when is_atom(Type)         -> throw({bad_type, Type});
 configuration(Type) when is_integer(Type)      -> throw({bad_value, Type}).
+
+reason(no_match)                   -> ?OFPR_NO_MATCH;
+reason(?OFPR_NO_MATCH)             -> no_match;
+reason(action)                     -> ?OFPR_ACTION;
+reason(?OFPR_ACTION)               -> action;
+reason(invalid_ttl)                -> ?OFPR_INVALID_TTL;
+reason(?OFPR_INVALID_TTL)          -> invalid_ttl;
+reason(Type) when is_atom(Type)    -> throw({bad_type, Type});
+reason(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+match_type(standard)                   -> ?OFPMT_STANDARD;
+match_type(?OFPMT_STANDARD)            -> standard;
+match_type(oxm)                        -> ?OFPMT_OXM;
+match_type(?OFPMT_OXM)                 -> oxm;
+match_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
+match_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+oxm_class(nxm_0)                      -> ?OFPXMC_NXM_0;
+oxm_class(?OFPXMC_NXM_0)              -> nxm_0;
+oxm_class(nxm_1)                      -> ?OFPXMC_NXM_1;
+oxm_class(?OFPXMC_NXM_1)              -> nxm_1;
+oxm_class(openflow_basic)             -> ?OFPXMC_OPENFLOW_BASIC;
+oxm_class(?OFPXMC_OPENFLOW_BASIC)     -> openflow_basic;
+oxm_class(experimenter)               -> ?OFPXMC_EXPERIMENTER;
+oxm_class(?OFPXMC_EXPERIMENTER)       -> experimenter;
+oxm_class(Type) when is_atom(Type)    -> throw({bad_type, Type});
+oxm_class(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+oxm_type(in_port)                    -> ?OFPXMT_OFB_IN_PORT;
+oxm_type(?OFPXMT_OFB_IN_PORT)        -> in_port;
+oxm_type(in_phy_port)                -> ?OFPXMT_OFB_IN_PHY_PORT;
+oxm_type(?OFPXMT_OFB_IN_PHY_PORT)    -> in_phy_port;
+oxm_type(metadata)                   -> ?OFPXMT_OFB_METADATA;
+oxm_type(?OFPXMT_OFB_METADATA)       -> metadata;
+oxm_type(eth_dst)                    -> ?OFPXMT_OFB_ETH_DST;
+oxm_type(?OFPXMT_OFB_ETH_DST)        -> eth_dst;
+oxm_type(eth_src)                    -> ?OFPXMT_OFB_ETH_SRC;
+oxm_type(?OFPXMT_OFB_ETH_SRC)        -> eth_src;
+oxm_type(eth_type)                   -> ?OFPXMT_OFB_ETH_TYPE;
+oxm_type(?OFPXMT_OFB_ETH_TYPE)       -> eth_type;
+oxm_type(vlan_vid)                   -> ?OFPXMT_OFB_VLAN_VID;
+oxm_type(?OFPXMT_OFB_VLAN_VID)       -> vlan_vid;
+oxm_type(vlan_pcp)                   -> ?OFPXMT_OFB_VLAN_PCP;
+oxm_type(?OFPXMT_OFB_VLAN_PCP)       -> vlan_pcp;
+oxm_type(ip_dscp)                    -> ?OFPXMT_OFB_IP_DSCP;
+oxm_type(?OFPXMT_OFB_IP_DSCP)        -> ip_dscp;
+oxm_type(ip_ecn)                     -> ?OFPXMT_OFB_IP_ECN;
+oxm_type(?OFPXMT_OFB_IP_ECN)         -> ip_ecn;
+oxm_type(ip_proto)                   -> ?OFPXMT_OFB_IP_PROTO;
+oxm_type(?OFPXMT_OFB_IP_PROTO)       -> ip_proto;
+oxm_type(ipv4_src)                   -> ?OFPXMT_OFB_IPV4_SRC;
+oxm_type(?OFPXMT_OFB_IPV4_SRC)       -> ipv4_src;
+oxm_type(ipv4_dst)                   -> ?OFPXMT_OFB_IPV4_DST;
+oxm_type(?OFPXMT_OFB_IPV4_DST)       -> ipv4_dst;
+oxm_type(tcp_src)                    -> ?OFPXMT_OFB_TCP_SRC;
+oxm_type(?OFPXMT_OFB_TCP_SRC)        -> tcp_src;
+oxm_type(tcp_dst)                    -> ?OFPXMT_OFB_TCP_DST;
+oxm_type(?OFPXMT_OFB_TCP_DST)        -> tcp_dst;
+oxm_type(udp_src)                    -> ?OFPXMT_OFB_UDP_SRC;
+oxm_type(?OFPXMT_OFB_UDP_SRC)        -> udp_src;
+oxm_type(udp_dst)                    -> ?OFPXMT_OFB_UDP_DST;
+oxm_type(?OFPXMT_OFB_UDP_DST)        -> udp_dst;
+oxm_type(sctp_src)                   -> ?OFPXMT_OFB_SCTP_SRC;
+oxm_type(?OFPXMT_OFB_SCTP_SRC)       -> sctp_src;
+oxm_type(sctp_dst)                   -> ?OFPXMT_OFB_SCTP_DST;
+oxm_type(?OFPXMT_OFB_SCTP_DST)       -> sctp_dst;
+oxm_type(icmpv4_type)                -> ?OFPXMT_OFB_ICMPV4_TYPE;
+oxm_type(?OFPXMT_OFB_ICMPV4_TYPE)    -> icmpv4_type;
+oxm_type(icmpv4_code)                -> ?OFPXMT_OFB_ICMPV4_CODE;
+oxm_type(?OFPXMT_OFB_ICMPV4_CODE)    -> icmpv4_code;
+oxm_type(arp_op)                     -> ?OFPXMT_OFB_ARP_OP;
+oxm_type(?OFPXMT_OFB_ARP_OP)         -> arp_op;
+oxm_type(arp_spa)                    -> ?OFPXMT_OFB_ARP_SPA;
+oxm_type(?OFPXMT_OFB_ARP_SPA)        -> arp_spa;
+oxm_type(arp_tpa)                    -> ?OFPXMT_OFB_ARP_TPA;
+oxm_type(?OFPXMT_OFB_ARP_TPA)        -> arp_tpa;
+oxm_type(arp_sha)                    -> ?OFPXMT_OFB_ARP_SHA;
+oxm_type(?OFPXMT_OFB_ARP_SHA)        -> arp_sha;
+oxm_type(arp_tha)                    -> ?OFPXMT_OFB_ARP_THA;
+oxm_type(?OFPXMT_OFB_ARP_THA)        -> arp_tha;
+oxm_type(ipv6_src)                   -> ?OFPXMT_OFB_IPV6_SRC;
+oxm_type(?OFPXMT_OFB_IPV6_SRC)       -> ipv6_src;
+oxm_type(ipv6_dst)                   -> ?OFPXMT_OFB_IPV6_DST;
+oxm_type(?OFPXMT_OFB_IPV6_DST)       -> ipv6_dst;
+oxm_type(ipv6_flabel)                -> ?OFPXMT_OFB_IPV6_FLABEL;
+oxm_type(?OFPXMT_OFB_IPV6_FLABEL)    -> ipv6_flabel;
+oxm_type(icmpv6_type)                -> ?OFPXMT_OFB_ICMPV6_TYPE;
+oxm_type(?OFPXMT_OFB_ICMPV6_TYPE)    -> icmpv6_type;
+oxm_type(icmpv6_code)                -> ?OFPXMT_OFB_ICMPV6_CODE;
+oxm_type(?OFPXMT_OFB_ICMPV6_CODE)    -> icmpv6_code;
+oxm_type(ipv6_nd_target)             -> ?OFPXMT_OFB_IPV6_ND_TARGET;
+oxm_type(?OFPXMT_OFB_IPV6_ND_TARGET) -> ipv6_nd_target;
+oxm_type(ipv6_nd_sll)                -> ?OFPXMT_OFB_IPV6_ND_SLL;
+oxm_type(?OFPXMT_OFB_IPV6_ND_SLL)    -> ipv6_nd_sll;
+oxm_type(ipv6_nd_tll)                -> ?OFPXMT_OFB_IPV6_ND_TLL;
+oxm_type(?OFPXMT_OFB_IPV6_ND_TLL)    -> ipv6_nd_tll;
+oxm_type(mpls_label)                 -> ?OFPXMT_OFB_MPLS_LABEL;
+oxm_type(?OFPXMT_OFB_MPLS_LABEL)     -> mpls_label;
+oxm_type(mpls_tc)                    -> ?OFPXMT_OFB_MPLS_TC;
+oxm_type(?OFPXMT_OFB_MPLS_TC)        -> mpls_tc;
+oxm_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
+oxm_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
