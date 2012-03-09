@@ -354,6 +354,19 @@
           data :: binary()
          }).
 
+%% Role request messages
+-record(role_request, {
+          header = #header{} :: #header{},
+          role :: atom(),
+          generation_id :: integer()
+         }).
+
+-record(role_reply, {
+          header = #header{} :: #header{},
+          role :: atom(),
+          generation_id :: integer()
+         }).
+
 %% Error types
 -define(OFPET_HELLO_FAILED, 0).
 -define(OFPET_BAD_REQUEST, 1).
