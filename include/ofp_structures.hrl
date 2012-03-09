@@ -107,8 +107,7 @@
 
 %% Common description for a queue
 -record(queue_prop_header, {
-          type :: integer(),
-          length :: integer()
+          type :: integer()
          }).
 
 %% Min-Rate queue property description
@@ -134,7 +133,6 @@
 -record(packet_queue, {
           queue_id :: integer(),
           port :: integer(),
-          length :: integer(),
           properties :: #queue_prop_min_rate{} |
                         #queue_prop_max_rate{} |
                         #queue_prop_experimenter{}
