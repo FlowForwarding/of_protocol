@@ -111,14 +111,6 @@
           length :: integer()
          }).
 
-%% Full description for a queue
--record(packet_queue, {
-          id :: integer(),
-          port,
-          length :: integer(),
-          properties :: #queue_prop_header{}
-         }).
-
 %% Min-Rate queue property description
 -record(queue_prop_min_rate, {
           header :: #queue_prop_header{},
@@ -132,11 +124,21 @@
          }).
 
 %% Experimenter queue property description
-%% -record(queue_prop_experimenter, {
-%%           header :: #queue_prop_header{},
-%%           experimenter :: #experimenter_header{},
-%%           data :: binary()
-%%          }).
+-record(queue_prop_experimenter, {
+          header :: #queue_prop_header{},
+          experimenter :: integer(),
+          data :: binary()
+         }).
+
+%% Full description for a queue
+-record(packet_queue, {
+          queue_id :: integer(),
+          port :: integer(),
+          length :: integer(),
+          properties :: #queue_prop_min_rate{} |
+                        #queue_prop_max_rate{} |
+                        #queue_prop_experimenter{}
+         }).
 
 %%% Flow Match Structures ------------------------------------------------------
 

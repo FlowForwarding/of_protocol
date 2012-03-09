@@ -271,7 +271,16 @@
           additional_data :: binary()
          }).
 
-%% and more...
+-record(queue_get_config_request, {
+          header = #header{} :: #header{},
+          port :: integer()
+         }).
+
+-record(queue_get_config_reply, {
+          header = #header{} :: #header{},
+          port :: integer(),
+          queues :: list(#packet_queue{})
+         }).
 
 %%% Packet-out -----------------------------------------------------------------
 
@@ -285,7 +294,11 @@
 
 %%% Barrier ----------------------------------------------------------
 
--record(barrier, {
+-record(barrier_request, {
+          header = #header{} :: #header{}
+         }).
+
+-record(barrier_reply, {
           header = #header{} :: #header{}
          }).
 
