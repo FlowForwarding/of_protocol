@@ -133,7 +133,20 @@
           body :: term() %% request type dependent
          }).
 
--record(stats_reply, {}).
+-record(stats_reply, {
+          header = #header{} :: #header{},
+          type :: atom(),
+          flags :: list(atom()),
+          body :: term() %% reply type dependent
+         }).
+
+-record(desc_stats, {
+          mfr_desc :: binary(),
+          hw_desc :: binary(),
+          sw_desc :: binary(),
+          serial_num :: binary(),
+          dp_desc :: binary()
+         }).
 
 -record(flow_stats_request, {
           table_id :: integer(),
@@ -143,7 +156,18 @@
           cookie_mask :: integer(),
           match :: #match{}}).
 
--record(flow_stats, {}).
+-record(flow_stats, {
+          table_id :: integer(),
+          duration_sec :: integer(),
+          duration_nsec :: integer(),
+          priority :: integer(),
+          idle_timeout :: integer(),
+          hard_timeout :: integer(),
+          cookie :: integer(),
+          packet_count :: integer(),
+          byte_count :: integer(),
+          match :: #match{}
+         }).
 
 -record(aggregate_stats_request, {
           table_id :: integer(),
@@ -153,7 +177,11 @@
           cookie_mask :: integer(),
           match :: #match{}}).
 
--record(aggregate_stats_reply, {}).
+-record(aggregate_stats_reply, {
+          packet_count :: integer(),
+          byte_count :: integer(),
+          flow_count :: integer()
+         }).
 
 -record(table_stats, {
           table_id :: integer(),
@@ -178,22 +206,64 @@
           port_no :: integer()
          }).
 
--record(port_stats, {}).
+-record(port_stats, {
+          port_no :: integer(),
+          rx_packets :: integer(),
+          tx_packets :: integer(),
+          rx_bytes :: integer(),
+          tx_bytes :: integer(),
+          rx_dropped :: integer(),
+          tx_dropped :: integer(),
+          rx_errors :: integer(),
+          tx_errors :: integer(),
+          rx_frame_err :: integer(),
+          rx_over_err :: integer(),
+          rx_crc_err :: integer(),
+          collisions :: integer()
+         }).
 
 -record(queue_stats_request, {
           port_no :: integer(),
           queue_id :: integer()
          }).
 
--record(queue_stats, {}).
+-record(queue_stats, {
+          port_no :: integer(),
+          queue_id :: integer(),
+          tx_bytes :: integer(),
+          tx_packets :: integer(),
+          tx_errors :: integer()
+         }).
 
 -record(group_stats_request, {
           group_id :: integer()
          }).
 
--record(group_stats, {}).
--record(bucket_counter, {}).
--record(group_desc_stats, {}).
+-record(bucket_counter, {
+          packet_count :: integer(),
+          byte_count :: integer()
+         }).
+
+-record(group_stats, {
+          group_id :: integer(),
+          ref_count :: integer(),
+          packet_count :: integer(),
+          byte_count :: integer(),
+          bucket_stats :: list(#bucket_counter{})
+         }).
+
+-record(group_desc_stats, {
+          type :: atom(),
+          group_id :: integer(),
+          buckets :: list(#bucket{})
+         }).
+
+-record(group_features_stats, {
+          types :: list(atom()),
+          capabilities :: list(atom()),
+          max_groups :: list(),
+          actions :: list()
+         }).
 
 -record(experimenter_stats_header, {
           experimenter :: integer(),
