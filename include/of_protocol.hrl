@@ -285,6 +285,7 @@
 %%% Packet-out -----------------------------------------------------------------
 
 %% Send packet (controller -> datapath)
+-define(PACKET_OUT_SIZE, 24).
 -record(packet_out, {
           header = #header{} :: #header{},
           buffer_id,
@@ -311,10 +312,10 @@
 -record(packet_in, {
           header = #header{} :: #header{},
           buffer_id :: integer(),
-          total_len :: integer(),
           reason :: atom(),
           table_id :: integer(),
-          match :: #match{}
+          match :: #match{},
+          data :: binary()
          }).
 
 %% Reason packet is being sent
@@ -323,6 +324,7 @@
 -define(OFPR_INVALID_TTL, 2).
 
 %% Flow removed
+-define(FLOW_REMOVED_SIZE, 56).
 -record(flow_removed, {
           header = #header{} :: #header{},
           cookie,
@@ -339,6 +341,7 @@
          }).
 
 %% A physical port has changed in the datapath
+-define(PORT_STATUS_SIZE, 80).
 -record(port_status, {
           header = #header{} :: #header{},
           reason,

@@ -130,14 +130,16 @@ encode2(#set_config{header = Header, flags = Flags, miss_send_len = Miss}) ->
     FlagsBin = flags_to_binary(configuration, Flags, 2),
     HeaderBin = encode_header(Header, set_config, ?SET_CONFIG_SIZE),
     << HeaderBin/binary, FlagsBin:2/binary, Miss:16/integer >>;
-encode2(#packet_in{header = Header, buffer_id = BufferId, total_len = TotalLen,
-                   reason = Reason, table_id = TableId, match = Match}) ->
+encode2(#packet_in{header = Header, buffer_id = BufferId, reason = Reason,
+                   table_id = TableId, match = Match, data = Data}) ->
     ReasonInt = ofp_map:reason(Reason),
     MatchBin = encode_struct(Match),
+    TotalLen = byte_size(Data),
     Length = ?PACKET_IN_SIZE + size(MatchBin) - ?MATCH_SIZE,
     HeaderBin = encode_header(Header, packet_in, Length),
     << HeaderBin/binary, BufferId:32/integer, TotalLen:16/integer,
-       ReasonInt:8/integer, TableId:8/integer, MatchBin:?MATCH_SIZE/binary >>;
+       ReasonInt:8/integer, TableId:8/integer, MatchBin:?MATCH_SIZE/binary,
+       0:16, Data/binary >>;
 encode2(Other) ->
     throw({bad_message, Other}).
 
@@ -228,11 +230,12 @@ decode(set_config, _, Header, Binary) ->
 decode(packet_in, Length, Header, Binary) ->
     MatchLength = Length - ?PACKET_IN_SIZE + ?MATCH_SIZE,
     << BufferId:32/integer, TotalLen:16/integer, ReasonInt:8/integer,
-       TableId:8/integer, MatchBin:MatchLength/binary, Rest/binary >> = Binary,
+       TableId:8/integer, MatchBin:MatchLength/binary, 0:16, Payload/binary >> = Binary,
     Reason = ofp_map:reason(ReasonInt),
     Match = decode_match(MatchBin, MatchLength),
-    {#packet_in{header = Header, buffer_id = BufferId, total_len = TotalLen,
-                reason = Reason, table_id = TableId, match = Match}, Rest}.
+    << Data:TotalLen/binary, Rest/binary >> = Payload,
+    {#packet_in{header = Header, buffer_id = BufferId, reason = Reason,
+                table_id = TableId, match = Match, data = Data}, Rest}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions
