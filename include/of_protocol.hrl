@@ -327,10 +327,10 @@
 -define(FLOW_REMOVED_SIZE, 56).
 -record(flow_removed, {
           header = #header{} :: #header{},
-          cookie,
-          priority,
-          reason,
-          table_id,
+          cookie :: integer(),
+          priority :: integer(),
+          reason :: atom(),
+          table_id :: integer(),
           duration_sec :: integer(),
           duration_nsec :: integer(),
           idle_timeout :: integer(),
@@ -340,11 +340,17 @@
           match :: #match{}
          }).
 
+%% Flow Removed reasons
+-define(OFPRR_IDLE_TIMEOUT, 0).
+-define(OFPRR_HARD_TIMEOUT, 1).
+-define(OFPRR_DELETE, 2).
+-define(OFPRR_GROUP_DELETE, 3).
+
 %% A physical port has changed in the datapath
 -define(PORT_STATUS_SIZE, 80).
 -record(port_status, {
           header = #header{} :: #header{},
-          reason,
+          reason :: atom(),
           desc :: #port{}
          }).
 

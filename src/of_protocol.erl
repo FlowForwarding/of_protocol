@@ -162,6 +162,19 @@ encode2(#packet_in{header = Header, buffer_id = BufferId, reason = Reason,
     << HeaderBin/binary, BufferId:32/integer, TotalLen:16/integer,
        ReasonInt:8/integer, TableId:8/integer, MatchBin/binary,
        0:16, Data/binary >>;
+encode2(#flow_removed{header = Header, cookie = Cookie, priority = Priority,
+                      reason = Reason, table_id = TableId, duration_sec = Sec,
+                      duration_nsec = NSec, idle_timeout = Idle,
+                      hard_timeout = Hard, packet_count = PCount,
+                      byte_count = BCount, match = Match}) ->
+    ReasonInt = ofp_map:removed_reason(Reason),
+    MatchBin = encode_struct(Match),
+    Length = ?FLOW_REMOVED_SIZE + size(MatchBin) - ?MATCH_SIZE,
+    HeaderBin = encode_header(Header, flow_removed, Length),
+    << HeaderBin/binary, Cookie:64/integer, Priority:16/integer,
+       ReasonInt:8/integer, TableId:8/integer, Sec:32/integer, NSec:32/integer,
+       Idle:16/integer, Hard:16/integer, PCount:64/integer, BCount:64/integer,
+       MatchBin/binary >>;
 encode2(Other) ->
     throw({bad_message, Other}).
 
@@ -192,8 +205,8 @@ decode_port(Binary) ->
          max_speed = MaxSpeed}.
 
 %% @doc Decode match structure
-decode_match(Binary, Length) ->
-    PadFieldsLength = Length - ?MATCH_SIZE + 4,
+decode_match(Binary) ->
+    PadFieldsLength = size(Binary) - ?MATCH_SIZE + 4,
     << TypeInt:16/integer, NoPadLength:16/integer,
        PadFieldsBin:PadFieldsLength/binary >> = Binary,
     FieldsBinLength = (NoPadLength - 4),
@@ -295,12 +308,26 @@ decode(set_config, _, Header, Binary) ->
 decode(packet_in, Length, Header, Binary) ->
     MatchLength = Length - ?PACKET_IN_SIZE + ?MATCH_SIZE,
     << BufferId:32/integer, TotalLen:16/integer, ReasonInt:8/integer,
-       TableId:8/integer, MatchBin:MatchLength/binary, 0:16, Payload/binary >> = Binary,
+       TableId:8/integer, MatchBin:MatchLength/binary, 0:16,
+       Payload/binary >> = Binary,
     Reason = ofp_map:reason(ReasonInt),
-    Match = decode_match(MatchBin, MatchLength),
+    Match = decode_match(MatchBin),
     << Data:TotalLen/binary, Rest/binary >> = Payload,
     {#packet_in{header = Header, buffer_id = BufferId, reason = Reason,
-                table_id = TableId, match = Match, data = Data}, Rest}.
+                table_id = TableId, match = Match, data = Data}, Rest};
+decode(flow_removed, Length, Header, Binary) ->
+    MatchLength = Length - ?FLOW_REMOVED_SIZE + ?MATCH_SIZE,
+    << Cookie:64/integer, Priority:16/integer, ReasonInt:8/integer,
+       TableId:8/integer, Sec:32/integer, NSec:32/integer, Idle:16/integer,
+       Hard:16/integer, PCount:64/integer, BCount:64/integer,
+       MatchBin:MatchLength/binary, Rest/binary >> = Binary,
+    Reason = ofp_map:removed_reason(ReasonInt),
+    Match = decode_match(MatchBin),
+    {#flow_removed{header = Header, cookie = Cookie, priority = Priority,
+                   reason = Reason, table_id = TableId, duration_sec = Sec,
+                   duration_nsec = NSec, idle_timeout = Idle,
+                   hard_timeout = Hard, packet_count = PCount,
+                   byte_count = BCount, match = Match}, Rest}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions

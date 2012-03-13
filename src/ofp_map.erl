@@ -15,7 +15,7 @@
          port_mod_failed/1, table_mod_failed/1, queue_op_failed/1,
          switch_config_failed/1, role_request_failed/1, capability/1,
          port_config/1, port_state/1, port_feature/1, configuration/1,
-         reason/1, match_type/1, oxm_class/1, oxm_field/1]).
+         reason/1, removed_reason/1, match_type/1, oxm_class/1, oxm_field/1]).
 
 -include("of_protocol.hrl").
 
@@ -465,6 +465,17 @@ reason(invalid_ttl)                -> ?OFPR_INVALID_TTL;
 reason(?OFPR_INVALID_TTL)          -> invalid_ttl;
 reason(Type) when is_atom(Type)    -> throw({bad_type, Type});
 reason(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+removed_reason(idle_timeout)               -> ?OFPRR_IDLE_TIMEOUT;
+removed_reason(?OFPRR_IDLE_TIMEOUT)        -> idle_timeout;
+removed_reason(hard_timeout)               -> ?OFPRR_HARD_TIMEOUT;
+removed_reason(?OFPRR_HARD_TIMEOUT)        -> hard_timeout;
+removed_reason(delete)                     -> ?OFPRR_DELETE;
+removed_reason(?OFPRR_DELETE)              -> delete;
+removed_reason(group_delete)               -> ?OFPRR_GROUP_DELETE;
+removed_reason(?OFPRR_GROUP_DELETE)        -> group_delete;
+removed_reason(Type) when is_atom(Type)    -> throw({bad_type, Type});
+removed_reason(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 match_type(standard)                   -> ?OFPMT_STANDARD;
 match_type(?OFPMT_STANDARD)            -> standard;
