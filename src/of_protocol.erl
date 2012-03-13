@@ -64,18 +64,40 @@ encode_struct(#port{port_no = PortNo, hw_addr = HWAddr, name = Name,
        Name/binary, 0:Padding/integer, ConfigBin:4/binary, StateBin:4/binary,
        CurrBin:4/binary, AdvertisedBin:4/binary, SupportedBin:4/binary,
        PeerBin:4/binary, CurrSpeed:32/integer, MaxSpeed:32/integer >>;
-encode_struct(#match{type = Type, tlv_fields = Fields}) ->
+encode_struct(#match{type = Type, oxm_fields = Fields}) ->
     TypeInt = ofp_map:match_type(Type),
     FieldsBin = encode_list(Fields),
     FieldsLength = size(FieldsBin),
-    Length = FieldsLength + ?MATCH_SIZE,
-    Padding = (8 - (FieldsLength rem 8)) * 8,
-    %% FIXME: uint8_t oxm_fields[4]
-    OXMFields = << 0:32/integer >>,
+    Length = FieldsLength + ?MATCH_SIZE - 4,
+    Padding = ((4 + FieldsLength) rem 8) * 8,
     << TypeInt:16/integer, Length:16/integer, FieldsBin/binary,
-       0:Padding/integer, OXMFields/binary >>;
-encode_struct(#oxm_field{}) ->
-    << 1:40/integer >>.
+       0:Padding/integer >>;
+encode_struct(#oxm_field{class = Class, field = Field, has_mask = HasMask,
+                         value = Value, mask = Mask}) ->
+    ClassInt = ofp_map:oxm_class(Class),
+    FieldInt = ofp_map:oxm_field(Class, Field),
+    case Class of
+        openflow_basic ->
+            BitLength = ofp_map:tlv_length(Field),
+            Length = (BitLength - 1) div 8 + 1;
+        _ ->
+            Length = size(Value),
+            BitLength = Length * 8
+    end,
+    Value2 = cut(Value, BitLength),
+    case HasMask of
+        true ->
+            HasMaskInt = 1,
+            Mask2 = cut(Mask, BitLength),
+            Rest = << Value2:Length/binary, Mask2:Length/binary >>,
+            Len2 = Length * 2;
+        false ->
+            HasMaskInt = 0,
+            Rest = << Value2:Length/binary >>,
+            Len2 = Length
+    end,
+    << ClassInt:16/integer, FieldInt:7/integer, HasMaskInt:1/integer,
+       Len2:8/integer, Rest/binary >>.
 
 %% @doc Actual encoding of the messages
 encode2(#hello{header = Header}) ->
@@ -138,17 +160,19 @@ encode2(#packet_in{header = Header, buffer_id = BufferId, reason = Reason,
     Length = ?PACKET_IN_SIZE + size(MatchBin) - ?MATCH_SIZE,
     HeaderBin = encode_header(Header, packet_in, Length),
     << HeaderBin/binary, BufferId:32/integer, TotalLen:16/integer,
-       ReasonInt:8/integer, TableId:8/integer, MatchBin:?MATCH_SIZE/binary,
+       ReasonInt:8/integer, TableId:8/integer, MatchBin/binary,
        0:16, Data/binary >>;
 encode2(Other) ->
     throw({bad_message, Other}).
 
-%% @doc Decode structures
+%% @doc Decode header structure
 decode_header(Binary) ->
     << _:1/integer, Version:7/integer, TypeInt:8/integer,
        Length:16/integer, XID:32/integer >> = Binary,
     Type = ofp_map:msg_type(TypeInt),
     {#header{version = Version, xid = XID}, Type, Length}.
+
+%% @doc Decode port structure
 decode_port(Binary) ->
     << PortNo:32/integer, 0:32/integer, HWAddr:6/binary, 0:16/integer,
        Name:16/binary, ConfigBin:4/binary, StateBin:4/binary,
@@ -166,12 +190,53 @@ decode_port(Binary) ->
          state = State, curr = Curr, advertised = Advertised,
          supported = Supported, peer = Peer, curr_speed = CurrSpeed,
          max_speed = MaxSpeed}.
+
+%% @doc Decode match structure
 decode_match(Binary, Length) ->
-    FieldsLength = Length - ?MATCH_SIZE,
-    << TypeInt:16/integer, Length:16/integer, _FieldsBin:FieldsLength/binary,
-       OXMFields:4/binary >> = Binary,
+    PadFieldsLength = Length - ?MATCH_SIZE + 4,
+    << TypeInt:16/integer, NoPadLength:16/integer,
+       PadFieldsBin:PadFieldsLength/binary >> = Binary,
+    FieldsBinLength = (NoPadLength - 4),
+    Padding = (PadFieldsLength - FieldsBinLength) * 8,
+    << FieldsBin:FieldsBinLength/binary, 0:Padding/integer >> = PadFieldsBin,
+    Fields = decode_match_fields(FieldsBin),
     Type = ofp_map:match_type(TypeInt),
-    #match{type = Type, tlv_fields = [], oxm_fields = OXMFields}.
+    #match{type = Type, oxm_fields = Fields}.
+
+%% @doc Decode match fields
+decode_match_fields(Binary) ->
+    decode_match_fields(Binary, []).
+
+%% @doc Decode match fields
+decode_match_fields(<<>>, Fields) ->
+    lists:reverse(Fields);
+decode_match_fields(<< Header:4/binary, Binary/binary >>, Fields) ->
+    << ClassInt:16/integer, FieldInt:7/integer, HasMaskInt:1/integer,
+       Length:8/integer >> = Header,
+    Class = ofp_map:oxm_class(ClassInt),
+    Field = ofp_map:oxm_field(Class, FieldInt),
+    HasMask = (HasMaskInt =:= 1),
+    case Class of
+        openflow_basic ->
+            BitLength = ofp_map:tlv_length(Field);
+        _ ->
+            BitLength = Length * 4
+    end,
+    case HasMask of
+        false ->
+            << Value:Length/binary, Rest/binary >> = Binary,
+            TLV = #oxm_field{value = cut(Value, BitLength)};
+        true ->
+            Length2 = (Length div 2),
+            << Value:Length2/binary, Mask:Length2/binary,
+               Rest/binary >> = Binary,
+            TLV = #oxm_field{value = cut(Value, BitLength),
+                             mask = cut(Mask, BitLength)}
+    end,
+    decode_match_fields(Rest, [TLV#oxm_field{class = Class,
+                                             field = Field,
+                                             has_mask = HasMask}
+                               | Fields]).
 
 %% @doc Actual decoding of the messages
 decode(hello, _, Header, Rest) ->
@@ -298,3 +363,14 @@ rstrip(Binary, Byte) when Byte >= 0 ->
     end;
 rstrip(_, _) ->
     <<"\0">>.
+
+cut(Binary, Bits) ->
+    BitSize = size(Binary) * 8,
+    case BitSize /= Bits of
+        true ->
+            << Int:BitSize/integer >> = Binary,
+            NewInt = Int band round(math:pow(2,Bits) - 1),
+            << NewInt:BitSize/integer >>;
+        false ->
+            Binary
+    end.

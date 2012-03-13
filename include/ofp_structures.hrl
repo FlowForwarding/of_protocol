@@ -192,12 +192,49 @@
 -define(OFPXMT_OFB_MPLS_LABEL, 34).
 -define(OFPXMT_OFB_MPLS_TC, 35).
 
+%% Sizes of OXM fields in bits
+-define(IN_PORT_FIELD_LENGTH, 32).
+-define(IN_PHY_PORT_FIELD_LENGTH, 32).
+-define(METADATA_FIELD_LENGTH, 64).
+-define(ETH_DST_FIELD_LENGTH, 48).
+-define(ETH_SRC_FIELD_LENGTH, 48).
+-define(ETH_TYPE_FIELD_LENGTH, 16).
+-define(VLAN_VID_FIELD_LENGTH, 13).
+-define(VLAN_PCP_FIELD_LENGTH, 3).
+-define(IP_DSCP_FIELD_LENGTH, 6).
+-define(IP_ECN_FIELD_LENGTH, 2).
+-define(IP_PROTO_FIELD_LENGTH, 8).
+-define(IPV4_SRC_FIELD_LENGTH, 32).
+-define(IPV4_DST_FIELD_LENGTH, 32).
+-define(TCP_SRC_FIELD_LENGTH, 16).
+-define(TCP_DST_FIELD_LENGTH, 16).
+-define(UDP_SRC_FIELD_LENGTH, 16).
+-define(UDP_DST_FIELD_LENGTH, 16).
+-define(SCTP_SRC_FIELD_LENGTH, 16).
+-define(SCTP_DST_FIELD_LENGTH, 16).
+-define(ICMPV4_TYPE_FIELD_LENGTH, 8).
+-define(ICMPV4_CODE_FIELD_LENGTH, 8).
+-define(ARP_OP_FIELD_LENGTH, 16).
+-define(ARP_SPA_FIELD_LENGTH, 32).
+-define(ARP_TPA_FIELD_LENGTH, 32).
+-define(ARP_SHA_FIELD_LENGTH, 48).
+-define(ARP_THA_FIELD_LENGTH, 48).
+-define(IPV6_SRC_FIELD_LENGTH, 128).
+-define(IPV6_DST_FIELD_LENGTH, 128).
+-define(IPV6_FLABEL_FIELD_LENGTH, 20).
+-define(ICMPV6_TYPE_FIELD_LENGTH, 8).
+-define(ICMPV6_CODE_FIELD_LENGTH, 8).
+-define(IPV6_ND_TARGET_FIELD_LENGTH, 128).
+-define(IPV6_ND_SLL_FIELD_LENGTH, 48).
+-define(IPV6_ND_TLL_FIELD_LENGTH, 48).
+-define(MPLS_LABEL_FIELD_LENGTH, 20).
+-define(MPLS_TC_FIELD_LENGTH, 3).
+
 %% Fields to match against flows
 -define(MATCH_SIZE, 8).
 -record(match, {
           type :: atom(),
-          tlv_fields = [] :: [#oxm_field{}],
-          oxm_fields :: binary()
+          oxm_fields = [] :: [#oxm_field{}]
          }).
 
 %% Match type
