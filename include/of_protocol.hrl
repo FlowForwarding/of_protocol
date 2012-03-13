@@ -102,7 +102,7 @@
           weight :: integer(),
           watch_port,
           watch_group,
-          actions :: [#action_header{}]
+          actions :: [action()]
          }).
 
 %% Group setup and teardown (controller -> datapath)
@@ -284,13 +284,14 @@
 
 %%% Packet-out -----------------------------------------------------------------
 
-%% Send packet (controller -> datapath)
+%% Send packet
 -define(PACKET_OUT_SIZE, 24).
 -record(packet_out, {
           header = #header{} :: #header{},
-          buffer_id,
-          in_port,
-          actions :: [#action_header{}]
+          buffer_id :: integer(),
+          in_port :: integer() | atom(),
+          actions :: [action()],
+          data :: binary()
          }).
 
 %%% Barrier ----------------------------------------------------------

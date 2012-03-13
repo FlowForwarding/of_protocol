@@ -97,7 +97,73 @@ encode_struct(#oxm_field{class = Class, field = Field, has_mask = HasMask,
             Len2 = Length
     end,
     << ClassInt:16/integer, FieldInt:7/integer, HasMaskInt:1/integer,
-       Len2:8/integer, Rest/binary >>.
+       Len2:8/integer, Rest/binary >>;
+encode_struct(#action_output{port = Port, max_len = MaxLen}) ->
+    Type = ofp_map:action_type(output),
+    Length = ?ACTION_OUTPUT_SIZE,
+    PortInt = ofp_map:port_number(Port),
+    MaxLenInt = ofp_map:controller_max_length(MaxLen),
+    << Type:16/integer, Length:16/integer, PortInt:32/integer,
+       MaxLenInt:16/integer, 0:32/integer >>;
+encode_struct(#action_set_queue{queue_id = Queue}) ->
+    Type = ofp_map:action_type(set_queue),
+    Length = ?ACTION_SET_QUEUE_SIZE,
+    << Type:16/integer, Length:16/integer, Queue:32/integer >>;
+encode_struct(#action_set_mpls_ttl{mpls_ttl = TTL}) ->
+    Type = ofp_map:action_type(set_mpls_ttl),
+    Length = ?ACTION_SET_MPLS_TTL_SIZE,
+    << Type:16/integer, Length:16/integer, TTL:8/integer,
+       0:24/integer >>;
+encode_struct(#action_dec_mpls_ttl{}) ->
+    Type = ofp_map:action_type(dec_mpls_ttl),
+    Length = ?ACTION_DEC_MPLS_TTL_SIZE,
+    << Type:16/integer, Length:16/integer, 0:32/integer >>;
+encode_struct(#action_set_nw_ttl{nw_ttl = TTL}) ->
+    Type = ofp_map:action_type(set_nw_ttl),
+    Length = ?ACTION_SET_NW_TTL_SIZE,
+    << Type:16/integer, Length:16/integer, TTL:8/integer,
+       0:24/integer >>;
+encode_struct(#action_dec_nw_ttl{}) ->
+    Type = ofp_map:action_type(dec_nw_ttl),
+    Length = ?ACTION_DEC_NW_TTL_SIZE,
+    << Type:16/integer, Length:16/integer, 0:32/integer >>;
+encode_struct(#action_copy_ttl_out{}) ->
+    Type = ofp_map:action_type(copy_ttl_out),
+    Length = ?ACTION_COPY_TTL_OUT_SIZE,
+    << Type:16/integer, Length:16/integer, 0:32/integer >>;
+encode_struct(#action_copy_ttl_in{}) ->
+    Type = ofp_map:action_type(copy_ttl_in),
+    Length = ?ACTION_COPY_TTL_IN_SIZE,
+    << Type:16/integer, Length:16/integer, 0:32/integer >>;
+encode_struct(#action_push_vlan{ethertype = EtherType}) ->
+    Type = ofp_map:action_type(push_vlan),
+    Length = ?ACTION_PUSH_VLAN_SIZE,
+    << Type:16/integer, Length:16/integer, EtherType:16/integer,
+       0:16/integer >>;
+encode_struct(#action_pop_vlan{}) ->
+    Type = ofp_map:action_type(pop_vlan),
+    Length = ?ACTION_POP_VLAN_SIZE,
+    << Type:16/integer, Length:16/integer, 0:32/integer >>;
+encode_struct(#action_push_mpls{}) ->
+    Type = ofp_map:action_type(push_mpls),
+    Length = ?ACTION_PUSH_MPLS_SIZE,
+    << Type:16/integer, Length:16/integer, 0:32/integer >>;
+encode_struct(#action_pop_mpls{ethertype = EtherType}) ->
+    Type = ofp_map:action_type(pop_mpls),
+    Length = ?ACTION_POP_MPLS_SIZE,
+    << Type:16/integer, Length:16/integer, EtherType:16/integer,
+       0:16/integer >>;
+encode_struct(#action_set_field{field = Field}) ->
+    Type = ofp_map:action_type(set_field),
+    Length = ?ACTION_SET_FIELD_SIZE,
+    FieldBin = encode_struct(Field),
+    Padding = (size(FieldBin) rem 8) * 8,
+    << Type:16/integer, Length:16/integer, FieldBin:binary,
+       0:Padding/integer >>;
+encode_struct(#action_experimenter{experimenter = Experimenter}) ->
+    Type = ofp_map:action_type(experimenter),
+    Length = ?ACTION_EXPERIMENTER_SIZE,
+    << Type:16/integer, Length:16/integer, Experimenter:32/integer >>.
 
 %% @doc Actual encoding of the messages
 encode2(#hello{header = Header}) ->
@@ -180,6 +246,14 @@ encode2(#port_status{header = Header, reason = Reason, desc = Port}) ->
     PortBin = encode_struct(Port),
     HeaderBin = encode_header(Header, port_status, ?PORT_STATUS_SIZE),
     << HeaderBin/binary, ReasonInt:8/integer, 0:56/integer, PortBin/binary >>;
+encode2(#packet_out{header = Header, buffer_id = BufferId, in_port = Port,
+                    actions = Actions, data = Data}) ->
+    PortInt = ofp_map:port_number(Port),
+    ActionsBin = encode_list(Actions),
+    Length = ?PACKET_OUT_SIZE + size(ActionsBin) + byte_size(Data),
+    HeaderBin = encode_header(Header, port_status, Length),
+    << HeaderBin/binary, BufferId:32/integer, PortInt:32/integer,
+       0:48/integer, ActionsBin/binary, Data/binary >>;
 encode2(Other) ->
     throw({bad_message, Other}).
 

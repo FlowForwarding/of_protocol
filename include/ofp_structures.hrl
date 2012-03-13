@@ -47,7 +47,7 @@
 %% Description of a port
 -define(PORT_SIZE, 64).
 -record(port, {
-          port_no :: integer(),
+          port_no :: integer() | atom(),
           hw_addr :: binary(),
           name :: binary(),
           config = [] :: [atom()],
@@ -247,57 +247,112 @@
 
 %%% Action Structures ----------------------------------------------------------
 
-%% Action header that is common to all actions
--record(action_header, {
-          type :: integer(),
-          length :: integer()
-         }).
-
+%% Output action
+-define(ACTION_OUTPUT_SIZE, 16).
 -record(action_output, {
-          type,
-          length :: integer(),
-          port,
-          max_len
+          port :: integer() | atom(),
+          max_len :: integer() | atom()
          }).
 
+%% Controller max length
+-define(OFPCML_MAX, 16#ffe5).
+-define(OFPCML_NO_BUFFER, 16#0000).
+
+%% Group action
+-define(ACTION_GROUP_SIZE, 8).
 -record(action_group, {
-          type,
-          length :: integer(),
-          group_id
+          group_id :: integer()
          }).
 
+%% Set queue action
+-define(ACTION_SET_QUEUE_SIZE, 8).
 -record(action_set_queue, {
-          type,
-          length :: integer(),
-          queue_id
+          queue_id :: integer()
          }).
 
--record(action_mpls_ttl, {
-          type,
-          length :: integer(),
-          mpls_ttl
+%% Set MPLS TTL action
+-define(ACTION_SET_MPLS_TTL_SIZE, 8).
+-record(action_set_mpls_ttl, {
+          mpls_ttl :: integer()
          }).
 
--record(action_nw_ttl, {
-          type,
-          length :: integer(),
-          nw_ttl
+%% Decrement MPLS TTL action
+-define(ACTION_DEC_MPLS_TTL_SIZE, 8).
+-record(action_dec_mpls_ttl, {}).
+
+%% Set IPv4 TTL action
+-define(ACTION_SET_NW_TTL_SIZE, 8).
+-record(action_set_nw_ttl, {
+          nw_ttl :: integer()
          }).
 
--record(action_push, {
-          type,
-          length :: integer(),
-          ethertype
+%% Decrement IPv4 TTL action
+-define(ACTION_DEC_NW_TTL_SIZE, 8).
+-record(action_dec_nw_ttl, {}).
+
+%% Copy TTL outwards action
+-define(ACTION_COPY_TTL_OUT_SIZE, 8).
+-record(action_copy_ttl_out, {}).
+
+%% Copy TTL inwards action
+-define(ACTION_COPY_TTL_IN_SIZE, 8).
+-record(action_copy_ttl_in, {}).
+
+%% Push VLAN header action
+-define(ACTION_PUSH_VLAN_SIZE, 8).
+-record(action_push_vlan, {
+          ethertype :: integer()
          }).
 
+%% Pop VLAN header action
+-define(ACTION_POP_VLAN_SIZE, 8).
+-record(action_pop_vlan, {}).
+
+%% Push MPLS header action
+-define(ACTION_PUSH_MPLS_SIZE, 8).
+-record(action_push_mpls, {
+          ethertype :: integer()
+         }).
+
+%% Pop MPLS header action
+-define(ACTION_POP_MPLS_SIZE, 8).
 -record(action_pop_mpls, {
-          type,
-          length :: integer(),
-          ethertype
+          ethertype :: integer()
          }).
 
-%% -record(action_experimenter_header, {
-%%           type,
-%%           length :: integer(),
-%%           experimenter :: #experimenter_header{}
-%%          }).
+%% Set field action
+-define(ACTION_SET_FIELD_SIZE, 8).
+-record(action_set_field, {
+          field :: #oxm_field{}
+         }).
+
+%% Experimenter action
+-define(ACTION_EXPERIMENTER_SIZE, 8).
+-record(action_experimenter, {
+          experimenter :: integer()
+         }).
+
+%% Action types
+-define(OFPAT_OUTPUT, 0).
+-define(OFPAT_COPY_TTL_OUT, 11).
+-define(OFPAT_COPY_TTL_IN, 12).
+-define(OFPAT_SET_MPLS_TTL, 15).
+-define(OFPAT_DEC_MPLS_TTL, 16).
+-define(OFPAT_PUSH_VLAN, 17).
+-define(OFPAT_POP_VLAN, 18).
+-define(OFPAT_PUSH_MPLS, 19).
+-define(OFPAT_POP_MPLS, 20).
+-define(OFPAT_SET_QUEUE, 21).
+-define(OFPAT_GROUP, 22).
+-define(OFPAT_SET_NW_TTL, 23).
+-define(OFPAT_DEC_NW_TTL, 24).
+-define(OFPAT_SET_FIELD, 25).
+-define(OFPAT_EXPERIMENTER, 16#ffff).
+
+-type action() :: #action_output{} | #action_group{} | #action_set_queue{} |
+                  #action_set_mpls_ttl{} | #action_dec_mpls_ttl{} |
+                  #action_set_nw_ttl{} | #action_dec_nw_ttl{} |
+                  #action_copy_ttl_out{} | #action_copy_ttl_in{} |
+                  #action_push_vlan{} | #action_pop_vlan{} |
+                  #action_push_mpls{} | #action_pop_mpls{} |
+                  #action_set_field{} | #action_experimenter{}.

@@ -14,9 +14,10 @@
          bad_instruction/1, bad_match/1, flow_mod_failed/1, group_mod_failed/1,
          port_mod_failed/1, table_mod_failed/1, queue_op_failed/1,
          switch_config_failed/1, role_request_failed/1, capability/1,
-         port_config/1, port_state/1, port_feature/1, configuration/1,
-         reason/1, removed_reason/1, port_reason/1, match_type/1, oxm_class/1,
-         oxm_field/1]).
+         port_number/1, port_config/1, port_state/1, port_feature/1,
+         configuration/1, reason/1, removed_reason/1, port_reason/1,
+         match_type/1, oxm_class/1, oxm_field/1, action_type/1,
+         controller_max_length/1]).
 
 -include("of_protocol.hrl").
 
@@ -386,6 +387,27 @@ capability(?OFPC_PORT_BLOCKED)         -> port_blocked;
 capability(Type) when is_atom(Type)    -> throw({bad_type, Type});
 capability(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
+port_number(max)                        -> ?OFPP_MAX;
+port_number(?OFPP_MAX)                  -> max;
+port_number(in_port)                    -> ?OFPP_IN_PORT;
+port_number(?OFPP_IN_PORT)              -> in_port;
+port_number(table)                      -> ?OFPP_TABLE;
+port_number(?OFPP_TABLE)                -> table;
+port_number(normal)                     -> ?OFPP_NORMAL;
+port_number(?OFPP_NORMAL)               -> normal;
+port_number(flood)                      -> ?OFPP_FLOOD;
+port_number(?OFPP_FLOOD)                -> flood;
+port_number(all)                        -> ?OFPP_ALL;
+port_number(?OFPP_ALL)                  -> all;
+port_number(controller)                 -> ?OFPP_CONTROLLER;
+port_number(?OFPP_CONTROLLER)           -> controller;
+port_number(local)                      -> ?OFPP_LOCAL;
+port_number(?OFPP_LOCAL)                -> local;
+port_number(any)                        -> ?OFPP_ANY;
+port_number(?OFPP_ANY)                  -> any;
+port_number(Type) when is_atom(Type)    -> throw({bad_type, Type});
+port_number(Int) when is_integer(Int)   -> Int.
+
 port_config(port_down)                  -> ?OFPPC_PORT_DOWN;
 port_config(?OFPPC_PORT_DOWN)           -> port_down;
 port_config(no_stp)                     -> ?OFPPC_NO_STP;
@@ -583,3 +605,43 @@ oxm_field(mpls_tc)                    -> ?OFPXMT_OFB_MPLS_TC;
 oxm_field(?OFPXMT_OFB_MPLS_TC)        -> mpls_tc;
 oxm_field(Type) when is_atom(Type)    -> throw({bad_type, Type});
 oxm_field(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+action_type(output)                     -> ?OFPAT_OUTPUT;
+action_type(?OFPAT_OUTPUT)              -> output;
+action_type(copy_ttl_out)               -> ?OFPAT_COPY_TTL_OUT;
+action_type(?OFPAT_COPY_TTL_OUT)        -> copy_ttl_out;
+action_type(copy_ttl_in)                -> ?OFPAT_COPY_TTL_IN;
+action_type(?OFPAT_COPY_TTL_IN)         -> copy_ttl_in;
+action_type(set_mpls_ttl)               -> ?OFPAT_SET_MPLS_TTL;
+action_type(?OFPAT_SET_MPLS_TTL)        -> set_mpls_ttl;
+action_type(dec_mpls_ttl)               -> ?OFPAT_DEC_MPLS_TTL;
+action_type(?OFPAT_DEC_MPLS_TTL)        -> dec_mpls_ttl;
+action_type(push_vlan)                  -> ?OFPAT_PUSH_VLAN;
+action_type(?OFPAT_PUSH_VLAN)           -> push_vlan;
+action_type(pop_vlan)                   -> ?OFPAT_POP_VLAN;
+action_type(?OFPAT_POP_VLAN)            -> pop_vlan;
+action_type(push_mpls)                  -> ?OFPAT_PUSH_MPLS;
+action_type(?OFPAT_PUSH_MPLS)           -> push_mpls;
+action_type(pop_mpls)                   -> ?OFPAT_POP_MPLS;
+action_type(?OFPAT_POP_MPLS)            -> pop_mpls;
+action_type(set_queue)                  -> ?OFPAT_SET_QUEUE;
+action_type(?OFPAT_SET_QUEUE)           -> set_queue;
+action_type(group)                      -> ?OFPAT_GROUP;
+action_type(?OFPAT_GROUP)               -> group;
+action_type(set_nw_ttl)                 -> ?OFPAT_SET_NW_TTL;
+action_type(?OFPAT_SET_NW_TTL)          -> set_nw_ttl;
+action_type(dec_nw_ttl)                 -> ?OFPAT_DEC_NW_TTL;
+action_type(?OFPAT_DEC_NW_TTL)          -> dec_nw_ttl;
+action_type(set_field)                  -> ?OFPAT_SET_FIELD;
+action_type(?OFPAT_SET_FIELD)           -> set_field;
+action_type(experimenter)               -> ?OFPAT_EXPERIMENTER;
+action_type(?OFPAT_EXPERIMENTER)        -> experimenter;
+action_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
+action_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+controller_max_length(max)                        -> ?OFPCML_MAX;
+controller_max_length(?OFPCML_MAX)                -> max;
+controller_max_length(no_buffer)                  -> ?OFPCML_NO_BUFFER;
+controller_max_length(?OFPCML_NO_BUFFER)          -> no_buffer;
+controller_max_length(Type) when is_atom(Type)    -> throw({bad_type, Type});
+controller_max_length(Int) when is_integer(Int)   -> Int.
