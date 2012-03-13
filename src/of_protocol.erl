@@ -175,6 +175,11 @@ encode2(#flow_removed{header = Header, cookie = Cookie, priority = Priority,
        ReasonInt:8/integer, TableId:8/integer, Sec:32/integer, NSec:32/integer,
        Idle:16/integer, Hard:16/integer, PCount:64/integer, BCount:64/integer,
        MatchBin/binary >>;
+encode2(#port_status{header = Header, reason = Reason, desc = Port}) ->
+    ReasonInt = ofp_map:port_reason(Reason),
+    PortBin = encode_struct(Port),
+    HeaderBin = encode_header(Header, port_status, ?PORT_STATUS_SIZE),
+    << HeaderBin/binary, ReasonInt:8/integer, 0:56/integer, PortBin/binary >>;
 encode2(Other) ->
     throw({bad_message, Other}).
 
@@ -327,7 +332,13 @@ decode(flow_removed, Length, Header, Binary) ->
                    reason = Reason, table_id = TableId, duration_sec = Sec,
                    duration_nsec = NSec, idle_timeout = Idle,
                    hard_timeout = Hard, packet_count = PCount,
-                   byte_count = BCount, match = Match}, Rest}.
+                   byte_count = BCount, match = Match}, Rest};
+decode(port_status, _, Header, Binary) ->
+    << ReasonInt:8/integer, 0:56/integer, PortBin:?PORT_SIZE/binary,
+       Rest/binary >> = Binary,
+    Reason = ofp_map:port_reason(ReasonInt),
+    Port = decode_port(PortBin),
+    {#port_status{header = Header, reason = Reason, desc = Port}, Rest}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions

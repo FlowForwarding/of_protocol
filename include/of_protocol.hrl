@@ -354,6 +354,11 @@
           desc :: #port{}
          }).
 
+%% Reason for Port Status
+-define(OFPPR_ADD, 0).
+-define(OFPPR_DELETE, 1).
+-define(OFPPR_MODIFY, 2).
+
 %% Error message
 -define(ERROR_MSG_SIZE, 12).
 -record(error_msg, {
