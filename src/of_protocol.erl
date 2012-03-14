@@ -104,7 +104,11 @@ encode_struct(#action_output{port = Port, max_len = MaxLen}) ->
     PortInt = ofp_map:port_number(Port),
     MaxLenInt = ofp_map:controller_max_length(MaxLen),
     << Type:16/integer, Length:16/integer, PortInt:32/integer,
-       MaxLenInt:16/integer, 0:32/integer >>;
+       MaxLenInt:16/integer, 0:48/integer >>;
+encode_struct(#action_group{group_id = Group}) ->
+    Type = ofp_map:action_type(group),
+    Length = ?ACTION_GROUP_SIZE,
+    << Type:16/integer, Length:16/integer, Group:32/integer >>;
 encode_struct(#action_set_queue{queue_id = Queue}) ->
     Type = ofp_map:action_type(set_queue),
     Length = ?ACTION_SET_QUEUE_SIZE,
@@ -144,10 +148,11 @@ encode_struct(#action_pop_vlan{}) ->
     Type = ofp_map:action_type(pop_vlan),
     Length = ?ACTION_POP_VLAN_SIZE,
     << Type:16/integer, Length:16/integer, 0:32/integer >>;
-encode_struct(#action_push_mpls{}) ->
+encode_struct(#action_push_mpls{ethertype = EtherType}) ->
     Type = ofp_map:action_type(push_mpls),
     Length = ?ACTION_PUSH_MPLS_SIZE,
-    << Type:16/integer, Length:16/integer, 0:32/integer >>;
+    << Type:16/integer, Length:16/integer, EtherType:16/integer,
+       0:16/integer >>;
 encode_struct(#action_pop_mpls{ethertype = EtherType}) ->
     Type = ofp_map:action_type(pop_mpls),
     Length = ?ACTION_POP_MPLS_SIZE,
@@ -155,11 +160,12 @@ encode_struct(#action_pop_mpls{ethertype = EtherType}) ->
        0:16/integer >>;
 encode_struct(#action_set_field{field = Field}) ->
     Type = ofp_map:action_type(set_field),
-    Length = ?ACTION_SET_FIELD_SIZE,
     FieldBin = encode_struct(Field),
-    Padding = (size(FieldBin) rem 8) * 8,
-    << Type:16/integer, Length:16/integer, FieldBin:binary,
-       0:Padding/integer >>;
+    FieldSize = size(FieldBin),
+    Padding = FieldSize rem 8,
+    Length = ?ACTION_SET_FIELD_SIZE + FieldSize + Padding - 4,
+    << Type:16/integer, Length:16/integer, FieldBin/binary,
+       0:(Padding*8)/integer >>;
 encode_struct(#action_experimenter{experimenter = Experimenter}) ->
     Type = ofp_map:action_type(experimenter),
     Length = ?ACTION_EXPERIMENTER_SIZE,
@@ -250,10 +256,12 @@ encode2(#packet_out{header = Header, buffer_id = BufferId, in_port = Port,
                     actions = Actions, data = Data}) ->
     PortInt = ofp_map:port_number(Port),
     ActionsBin = encode_list(Actions),
-    Length = ?PACKET_OUT_SIZE + size(ActionsBin) + byte_size(Data),
-    HeaderBin = encode_header(Header, port_status, Length),
+    ActionsLength = size(ActionsBin),
+    Length = ?PACKET_OUT_SIZE + ActionsLength + byte_size(Data),
+    HeaderBin = encode_header(Header, packet_out, Length),
     << HeaderBin/binary, BufferId:32/integer, PortInt:32/integer,
-       0:48/integer, ActionsBin/binary, Data/binary >>;
+       ActionsLength:16/integer, 0:48/integer, ActionsBin/binary,
+       Data/binary >>;
 encode2(Other) ->
     throw({bad_message, Other}).
 
@@ -302,7 +310,12 @@ decode_match_fields(Binary) ->
 %% @doc Decode match fields
 decode_match_fields(<<>>, Fields) ->
     lists:reverse(Fields);
-decode_match_fields(<< Header:4/binary, Binary/binary >>, Fields) ->
+decode_match_fields(Binary, Fields) ->
+    {Field, Rest} = decode_match_field(Binary),
+    decode_match_fields(Rest, [Field | Fields]).
+
+%% @doc Decode single match field
+decode_match_field(<< Header:4/binary, Binary/binary >>) ->
     << ClassInt:16/integer, FieldInt:7/integer, HasMaskInt:1/integer,
        Length:8/integer >> = Header,
     Class = ofp_map:oxm_class(ClassInt),
@@ -325,12 +338,77 @@ decode_match_fields(<< Header:4/binary, Binary/binary >>, Fields) ->
             TLV = #oxm_field{value = cut(Value, BitLength),
                              mask = cut(Mask, BitLength)}
     end,
-    decode_match_fields(Rest, [TLV#oxm_field{class = Class,
-                                             field = Field,
-                                             has_mask = HasMask}
-                               | Fields]).
+    {TLV#oxm_field{class = Class,
+                   field = Field,
+                   has_mask = HasMask}, Rest}.
+
+%% @doc Decode actions
+-spec decode_actions(binary()) -> [action()].
+decode_actions(Binary) ->
+    decode_actions(Binary, []).
+
+-spec decode_actions(binary(), [action()]) -> [action()].
+decode_actions(<<>>, Actions) ->
+    lists:reverse(Actions);
+decode_actions(Binary, Actions) ->
+    << TypeInt:16/integer, Length:16/integer, Data/binary >> = Binary,
+    Type = ofp_map:action_type(TypeInt),
+    case Type of
+        output ->
+            << PortInt:32/integer, MaxLen:16/integer,
+               0:48/integer, Rest/binary >> = Data,
+            Port = ofp_map:port_number(PortInt),
+            Action = #action_output{port = Port, max_len = MaxLen};
+        group ->
+            << GroupId:32/integer, Rest/binary >> = Data,
+            Action = #action_group{group_id = GroupId};
+        set_queue ->
+            << QueueId:32/integer, Rest/binary >> = Data,
+            Action = #action_set_queue{queue_id = QueueId};
+        set_mpls_ttl ->
+            << TTL:8/integer, 0:24/integer, Rest/binary >> = Data,
+            Action = #action_set_mpls_ttl{mpls_ttl = TTL};
+        dec_mpls_ttl ->
+            << 0:32/integer, Rest/binary >> = Data,
+            Action = #action_dec_mpls_ttl{};
+        set_nw_ttl ->
+            << TTL:8/integer, 0:24/integer, Rest/binary >> = Data,
+            Action = #action_set_nw_ttl{nw_ttl = TTL};
+        dec_nw_ttl ->
+            << 0:32/integer, Rest/binary >> = Data,
+            Action = #action_dec_nw_ttl{};
+        copy_ttl_out ->
+            << 0:32/integer, Rest/binary >> = Data,
+            Action = #action_copy_ttl_out{};
+        copy_ttl_in ->
+            << 0:32/integer, Rest/binary >> = Data,
+            Action = #action_copy_ttl_in{};
+        push_vlan ->
+            << EtherType:16/integer, 0:16/integer, Rest/binary >> = Data,
+            Action = #action_push_vlan{ethertype = EtherType};
+        pop_vlan ->
+            << 0:32/integer, Rest/binary >> = Data,
+            Action = #action_pop_vlan{};
+        push_mpls ->
+            << EtherType:16/integer, 0:16/integer, Rest/binary >> = Data,
+            Action = #action_push_mpls{ethertype = EtherType};
+        pop_mpls ->
+            << EtherType:16/integer, 0:16/integer, Rest/binary >> = Data,
+            Action = #action_pop_mpls{ethertype = EtherType};
+        set_field ->
+            io:format("Length: ~p~n", [Length]),
+            FieldLength = Length - 4,
+            << FieldBin:FieldLength/binary, Rest/binary >> = Data,
+            {Field, _Padding} = decode_match_field(FieldBin),
+            Action = #action_set_field{field = Field};
+        experimenter ->
+            << Experimenter:32/integer, Rest/binary >> = Data,
+            Action = #action_experimenter{experimenter = Experimenter}
+        end,
+    decode_actions(Rest, [Action | Actions]).
 
 %% @doc Actual decoding of the messages
+-spec decode(atom(), integer(), #header{}, binary()) -> record().
 decode(hello, _, Header, Rest) ->
     {#hello{header = Header}, Rest};
 decode(error, Length, Header, Binary) ->
@@ -412,7 +490,17 @@ decode(port_status, _, Header, Binary) ->
        Rest/binary >> = Binary,
     Reason = ofp_map:port_reason(ReasonInt),
     Port = decode_port(PortBin),
-    {#port_status{header = Header, reason = Reason, desc = Port}, Rest}.
+    {#port_status{header = Header, reason = Reason, desc = Port}, Rest};
+decode(packet_out, Length, Header, Binary) ->
+    << BufferId:32/integer, PortInt:32/integer, ActionsLength:16/integer,
+       0:48/integer, Binary2/binary >> = Binary,
+    DataLength = Length - ?PACKET_OUT_SIZE - ActionsLength,
+    << ActionsBin:ActionsLength/binary, Data:DataLength/binary,
+       Rest/binary >> = Binary2,
+    Port = ofp_map:port_number(PortInt),
+    Actions = decode_actions(ActionsBin),
+    {#packet_out{header = Header, buffer_id = BufferId, in_port = Port,
+                 actions = Actions, data = Data}, Rest}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions

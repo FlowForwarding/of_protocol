@@ -256,7 +256,7 @@
 
 %% Controller max length
 -define(OFPCML_MAX, 16#ffe5).
--define(OFPCML_NO_BUFFER, 16#0000).
+-define(OFPCML_NO_BUFFER, 16#ffff).
 
 %% Group action
 -define(ACTION_GROUP_SIZE, 8).
