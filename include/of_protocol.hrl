@@ -72,11 +72,21 @@
 %%% Modify-State ---------------------------------------------------------------
 
 %% Configure/Modify behavior of a flow table
+-define(TABLE_MOD_SIZE, 16).
 -record(table_mod, {
           header = #header{} :: #header{},
-          table_id,
-          config
+          table_id :: integer() | atom(),
+          config :: [atom()]
          }).
+
+%% Table numbering
+-define(OFPTT_MAX, 16#fe).
+-define(OFPTT_ALL, 16#ff).
+
+%% Table config
+-define(OFPTC_TABLE_MISS_CONTINUE, 0).
+-define(OFPTC_TABLE_MISS_DROP, 1).
+-define(OFPTC_TABLE_MISS_MASK, 3).
 
 %% Flow setup and teardown (controller -> datapath)
 -record(flow_mod, {

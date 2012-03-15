@@ -53,6 +53,7 @@ encode_struct(#port{port_no = PortNo, hw_addr = HWAddr, name = Name,
                     advertised = Advertised, supported = Supported,
                     peer = Peer, curr_speed = CurrSpeed,
                     max_speed = MaxSpeed}) ->
+    PortNoInt = ofp_map:encode_port_number(PortNo),
     ConfigBin = flags_to_binary(port_config, Config, 4),
     StateBin = flags_to_binary(port_state, State, 4),
     CurrBin = flags_to_binary(port_feature, Curr, 4),
@@ -60,7 +61,7 @@ encode_struct(#port{port_no = PortNo, hw_addr = HWAddr, name = Name,
     SupportedBin = flags_to_binary(port_feature, Supported, 4),
     PeerBin = flags_to_binary(port_feature, Peer, 4),
     Padding = (16 - size(Name)) * 8,
-    << PortNo:32/integer, 0:32/integer, HWAddr:6/binary, 0:16/integer,
+    << PortNoInt:32/integer, 0:32/integer, HWAddr:6/binary, 0:16/integer,
        Name/binary, 0:Padding/integer, ConfigBin:4/binary, StateBin:4/binary,
        CurrBin:4/binary, AdvertisedBin:4/binary, SupportedBin:4/binary,
        PeerBin:4/binary, CurrSpeed:32/integer, MaxSpeed:32/integer >>;
@@ -101,8 +102,8 @@ encode_struct(#oxm_field{class = Class, field = Field, has_mask = HasMask,
 encode_struct(#action_output{port = Port, max_len = MaxLen}) ->
     Type = ofp_map:action_type(output),
     Length = ?ACTION_OUTPUT_SIZE,
-    PortInt = ofp_map:port_number(Port),
-    MaxLenInt = ofp_map:controller_max_length(MaxLen),
+    PortInt = ofp_map:encode_port_number(Port),
+    MaxLenInt = ofp_map:encode_max_length(MaxLen),
     << Type:16/integer, Length:16/integer, PortInt:32/integer,
        MaxLenInt:16/integer, 0:48/integer >>;
 encode_struct(#action_group{group_id = Group}) ->
@@ -254,7 +255,7 @@ encode2(#port_status{header = Header, reason = Reason, desc = Port}) ->
     << HeaderBin/binary, ReasonInt:8/integer, 0:56/integer, PortBin/binary >>;
 encode2(#packet_out{header = Header, buffer_id = BufferId, in_port = Port,
                     actions = Actions, data = Data}) ->
-    PortInt = ofp_map:port_number(Port),
+    PortInt = ofp_map:encode_port_number(Port),
     ActionsBin = encode_list(Actions),
     ActionsLength = size(ActionsBin),
     Length = ?PACKET_OUT_SIZE + ActionsLength + byte_size(Data),
@@ -262,6 +263,11 @@ encode2(#packet_out{header = Header, buffer_id = BufferId, in_port = Port,
     << HeaderBin/binary, BufferId:32/integer, PortInt:32/integer,
        ActionsLength:16/integer, 0:48/integer, ActionsBin/binary,
        Data/binary >>;
+encode2(#table_mod{header = Header, table_id = Table, config = Config}) ->
+    TableInt = ofp_map:encode_table_number(Table),
+    ConfigBin = flags_to_binary(table_config, Config, 4),
+    HeaderBin = encode_header(Header, table_mod, ?TABLE_MOD_SIZE),
+    << HeaderBin/binary, TableInt:8/integer, 0:24/integer, ConfigBin/binary >>;
 encode2(Other) ->
     throw({bad_message, Other}).
 
@@ -274,11 +280,12 @@ decode_header(Binary) ->
 
 %% @doc Decode port structure
 decode_port(Binary) ->
-    << PortNo:32/integer, 0:32/integer, HWAddr:6/binary, 0:16/integer,
+    << PortNoInt:32/integer, 0:32/integer, HWAddr:6/binary, 0:16/integer,
        Name:16/binary, ConfigBin:4/binary, StateBin:4/binary,
        CurrBin:4/binary, AdvertisedBin:4/binary, SupportedBin:4/binary,
        PeerBin:4/binary, CurrSpeed:32/integer,
        MaxSpeed:32/integer >> = Binary,
+    PortNo = ofp_map:decode_port_number(PortNoInt),
     Config = binary_to_flags(port_config, ConfigBin),
     State = binary_to_flags(port_state, StateBin),
     Curr = binary_to_flags(port_feature, CurrBin),
@@ -357,8 +364,8 @@ decode_actions(Binary, Actions) ->
         output ->
             << PortInt:32/integer, MaxLenInt:16/integer,
                0:48/integer, Rest/binary >> = Data,
-            Port = ofp_map:port_number(PortInt),
-            MaxLen = ofp_map:controller_max_length(MaxLenInt),
+            Port = ofp_map:decode_port_number(PortInt),
+            MaxLen = ofp_map:decode_max_length(MaxLenInt),
             Action = #action_output{port = Port, max_len = MaxLen};
         group ->
             << GroupId:32/integer, Rest/binary >> = Data,
@@ -497,10 +504,16 @@ decode(packet_out, Length, Header, Binary) ->
     DataLength = Length - ?PACKET_OUT_SIZE - ActionsLength,
     << ActionsBin:ActionsLength/binary, Data:DataLength/binary,
        Rest/binary >> = Binary2,
-    Port = ofp_map:port_number(PortInt),
+    Port = ofp_map:decode_port_number(PortInt),
     Actions = decode_actions(ActionsBin),
     {#packet_out{header = Header, buffer_id = BufferId, in_port = Port,
-                 actions = Actions, data = Data}, Rest}.
+                 actions = Actions, data = Data}, Rest};
+decode(table_mod, _, Header, Binary) ->
+    << TableInt:8/integer, 0:24/integer, ConfigBin:4/binary,
+       Rest/binary >> = Binary,
+    Table = ofp_map:decode_table_number(TableInt),
+    Config = binary_to_flags(table_config, ConfigBin),
+    {#table_mod{header = Header, table_id = Table, config = Config}, Rest}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions

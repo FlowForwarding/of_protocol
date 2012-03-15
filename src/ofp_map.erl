@@ -14,10 +14,11 @@
          bad_instruction/1, bad_match/1, flow_mod_failed/1, group_mod_failed/1,
          port_mod_failed/1, table_mod_failed/1, queue_op_failed/1,
          switch_config_failed/1, role_request_failed/1, capability/1,
-         port_number/1, port_config/1, port_state/1, port_feature/1,
-         configuration/1, reason/1, removed_reason/1, port_reason/1,
-         match_type/1, oxm_class/1, oxm_field/1, action_type/1,
-         controller_max_length/1]).
+         encode_port_number/1, decode_port_number/1, port_config/1,
+         port_state/1, port_feature/1, configuration/1, reason/1,
+         removed_reason/1, port_reason/1, match_type/1, oxm_class/1,
+         oxm_field/1, action_type/1, encode_max_length/1, decode_max_length/1,
+         encode_table_number/1, decode_table_number/1, table_config/1]).
 
 -include("of_protocol.hrl").
 
@@ -387,26 +388,28 @@ capability(?OFPC_PORT_BLOCKED)         -> port_blocked;
 capability(Type) when is_atom(Type)    -> throw({bad_type, Type});
 capability(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
-port_number(max)                        -> ?OFPP_MAX;
-port_number(?OFPP_MAX)                  -> max;
-port_number(in_port)                    -> ?OFPP_IN_PORT;
-port_number(?OFPP_IN_PORT)              -> in_port;
-port_number(table)                      -> ?OFPP_TABLE;
-port_number(?OFPP_TABLE)                -> table;
-port_number(normal)                     -> ?OFPP_NORMAL;
-port_number(?OFPP_NORMAL)               -> normal;
-port_number(flood)                      -> ?OFPP_FLOOD;
-port_number(?OFPP_FLOOD)                -> flood;
-port_number(all)                        -> ?OFPP_ALL;
-port_number(?OFPP_ALL)                  -> all;
-port_number(controller)                 -> ?OFPP_CONTROLLER;
-port_number(?OFPP_CONTROLLER)           -> controller;
-port_number(local)                      -> ?OFPP_LOCAL;
-port_number(?OFPP_LOCAL)                -> local;
-port_number(any)                        -> ?OFPP_ANY;
-port_number(?OFPP_ANY)                  -> any;
-port_number(Type) when is_atom(Type)    -> throw({bad_type, Type});
-port_number(Int) when is_integer(Int)   -> Int.
+encode_port_number(max)                      -> ?OFPP_MAX;
+encode_port_number(in_port)                  -> ?OFPP_IN_PORT;
+encode_port_number(table)                    -> ?OFPP_TABLE;
+encode_port_number(normal)                   -> ?OFPP_NORMAL;
+encode_port_number(flood)                    -> ?OFPP_FLOOD;
+encode_port_number(all)                      -> ?OFPP_ALL;
+encode_port_number(controller)               -> ?OFPP_CONTROLLER;
+encode_port_number(local)                    -> ?OFPP_LOCAL;
+encode_port_number(any)                      -> ?OFPP_ANY;
+encode_port_number(Type) when is_atom(Type)  -> throw({bad_type, Type});
+encode_port_number(Int) when is_integer(Int) -> Int.
+
+decode_port_number(?OFPP_MAX)                -> max;
+decode_port_number(?OFPP_IN_PORT)            -> in_port;
+decode_port_number(?OFPP_TABLE)              -> table;
+decode_port_number(?OFPP_NORMAL)             -> normal;
+decode_port_number(?OFPP_FLOOD)              -> flood;
+decode_port_number(?OFPP_ALL)                -> all;
+decode_port_number(?OFPP_CONTROLLER)         -> controller;
+decode_port_number(?OFPP_LOCAL)              -> local;
+decode_port_number(?OFPP_ANY)                -> any;
+decode_port_number(Int) when is_integer(Int) -> Int.
 
 port_config(port_down)                  -> ?OFPPC_PORT_DOWN;
 port_config(?OFPPC_PORT_DOWN)           -> port_down;
@@ -639,9 +642,29 @@ action_type(?OFPAT_EXPERIMENTER)        -> experimenter;
 action_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
 action_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
-controller_max_length(max)                        -> ?OFPCML_MAX;
-controller_max_length(?OFPCML_MAX)                -> max;
-controller_max_length(no_buffer)                  -> ?OFPCML_NO_BUFFER;
-controller_max_length(?OFPCML_NO_BUFFER)          -> no_buffer;
-controller_max_length(Type) when is_atom(Type)    -> throw({bad_type, Type});
-controller_max_length(Int) when is_integer(Int)   -> Int.
+encode_max_length(max)                      -> ?OFPCML_MAX;
+encode_max_length(no_buffer)                -> ?OFPCML_NO_BUFFER;
+encode_max_length(Type) when is_atom(Type)  -> throw({bad_type, Type});
+encode_max_length(Int) when is_integer(Int) -> Int.
+
+decode_max_length(?OFPCML_MAX)              -> max;
+decode_max_length(?OFPCML_NO_BUFFER)        -> no_buffer;
+decode_max_length(Int) when is_integer(Int) -> Int.
+
+encode_table_number(max)                      -> ?OFPTT_MAX;
+encode_table_number(all)                      -> ?OFPTT_ALL;
+encode_table_number(Type) when is_atom(Type)  -> throw({bad_type, Type});
+encode_table_number(Int) when is_integer(Int) -> Int.
+
+decode_table_number(?OFPTT_MAX)               -> max;
+decode_table_number(?OFPTT_ALL)               -> all;
+decode_table_number(Int) when is_integer(Int) -> Int.
+
+table_config(continue)                   -> ?OFPTC_TABLE_MISS_CONTINUE;
+table_config(?OFPTC_TABLE_MISS_CONTINUE) -> continue;
+table_config(drop)                       -> ?OFPTC_TABLE_MISS_DROP;
+table_config(?OFPTC_TABLE_MISS_DROP)     -> drop;
+table_config(mask)                       -> ?OFPTC_TABLE_MISS_MASK;
+table_config(?OFPTC_TABLE_MISS_MASK)     -> mask;
+table_config(Type) when is_atom(Type)    -> throw({bad_type, Type});
+table_config(Type) when is_integer(Type) -> throw({bad_value, Type}).
