@@ -76,7 +76,7 @@
 -record(table_mod, {
           header = #header{} :: #header{},
           table_id :: integer() | atom(),
-          config :: [atom()]
+          config = [] :: [atom()]
          }).
 
 %% Table numbering
@@ -102,9 +102,9 @@
           buffer_id :: integer(),
           out_port :: integer() | atom(),
           out_group :: integer() | atom(),
-          flags :: [atom()],
+          flags = [] :: [atom()],
           match :: #match{},
-          instructions :: [instruction()]
+          instructions = [] :: [instruction()]
          }).
 
 %% Flow mod commands
@@ -125,7 +125,7 @@
           weight :: integer(),
           watch_port :: integer() | atom(),
           watch_group :: integer() | atom(),
-          actions :: [action()]
+          actions = [] :: [action()]
          }).
 
 %% Group setup and teardown
@@ -135,7 +135,7 @@
           command :: atom(),
           type :: atom(),
           group_id :: integer() | atom(),
-          buckets = [#bucket{}]
+          buckets = [] :: [#bucket{}]
          }).
 
 %% Group commands
@@ -158,9 +158,9 @@
           header = #header{} :: #header{},
           port_no :: integer() | atom(),
           hw_addr :: binary(),
-          config :: [atom()],
-          mask :: [atom()],
-          advertise :: [atom()]
+          config = [] :: [atom()],
+          mask = [] :: [atom()],
+          advertise = [] :: [atom()]
          }).
 
 %%% Read-State -----------------------------------------------------------------
@@ -288,13 +288,13 @@
           ref_count :: integer(),
           packet_count :: integer(),
           byte_count :: integer(),
-          bucket_stats :: list(#bucket_counter{})
+          bucket_stats = [] :: [#bucket_counter{}]
          }).
 
 -record(group_desc_stats, {
           type :: atom(),
           group_id :: integer(),
-          buckets :: list(#bucket{})
+          buckets = [] :: [#bucket{}]
          }).
 
 -record(group_features_stats, {
@@ -310,15 +310,21 @@
           additional_data :: binary()
          }).
 
+%%% Queue Configuration --------------------------------------------------------
+
+%% Get queue config request message
+-define(QUEUE_GET_CONFIG_REQUEST_SIZE, 16).
 -record(queue_get_config_request, {
           header = #header{} :: #header{},
-          port :: integer()
+          port :: integer() | atom()
          }).
 
+%% Get queue config reply message
+-define(QUEUE_GET_CONFIG_REPLY_SIZE, 16).
 -record(queue_get_config_reply, {
           header = #header{} :: #header{},
-          port :: integer(),
-          queues :: list(#packet_queue{})
+          port :: integer() | atom(),
+          queues = [] :: [#packet_queue{}]
          }).
 
 %%% Packet-out -----------------------------------------------------------------
@@ -329,7 +335,7 @@
           header = #header{} :: #header{},
           buffer_id :: integer(),
           in_port :: integer() | atom(),
-          actions :: [action()],
+          actions = [] :: [action()],
           data :: binary()
          }).
 

@@ -285,6 +285,11 @@ encode2(#port_status{header = Header, reason = Reason, desc = Port}) ->
     PortBin = encode_struct(Port),
     HeaderBin = encode_header(Header, port_status, ?PORT_STATUS_SIZE),
     << HeaderBin/binary, ReasonInt:8/integer, 0:56/integer, PortBin/binary >>;
+encode2(#queue_get_config_request{header = Header, port = Port}) ->
+    PortInt = ofp_map:encode_port_number(Port),
+    HeaderBin = encode_header(Header, queue_get_config_request,
+                              ?QUEUE_GET_CONFIG_REQUEST_SIZE),
+    << HeaderBin/binary, PortInt:32/integer, 0:32/integer >>;
 encode2(#packet_out{header = Header, buffer_id = BufferId, in_port = Port,
                     actions = Actions, data = Data}) ->
     PortInt = ofp_map:encode_port_number(Port),
@@ -640,6 +645,10 @@ decode(port_status, _, Header, Binary) ->
     Reason = ofp_map:port_reason(ReasonInt),
     Port = decode_port(PortBin),
     {#port_status{header = Header, reason = Reason, desc = Port}, Rest};
+decode(queue_get_config_request, _, Header, Binary) ->
+    << PortInt:32/integer, 0:32/integer, Rest/binary >> = Binary,
+    Port = ofp_map:decode_port_number(PortInt),
+    {#queue_get_config_request{header = Header, port = Port}, Rest};
 decode(packet_out, Length, Header, Binary) ->
     << BufferId:32/integer, PortInt:32/integer, ActionsLength:16/integer,
        0:48/integer, Binary2/binary >> = Binary,
