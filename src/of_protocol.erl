@@ -47,6 +47,11 @@ encode_header(#header{xid = Xid}, Type, Length) ->
     TypeInt = ofp_map:msg_type(Type),
     << ?VERSION/binary, TypeInt:8/integer, Length:16/integer, Xid:32/integer >>.
 
+%% @doc Encode queue property header
+encode_queue_header(Property, Length) ->
+    PropertyInt = ofp_map:queue_property(Property),
+    << PropertyInt:16/integer, Length:16/integer, 0:32/integer >>.
+
 %% @doc Encode other structures
 encode_struct(#port{port_no = PortNo, hw_addr = HWAddr, name = Name,
                     config = Config, state = State, curr = Curr,
@@ -202,7 +207,25 @@ encode_struct(#bucket{weight = Weight, watch_port = Port, watch_group = Group,
     ActionsBin = encode_list(Actions),
     Length = ?BUCKET_SIZE + size(ActionsBin),
     << Length:16/integer, Weight:16/integer, Port:32/integer, Group:32/integer,
-       0:32/integer, ActionsBin/binary >>.
+       0:32/integer, ActionsBin/binary >>;
+encode_struct(#packet_queue{queue_id = Queue, port = Port,
+                            properties = Props}) ->
+    PropsBin = encode_list(Props),
+    Length = ?PACKET_QUEUE_SIZE + size(PropsBin),
+    << Queue:32/integer, Port:32/integer, Length:16/integer, 0:48/integer,
+       PropsBin/binary >>;
+encode_struct(#queue_prop_min_rate{rate = Rate}) ->
+    HeaderBin = encode_queue_header(min_rate, ?QUEUE_PROP_MIN_RATE_SIZE),
+    << HeaderBin/binary, Rate:16/integer, 0:48/integer >>;
+encode_struct(#queue_prop_max_rate{rate = Rate}) ->
+    HeaderBin = encode_queue_header(max_rate, ?QUEUE_PROP_MAX_RATE_SIZE),
+    << HeaderBin/binary, Rate:16/integer, 0:48/integer >>;
+encode_struct(#queue_prop_experimenter{experimenter = Experimenter,
+                                       data = Data}) ->
+    Length = ?QUEUE_PROP_EXPERIMENTER_SIZE + byte_size(Data),
+    HeaderBin = encode_queue_header(experimenter, Length),
+    << HeaderBin/binary, Experimenter:32/integer, 0:32/integer,
+       Data/binary >>.
 
 %% @doc Actual encoding of the messages
 encode2(#hello{header = Header}) ->
@@ -290,6 +313,14 @@ encode2(#queue_get_config_request{header = Header, port = Port}) ->
     HeaderBin = encode_header(Header, queue_get_config_request,
                               ?QUEUE_GET_CONFIG_REQUEST_SIZE),
     << HeaderBin/binary, PortInt:32/integer, 0:32/integer >>;
+encode2(#queue_get_config_reply{header = Header, port = Port,
+                                queues = Queues}) ->
+    PortInt = ofp_map:encode_port_number(Port),
+    QueuesBin = encode_list(Queues),
+    Length = ?QUEUE_GET_CONFIG_REPLY_SIZE + size(QueuesBin),
+    HeaderBin = encode_header(Header, queue_get_config_reply, Length),
+    << HeaderBin/binary, PortInt:32/integer, 0:32/integer,
+       QueuesBin/binary >>;
 encode2(#packet_out{header = Header, buffer_id = BufferId, in_port = Port,
                     actions = Actions, data = Data}) ->
     PortInt = ofp_map:encode_port_number(Port),
@@ -561,6 +592,48 @@ decode_buckets(Binary, Buckets) ->
                      actions = Actions},
     decode_buckets(Rest, [Bucket | Buckets]).
 
+%% @doc Decode queues
+decode_queues(Binary) ->
+    decode_queues(Binary, []).
+
+decode_queues(<<>>, Queues) ->
+    lists:reverse(Queues);
+decode_queues(Binary, Queues) ->
+    << QueueId:32/integer, Port:32/integer, Length:16/integer, 0:48/integer,
+       Data/binary >> = Binary,
+    PropsLength = Length - ?PACKET_QUEUE_SIZE,
+    << PropsBin:PropsLength/binary, Rest/binary >> = Data,
+    Props = decode_properties(PropsBin),
+    Queue = #packet_queue{queue_id = QueueId, port = Port,
+                          properties = Props},
+    decode_queues(Rest, [Queue | Queues]).
+
+%% @doc Decode properties
+decode_properties(Binary) ->
+    decode_properties(Binary, []).
+
+decode_properties(<<>>, Properties) ->
+    lists:reverse(Properties);
+decode_properties(Binary, Properties) ->
+    << TypeInt:16/integer, Length:16/integer, 0:32/integer,
+       Data/binary >> = Binary,
+    Type = ofp_map:queue_property(TypeInt),
+    case Type of
+        min_rate ->
+            << Rate:16/integer, 0:48/integer, Rest/binary >> = Data,
+            Property = #queue_prop_min_rate{rate = Rate};
+        max_rate ->
+            << Rate:16/integer, 0:48/integer, Rest/binary >> = Data,
+            Property = #queue_prop_max_rate{rate = Rate};
+        experimenter ->
+            DataLength = Length - ?QUEUE_PROP_EXPERIMENTER_SIZE,
+            << Experimenter:32/integer, 0:32/integer, ExpData:DataLength/binary,
+               Rest/binary >> = Data,
+            Property = #queue_prop_experimenter{experimenter = Experimenter,
+                                                data = ExpData}
+    end,
+    decode_properties(Rest, [Property | Properties]).
+
 %% @doc Actual decoding of the messages
 -spec decode(atom(), integer(), #header{}, binary()) -> record().
 decode(hello, _, Header, Rest) ->
@@ -649,6 +722,14 @@ decode(queue_get_config_request, _, Header, Binary) ->
     << PortInt:32/integer, 0:32/integer, Rest/binary >> = Binary,
     Port = ofp_map:decode_port_number(PortInt),
     {#queue_get_config_request{header = Header, port = Port}, Rest};
+decode(queue_get_config_reply, Length, Header, Binary) ->
+    QueuesLength = Length - ?QUEUE_GET_CONFIG_REPLY_SIZE,
+    << PortInt:32/integer, 0:32/integer, QueuesBin:QueuesLength/binary,
+       Rest/binary >> = Binary,
+    Port = ofp_map:decode_port_number(PortInt),
+    Queues = decode_queues(QueuesBin),
+    {#queue_get_config_reply{header = Header, port = Port,
+                             queues = Queues}, Rest};
 decode(packet_out, Length, Header, Binary) ->
     << BufferId:32/integer, PortInt:32/integer, ActionsLength:16/integer,
        0:48/integer, Binary2/binary >> = Binary,

@@ -105,38 +105,39 @@
 
 %%% Queue Structures -----------------------------------------------------------
 
-%% Common description for a queue
--record(queue_prop_header, {
-          type :: integer()
-         }).
-
 %% Min-Rate queue property description
+-define(QUEUE_PROP_MIN_RATE_SIZE, 16).
 -record(queue_prop_min_rate, {
-          header :: #queue_prop_header{},
           rate :: integer()
          }).
 
 %% Max-Rate queue property description
+-define(QUEUE_PROP_MAX_RATE_SIZE, 16).
 -record(queue_prop_max_rate, {
-          header :: #queue_prop_header{},
           rate :: integer()
          }).
 
 %% Experimenter queue property description
+-define(QUEUE_PROP_EXPERIMENTER_SIZE, 16).
 -record(queue_prop_experimenter, {
-          header :: #queue_prop_header{},
           experimenter :: integer(),
           data :: binary()
          }).
 
 %% Full description for a queue
+-define(PACKET_QUEUE_SIZE, 16).
 -record(packet_queue, {
           queue_id :: integer(),
           port :: integer(),
-          properties :: #queue_prop_min_rate{} |
-                        #queue_prop_max_rate{} |
-                        #queue_prop_experimenter{}
+          properties :: [#queue_prop_min_rate{} |
+                         #queue_prop_max_rate{} |
+                         #queue_prop_experimenter{}]
          }).
+
+%% Queue properties
+-define(OFPQT_MIN_RATE, 1).
+-define(OFPQT_MAX_RATE, 2).
+-define(OFPQT_EXPERIMENTER, 16#ffff).
 
 %%% Flow Match Structures ------------------------------------------------------
 
