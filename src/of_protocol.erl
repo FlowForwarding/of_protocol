@@ -355,9 +355,10 @@ decode_actions(Binary, Actions) ->
     Type = ofp_map:action_type(TypeInt),
     case Type of
         output ->
-            << PortInt:32/integer, MaxLen:16/integer,
+            << PortInt:32/integer, MaxLenInt:16/integer,
                0:48/integer, Rest/binary >> = Data,
             Port = ofp_map:port_number(PortInt),
+            MaxLen = ofp_map:controller_max_length(MaxLenInt),
             Action = #action_output{port = Port, max_len = MaxLen};
         group ->
             << GroupId:32/integer, Rest/binary >> = Data,
@@ -396,7 +397,6 @@ decode_actions(Binary, Actions) ->
             << EtherType:16/integer, 0:16/integer, Rest/binary >> = Data,
             Action = #action_pop_mpls{ethertype = EtherType};
         set_field ->
-            io:format("Length: ~p~n", [Length]),
             FieldLength = Length - 4,
             << FieldBin:FieldLength/binary, Rest/binary >> = Data,
             {Field, _Padding} = decode_match_field(FieldBin),
