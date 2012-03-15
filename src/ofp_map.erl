@@ -17,7 +17,7 @@
          port_config/1, port_state/1, port_feature/1, configuration/1, reason/1,
          removed_reason/1, port_reason/1, match_type/1, oxm_class/1,
          oxm_field/1, action_type/1, table_config/1, flow_command/1,
-         flow_flag/1, instruction_type/1, group_type/1]).
+         flow_flag/1, instruction_type/1, group_type/1, group_command/1]).
 -export([encode_port_number/1, decode_port_number/1,
          encode_max_length/1, decode_max_length/1,
          encode_table_id/1, decode_table_id/1,
@@ -715,6 +715,15 @@ encode_group_id(Int) when is_integer(Int) -> Int.
 
 decode_group_id(?OFPG_ANY)                -> any;
 decode_group_id(Int) when is_integer(Int) -> Int.
+
+group_command(add)                        -> ?OFPGC_ADD;
+group_command(?OFPGC_ADD)                 -> add;
+group_command(modify)                     -> ?OFPGC_MODIFY;
+group_command(?OFPGC_MODIFY)              -> modify;
+group_command(delete)                     -> ?OFPGC_DELETE;
+group_command(?OFPGC_DELETE)              -> delete;
+group_command(Type) when is_atom(Type)    -> throw({bad_type, Type});
+group_command(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 group_type(all)                        -> ?OFPGT_ALL;
 group_type(?OFPGT_ALL)                 -> all;

@@ -196,7 +196,13 @@ encode_struct(#instruction_apply_actions{actions = Actions}) ->
 encode_struct(#instruction_clear_actions{}) ->
     Type = ofp_map:instruction_type(clear_actions),
     Length = ?INSTRUCTION_CLEAR_ACTIONS_SIZE,
-    << Type:16/integer, Length:16/integer, 0:32/integer >>.
+    << Type:16/integer, Length:16/integer, 0:32/integer >>;
+encode_struct(#bucket{weight = Weight, watch_port = Port, watch_group = Group,
+                      actions = Actions}) ->
+    ActionsBin = encode_list(Actions),
+    Length = ?BUCKET_SIZE + size(ActionsBin),
+    << Length:16/integer, Weight:16/integer, Port:32/integer, Group:32/integer,
+       0:32/integer, ActionsBin/binary >>.
 
 %% @doc Actual encoding of the messages
 encode2(#hello{header = Header}) ->
@@ -309,6 +315,16 @@ encode2(#flow_mod{header = Header, cookie = Cookie, cookie_mask = CookieMask,
        Priority:16/integer, Buffer:32/integer, OutPortInt:32/integer,
        OutGroupInt:32/integer, FlagsBin:2/binary, 0:16/integer,
        MatchBin/binary, InstructionsBin/binary >>;
+encode2(#group_mod{header = Header, command = Command, type = Type,
+                   group_id = Group, buckets = Buckets}) ->
+    CommandInt = ofp_map:group_command(Command),
+    TypeInt = ofp_map:group_type(Type),
+    GroupInt = ofp_map:encode_group_id(Group),
+    BucketsBin = encode_list(Buckets),
+    Length = ?GROUP_MOD_SIZE + size(BucketsBin),
+    HeaderBin = encode_header(Header, group_mod, Length),
+    << HeaderBin/binary, CommandInt:16/integer, TypeInt:8/integer, 0:8/integer,
+       GroupInt:32/integer, BucketsBin/binary >>;
 encode2(#table_mod{header = Header, table_id = Table, config = Config}) ->
     TableInt = ofp_map:encode_table_id(Table),
     ConfigBin = flags_to_binary(table_config, Config, 4),
@@ -500,6 +516,22 @@ decode_instructions(Binary, Instructions) ->
     end,
     decode_instructions(Rest, [Instruction | Instructions]).
 
+%% @doc Decode buckets
+decode_buckets(Binary) ->
+    decode_buckets(Binary, []).
+
+decode_buckets(<<>>, Buckets) ->
+    lists:reverse(Buckets);
+decode_buckets(Binary, Buckets) ->
+    << Length:16/integer, Weight:16/integer, Port:32/integer, Group:32/integer,
+       0:32/integer, Data/binary >> = Binary,
+    ActionsLength = Length - ?BUCKET_SIZE,
+    << ActionsBin:ActionsLength/binary, Rest/binary >> = Data,
+    Actions = decode_actions(ActionsBin),
+    Bucket = #bucket{weight = Weight, watch_port = Port, watch_group = Group,
+                     actions = Actions},
+    decode_buckets(Rest, [Bucket | Buckets]).
+
 %% @doc Actual decoding of the messages
 -spec decode(atom(), integer(), #header{}, binary()) -> record().
 decode(hello, _, Header, Rest) ->
@@ -617,6 +649,17 @@ decode(flow_mod, Length, Header, Binary) ->
                hard_timeout = Hard, priority = Priority, buffer_id = Buffer,
                out_port = OutPort, out_group = OutGroup, flags = Flags,
                match = Match, instructions = Instructions}, Rest};
+decode(group_mod, Length, Header, Binary) ->
+    BucketsLength = Length - ?GROUP_MOD_SIZE,
+    << CommandInt:16/integer, TypeInt:8/integer, 0:8/integer,
+       GroupInt:32/integer, BucketsBin:BucketsLength/binary,
+       Rest/binary >> = Binary,
+    Command = ofp_map:group_command(CommandInt),
+    Type = ofp_map:group_type(TypeInt),
+    Group = ofp_map:decode_group_id(GroupInt),
+    Buckets = decode_buckets(BucketsBin),
+    {#group_mod{header = Header, command = Command, type = Type,
+                group_id = Group, buckets = Buckets}, Rest};
 decode(table_mod, _, Header, Binary) ->
     << TableInt:8/integer, 0:24/integer, ConfigBin:4/binary,
        Rest/binary >> = Binary,

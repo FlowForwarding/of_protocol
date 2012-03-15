@@ -120,22 +120,28 @@
 -define(OFPFF_RESET_COUNTS, 2).
 
 %% Bucket for use in groups
+-define(BUCKET_SIZE, 16).
 -record(bucket, {
-          length :: integer(),
           weight :: integer(),
-          watch_port,
-          watch_group,
+          watch_port :: integer() | atom(),
+          watch_group :: integer() | atom(),
           actions :: [action()]
          }).
 
 %% Group setup and teardown
+-define(GROUP_MOD_SIZE, 16).
 -record(group_mod, {
           header = #header{} :: #header{},
-          command,
-          type,
+          command :: atom(),
+          type :: atom(),
           group_id :: integer() | atom(),
           buckets = [#bucket{}]
          }).
+
+%% Group commands
+-define(OFPGC_ADD, 0).
+-define(OFPGC_MODIFY, 1).
+-define(OFPGC_DELETE, 2).
 
 %% Group types
 -define(OFPGT_ALL, 0).
