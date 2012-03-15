@@ -243,7 +243,55 @@
 
 %%% Flow Instruction Structures ------------------------------------------------
 
+%% Instruction structure for goto table
+-define(INSTRUCTION_GOTO_TABLE_SIZE, 8).
+-record(instruction_goto_table, {
+          table_id :: integer()
+         }).
 
+%% Instruction structure for write metadata
+-define(INSTRUCTION_WRITE_METADATA_SIZE, 24).
+-record(instruction_write_metadata, {
+          metadata :: binary(),
+          metadata_mask :: binary()
+         }).
+
+%% Instruction structure for write actions
+-define(INSTRUCTION_WRITE_ACTIONS_SIZE, 8).
+-record(instruction_write_actions, {
+          actions :: [action()]
+         }).
+
+%% Instruction structure for apply actions
+-define(INSTRUCTION_APPLY_ACTIONS_SIZE, 8).
+-record(instruction_apply_actions, {
+          actions :: [action()]
+         }).
+
+%% Instruction structure for clear actions
+-define(INSTRUCTION_CLEAR_ACTIONS_SIZE, 8).
+-record(instruction_clear_actions, {}).
+
+%% Instruction structure for experimenter
+-define(INSTRUCTION_EXPERIMENTER_SIZE, 8).
+-record(instruction_experimenter, {
+          experimenter :: integer()
+         }).
+
+-type instruction() :: #instruction_goto_table{} |
+                       #instruction_write_metadata{} |
+                       #instruction_write_actions{} |
+                       #instruction_apply_actions{} |
+                       #instruction_clear_actions{} |
+                       #instruction_experimenter{}.
+
+%% Instruction types
+-define(OFPIT_GOTO_TABLE, 1).
+-define(OFPIT_WRITE_METADATA, 2).
+-define(OFPIT_WRITE_ACTIONS, 3).
+-define(OFPIT_APPLY_ACTIONS, 4).
+-define(OFPIT_CLEAR_ACTIONS, 5).
+-define(OFPIT_EXPERIMENTER, 16#ffff).
 
 %%% Action Structures ----------------------------------------------------------
 

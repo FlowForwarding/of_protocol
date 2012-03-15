@@ -14,11 +14,14 @@
          bad_instruction/1, bad_match/1, flow_mod_failed/1, group_mod_failed/1,
          port_mod_failed/1, table_mod_failed/1, queue_op_failed/1,
          switch_config_failed/1, role_request_failed/1, capability/1,
-         encode_port_number/1, decode_port_number/1, port_config/1,
-         port_state/1, port_feature/1, configuration/1, reason/1,
+         port_config/1, port_state/1, port_feature/1, configuration/1, reason/1,
          removed_reason/1, port_reason/1, match_type/1, oxm_class/1,
-         oxm_field/1, action_type/1, encode_max_length/1, decode_max_length/1,
-         encode_table_number/1, decode_table_number/1, table_config/1]).
+         oxm_field/1, action_type/1, table_config/1, flow_command/1,
+         flow_flag/1, instruction_type/1, group_type/1]).
+-export([encode_port_number/1, decode_port_number/1,
+         encode_max_length/1, decode_max_length/1,
+         encode_table_id/1, decode_table_id/1,
+         encode_group_id/1, decode_group_id/1]).
 
 -include("of_protocol.hrl").
 
@@ -651,14 +654,14 @@ decode_max_length(?OFPCML_MAX)              -> max;
 decode_max_length(?OFPCML_NO_BUFFER)        -> no_buffer;
 decode_max_length(Int) when is_integer(Int) -> Int.
 
-encode_table_number(max)                      -> ?OFPTT_MAX;
-encode_table_number(all)                      -> ?OFPTT_ALL;
-encode_table_number(Type) when is_atom(Type)  -> throw({bad_type, Type});
-encode_table_number(Int) when is_integer(Int) -> Int.
+encode_table_id(max)                      -> ?OFPTT_MAX;
+encode_table_id(all)                      -> ?OFPTT_ALL;
+encode_table_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
+encode_table_id(Int) when is_integer(Int) -> Int.
 
-decode_table_number(?OFPTT_MAX)               -> max;
-decode_table_number(?OFPTT_ALL)               -> all;
-decode_table_number(Int) when is_integer(Int) -> Int.
+decode_table_id(?OFPTT_MAX)               -> max;
+decode_table_id(?OFPTT_ALL)               -> all;
+decode_table_id(Int) when is_integer(Int) -> Int.
 
 table_config(continue)                   -> ?OFPTC_TABLE_MISS_CONTINUE;
 table_config(?OFPTC_TABLE_MISS_CONTINUE) -> continue;
@@ -668,3 +671,58 @@ table_config(mask)                       -> ?OFPTC_TABLE_MISS_MASK;
 table_config(?OFPTC_TABLE_MISS_MASK)     -> mask;
 table_config(Type) when is_atom(Type)    -> throw({bad_type, Type});
 table_config(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+flow_command(add)                        -> ?OFPFC_ADD;
+flow_command(?OFPFC_ADD)                 -> add;
+flow_command(modify)                     -> ?OFPFC_MODIFY;
+flow_command(?OFPFC_MODIFY)              -> modify;
+flow_command(modify_strict)              -> ?OFPFC_MODIFY_STRICT;
+flow_command(?OFPFC_MODIFY_STRICT)       -> modify_strict;
+flow_command(delete)                     -> ?OFPFC_DELETE;
+flow_command(?OFPFC_DELETE)              -> delete;
+flow_command(delete_strict)              -> ?OFPFC_DELETE_STRICT;
+flow_command(?OFPFC_DELETE_STRICT)       -> delete_strict;
+flow_command(Type) when is_atom(Type)    -> throw({bad_type, Type});
+flow_command(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+flow_flag(send_flow_rem)              -> ?OFPFF_SEND_FLOW_REM;
+flow_flag(?OFPFF_SEND_FLOW_REM)       -> send_flow_rem;
+flow_flag(check_overlap)              -> ?OFPFF_CHECK_OVERLAP;
+flow_flag(?OFPFF_CHECK_OVERLAP)       -> check_overlap;
+flow_flag(reset_counts)               -> ?OFPFF_RESET_COUNTS;
+flow_flag(?OFPFF_RESET_COUNTS)        -> reset_counts;
+flow_flag(Type) when is_atom(Type)    -> throw({bad_type, Type});
+flow_flag(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+instruction_type(goto_table)                 -> ?OFPIT_GOTO_TABLE;
+instruction_type(?OFPIT_GOTO_TABLE)          -> goto_table;
+instruction_type(write_metadata)             -> ?OFPIT_WRITE_METADATA;
+instruction_type(?OFPIT_WRITE_METADATA)      -> write_metadata;
+instruction_type(write_actions)              -> ?OFPIT_WRITE_ACTIONS;
+instruction_type(?OFPIT_WRITE_ACTIONS)       -> write_actions;
+instruction_type(apply_actions)              -> ?OFPIT_APPLY_ACTIONS;
+instruction_type(?OFPIT_APPLY_ACTIONS)       -> apply_actions;
+instruction_type(clear_actions)              -> ?OFPIT_CLEAR_ACTIONS;
+instruction_type(?OFPIT_CLEAR_ACTIONS)       -> clear_actions;
+instruction_type(experimenter)               -> ?OFPIT_EXPERIMENTER;
+instruction_type(?OFPIT_EXPERIMENTER)        -> experimenter;
+instruction_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
+instruction_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+encode_group_id(any)                      -> ?OFPG_ANY;
+encode_group_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
+encode_group_id(Int) when is_integer(Int) -> Int.
+
+decode_group_id(?OFPG_ANY)                -> any;
+decode_group_id(Int) when is_integer(Int) -> Int.
+
+group_type(all)                        -> ?OFPGT_ALL;
+group_type(?OFPGT_ALL)                 -> all;
+group_type(select)                     -> ?OFPGT_SELECT;
+group_type(?OFPGT_SELECT)              -> select;
+group_type(indirect)                   -> ?OFPGT_INDIRECT;
+group_type(?OFPGT_INDIRECT)            -> indirect;
+group_type(ff)                         -> ?OFPGT_FF;
+group_type(?OFPGT_FF)                  -> ff;
+group_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
+group_type(Type) when is_integer(Type) -> throw({bad_value, Type}).

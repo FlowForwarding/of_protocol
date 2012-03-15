@@ -88,23 +88,36 @@
 -define(OFPTC_TABLE_MISS_DROP, 1).
 -define(OFPTC_TABLE_MISS_MASK, 3).
 
-%% Flow setup and teardown (controller -> datapath)
+%% Flow setup and teardown
+-define(FLOW_MOD_SIZE, 56).
 -record(flow_mod, {
           header = #header{} :: #header{},
-          cookie,
-          cookie_mask,
-          table_id,
-          command,
-          idle_timeout,
-          hard_timeout,
-          priority,
-          buffer_id,
-          out_port,
-          out_group,
-          flags,
+          cookie :: binary(),
+          cookie_mask :: binary(),
+          table_id :: integer() | atom(),
+          command :: atom(),
+          idle_timeout :: integer(),
+          hard_timeout :: integer(),
+          priority :: integer(),
+          buffer_id :: integer(),
+          out_port :: integer() | atom(),
+          out_group :: integer() | atom(),
+          flags :: [atom()],
           match :: #match{},
-          instructions :: list()
+          instructions :: [instruction()]
          }).
+
+%% Flow mod commands
+-define(OFPFC_ADD, 0).
+-define(OFPFC_MODIFY, 1).
+-define(OFPFC_MODIFY_STRICT, 2).
+-define(OFPFC_DELETE, 3).
+-define(OFPFC_DELETE_STRICT, 4).
+
+%% Flow mod flags
+-define(OFPFF_SEND_FLOW_REM, 0).
+-define(OFPFF_CHECK_OVERLAP, 1).
+-define(OFPFF_RESET_COUNTS, 2).
 
 %% Bucket for use in groups
 -record(bucket, {
@@ -115,14 +128,23 @@
           actions :: [action()]
          }).
 
-%% Group setup and teardown (controller -> datapath)
+%% Group setup and teardown
 -record(group_mod, {
           header = #header{} :: #header{},
           command,
           type,
-          group_id,
+          group_id :: integer() | atom(),
           buckets = [#bucket{}]
          }).
+
+%% Group types
+-define(OFPGT_ALL, 0).
+-define(OFPGT_SELECT, 1).
+-define(OFPGT_INDIRECT, 2).
+-define(OFPGT_FF, 3).
+
+%% Group ids
+-define(OFPG_ANY, 16#ffff).
 
 %% Modify behavior of the physical port
 -record(port_mod, {
@@ -338,7 +360,7 @@
 -define(FLOW_REMOVED_SIZE, 56).
 -record(flow_removed, {
           header = #header{} :: #header{},
-          cookie :: integer(),
+          cookie :: binary(),
           priority :: integer(),
           reason :: atom(),
           table_id :: integer(),

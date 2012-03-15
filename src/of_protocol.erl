@@ -70,7 +70,7 @@ encode_struct(#match{type = Type, oxm_fields = Fields}) ->
     FieldsBin = encode_list(Fields),
     FieldsLength = size(FieldsBin),
     Length = FieldsLength + ?MATCH_SIZE - 4,
-    Padding = ((4 + FieldsLength) rem 8) * 8,
+    Padding = (Length rem 8) * 8,
     << TypeInt:16/integer, Length:16/integer, FieldsBin/binary,
        0:Padding/integer >>;
 encode_struct(#oxm_field{class = Class, field = Field, has_mask = HasMask,
@@ -109,7 +109,8 @@ encode_struct(#action_output{port = Port, max_len = MaxLen}) ->
 encode_struct(#action_group{group_id = Group}) ->
     Type = ofp_map:action_type(group),
     Length = ?ACTION_GROUP_SIZE,
-    << Type:16/integer, Length:16/integer, Group:32/integer >>;
+    GroupInt = ofp_map:encode_group_id(Group),
+    << Type:16/integer, Length:16/integer, GroupInt:32/integer >>;
 encode_struct(#action_set_queue{queue_id = Queue}) ->
     Type = ofp_map:action_type(set_queue),
     Length = ?ACTION_SET_QUEUE_SIZE,
@@ -170,7 +171,32 @@ encode_struct(#action_set_field{field = Field}) ->
 encode_struct(#action_experimenter{experimenter = Experimenter}) ->
     Type = ofp_map:action_type(experimenter),
     Length = ?ACTION_EXPERIMENTER_SIZE,
-    << Type:16/integer, Length:16/integer, Experimenter:32/integer >>.
+    << Type:16/integer, Length:16/integer, Experimenter:32/integer >>;
+encode_struct(#instruction_goto_table{table_id = Table}) ->
+    Type = ofp_map:instruction_type(goto_table),
+    Length = ?INSTRUCTION_GOTO_TABLE_SIZE,
+    TableInt = ofp_map:encode_table_id(Table),
+    << Type:16/integer, Length:16/integer, TableInt:8/integer, 0:24/integer >>;
+encode_struct(#instruction_write_metadata{metadata = Metadata,
+                                          metadata_mask = MetaMask}) ->
+    Type = ofp_map:instruction_type(write_metadata),
+    Length = ?INSTRUCTION_WRITE_METADATA_SIZE,
+    << Type:16/integer, Length:16/integer, 0:32/integer,
+       Metadata:8/binary, MetaMask:8/binary >>;
+encode_struct(#instruction_write_actions{actions = Actions}) ->
+    Type = ofp_map:instruction_type(write_actions),
+    ActionsBin = encode_list(Actions),
+    Length = ?INSTRUCTION_WRITE_ACTIONS_SIZE + size(ActionsBin),
+    << Type:16/integer, Length:16/integer, 0:32/integer, ActionsBin/binary >>;
+encode_struct(#instruction_apply_actions{actions = Actions}) ->
+    Type = ofp_map:instruction_type(apply_actions),
+    ActionsBin = encode_list(Actions),
+    Length = ?INSTRUCTION_APPLY_ACTIONS_SIZE + size(ActionsBin),
+    << Type:16/integer, Length:16/integer, 0:32/integer, ActionsBin/binary >>;
+encode_struct(#instruction_clear_actions{}) ->
+    Type = ofp_map:instruction_type(clear_actions),
+    Length = ?INSTRUCTION_CLEAR_ACTIONS_SIZE,
+    << Type:16/integer, Length:16/integer, 0:32/integer >>.
 
 %% @doc Actual encoding of the messages
 encode2(#hello{header = Header}) ->
@@ -244,7 +270,7 @@ encode2(#flow_removed{header = Header, cookie = Cookie, priority = Priority,
     MatchBin = encode_struct(Match),
     Length = ?FLOW_REMOVED_SIZE + size(MatchBin) - ?MATCH_SIZE,
     HeaderBin = encode_header(Header, flow_removed, Length),
-    << HeaderBin/binary, Cookie:64/integer, Priority:16/integer,
+    << HeaderBin/binary, Cookie:8/binary, Priority:16/integer,
        ReasonInt:8/integer, TableId:8/integer, Sec:32/integer, NSec:32/integer,
        Idle:16/integer, Hard:16/integer, PCount:64/integer, BCount:64/integer,
        MatchBin/binary >>;
@@ -263,8 +289,28 @@ encode2(#packet_out{header = Header, buffer_id = BufferId, in_port = Port,
     << HeaderBin/binary, BufferId:32/integer, PortInt:32/integer,
        ActionsLength:16/integer, 0:48/integer, ActionsBin/binary,
        Data/binary >>;
+encode2(#flow_mod{header = Header, cookie = Cookie, cookie_mask = CookieMask,
+                  table_id = Table, command = Command, idle_timeout = Idle,
+                  hard_timeout = Hard, priority = Priority, buffer_id = Buffer,
+                  out_port = OutPort, out_group = OutGroup, flags = Flags,
+                  match = Match, instructions = Instructions}) ->
+    TableInt = ofp_map:encode_table_id(Table),
+    CommandInt = ofp_map:flow_command(Command),
+    OutPortInt = ofp_map:encode_port_number(OutPort),
+    OutGroupInt = ofp_map:encode_group_id(OutGroup),
+    FlagsBin = flags_to_binary(flow_flag, Flags, 2),
+    MatchBin = encode_struct(Match),
+    InstructionsBin = encode_list(Instructions),
+    Length = ?FLOW_MOD_SIZE + size(MatchBin) +
+        size(InstructionsBin) - ?MATCH_SIZE,
+    HeaderBin = encode_header(Header, flow_mod, Length),
+    << HeaderBin/binary, Cookie:8/binary, CookieMask:8/binary,
+       TableInt:8/integer, CommandInt:8/integer, Idle:16/integer, Hard:16/integer,
+       Priority:16/integer, Buffer:32/integer, OutPortInt:32/integer,
+       OutGroupInt:32/integer, FlagsBin:2/binary, 0:16/integer,
+       MatchBin/binary, InstructionsBin/binary >>;
 encode2(#table_mod{header = Header, table_id = Table, config = Config}) ->
-    TableInt = ofp_map:encode_table_number(Table),
+    TableInt = ofp_map:encode_table_id(Table),
     ConfigBin = flags_to_binary(table_config, Config, 4),
     HeaderBin = encode_header(Header, table_mod, ?TABLE_MOD_SIZE),
     << HeaderBin/binary, TableInt:8/integer, 0:24/integer, ConfigBin/binary >>;
@@ -368,8 +414,9 @@ decode_actions(Binary, Actions) ->
             MaxLen = ofp_map:decode_max_length(MaxLenInt),
             Action = #action_output{port = Port, max_len = MaxLen};
         group ->
-            << GroupId:32/integer, Rest/binary >> = Data,
-            Action = #action_group{group_id = GroupId};
+            << GroupInt:32/integer, Rest/binary >> = Data,
+            Group = ofp_map:decode_group_id(GroupInt),
+            Action = #action_group{group_id = Group};
         set_queue ->
             << QueueId:32/integer, Rest/binary >> = Data,
             Action = #action_set_queue{queue_id = QueueId};
@@ -413,6 +460,45 @@ decode_actions(Binary, Actions) ->
             Action = #action_experimenter{experimenter = Experimenter}
         end,
     decode_actions(Rest, [Action | Actions]).
+
+%% @doc Decode instructions
+-spec decode_instructions(binary()) -> [instruction()].
+decode_instructions(Binary) ->
+    decode_instructions(Binary, []).
+
+-spec decode_instructions(binary(), [instruction()]) -> [instruction()].
+decode_instructions(<<>>, Instructions) ->
+    lists:reverse(Instructions);
+decode_instructions(Binary, Instructions) ->
+    << TypeInt:16/integer, Length:16/integer, Data/binary >> = Binary,
+    Type = ofp_map:instruction_type(TypeInt),
+    case Type of
+        goto_table ->
+            << TableInt:8/integer, 0:24/integer, Rest/binary >> = Data,
+            Table = ofp_map:decode_table_id(TableInt),
+            Instruction = #instruction_goto_table{table_id = Table};
+        write_metadata ->
+            << 0:32/integer, Metadata:8/binary, MetaMask:8/binary,
+               Rest/binary >> = Data,
+            Instruction = #instruction_write_metadata{metadata = Metadata,
+                                                      metadata_mask = MetaMask};
+        write_actions ->
+            ActionsLength = Length - ?INSTRUCTION_WRITE_ACTIONS_SIZE,
+            << 0:32/integer, ActionsBin:ActionsLength/binary,
+               Rest/binary >> = Data,
+            Actions = decode_actions(ActionsBin),
+            Instruction = #instruction_write_actions{actions = Actions};
+        apply_actions ->
+            ActionsLength = Length - ?INSTRUCTION_APPLY_ACTIONS_SIZE,
+            << 0:32/integer, ActionsBin:ActionsLength/binary,
+               Rest/binary >> = Data,
+            Actions = decode_actions(ActionsBin),
+            Instruction = #instruction_apply_actions{actions = Actions};
+        clear_actions ->
+            << 0:32/integer, Rest/binary >> = Data,
+            Instruction = #instruction_clear_actions{}
+    end,
+    decode_instructions(Rest, [Instruction | Instructions]).
 
 %% @doc Actual decoding of the messages
 -spec decode(atom(), integer(), #header{}, binary()) -> record().
@@ -481,7 +567,7 @@ decode(packet_in, Length, Header, Binary) ->
                 table_id = TableId, match = Match, data = Data}, Rest};
 decode(flow_removed, Length, Header, Binary) ->
     MatchLength = Length - ?FLOW_REMOVED_SIZE + ?MATCH_SIZE,
-    << Cookie:64/integer, Priority:16/integer, ReasonInt:8/integer,
+    << Cookie:8/binary, Priority:16/integer, ReasonInt:8/integer,
        TableId:8/integer, Sec:32/integer, NSec:32/integer, Idle:16/integer,
        Hard:16/integer, PCount:64/integer, BCount:64/integer,
        MatchBin:MatchLength/binary, Rest/binary >> = Binary,
@@ -508,10 +594,33 @@ decode(packet_out, Length, Header, Binary) ->
     Actions = decode_actions(ActionsBin),
     {#packet_out{header = Header, buffer_id = BufferId, in_port = Port,
                  actions = Actions, data = Data}, Rest};
+decode(flow_mod, Length, Header, Binary) ->
+    << Cookie:8/binary, CookieMask:8/binary, TableInt:8/integer,
+       CommandInt:8/integer, Idle:16/integer, Hard:16/integer,
+       Priority:16/integer, Buffer:32/integer, OutPortInt:32/integer,
+       OutGroupInt:32/integer, FlagsBin:2/binary, 0:16/integer,
+       Data/binary >> = Binary,
+    Table = ofp_map:decode_table_id(TableInt),
+    Command = ofp_map:flow_command(CommandInt),
+    OutPort = ofp_map:decode_port_number(OutPortInt),
+    OutGroup = ofp_map:decode_group_id(OutGroupInt),
+    Flags = binary_to_flags(flow_flag, FlagsBin),
+    << _:16/integer, MatchLength:16/integer, _/binary >> = Data,
+    MatchLengthPad = MatchLength + (MatchLength rem 8),
+    InstrLength = Length - ?FLOW_MOD_SIZE + ?MATCH_SIZE - MatchLengthPad,
+    << MatchBin:MatchLengthPad/binary, InstrBin:InstrLength/binary,
+       Rest/binary >> = Data,
+    Match = decode_match(MatchBin),
+    Instructions = decode_instructions(InstrBin),
+    {#flow_mod{header = Header, cookie = Cookie, cookie_mask = CookieMask,
+               table_id = Table, command = Command, idle_timeout = Idle,
+               hard_timeout = Hard, priority = Priority, buffer_id = Buffer,
+               out_port = OutPort, out_group = OutGroup, flags = Flags,
+               match = Match, instructions = Instructions}, Rest};
 decode(table_mod, _, Header, Binary) ->
     << TableInt:8/integer, 0:24/integer, ConfigBin:4/binary,
        Rest/binary >> = Binary,
-    Table = ofp_map:decode_table_number(TableInt),
+    Table = ofp_map:decode_table_id(TableInt),
     Config = binary_to_flags(table_config, ConfigBin),
     {#table_mod{header = Header, table_id = Table, config = Config}, Rest}.
 
