@@ -333,7 +333,7 @@
           data :: binary()
          }).
 
-%%% Barrier ----------------------------------------------------------
+%%% Barrier --------------------------------------------------------------------
 
 %% Barrier request
 -define(BARRIER_REQUEST_SIZE, 8).
@@ -346,6 +346,30 @@
 -record(barrier_reply, {
           header = #header{} :: #header{}
          }).
+
+%%% Role Request ---------------------------------------------------------------
+
+%% Role request messages
+-define(ROLE_REQUEST_SIZE, 24).
+-record(role_request, {
+          header = #header{} :: #header{},
+          role :: atom(),
+          generation_id :: integer()
+         }).
+
+%% Role reply message
+-define(ROLE_REPLY_SIZE, 24).
+-record(role_reply, {
+          header = #header{} :: #header{},
+          role :: atom(),
+          generation_id :: integer()
+         }).
+
+%% Controller roles
+-define(OFPCR_ROLE_NOCHANGE, 0).
+-define(OFPCR_ROLE_EQUAL, 1).
+-define(OFPCR_ROLE_MASTER, 2).
+-define(OFPCR_ROLE_SLAVE, 3).
 
 %%%-----------------------------------------------------------------------------
 %%% Asynchronous Messages
@@ -410,19 +434,6 @@
           type :: atom(),
           code :: atom(),
           data :: binary()
-         }).
-
-%% Role request messages
--record(role_request, {
-          header = #header{} :: #header{},
-          role :: atom(),
-          generation_id :: integer()
-         }).
-
--record(role_reply, {
-          header = #header{} :: #header{},
-          role :: atom(),
-          generation_id :: integer()
          }).
 
 %% Error types

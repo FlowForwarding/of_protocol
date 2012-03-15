@@ -17,7 +17,8 @@
          port_config/1, port_state/1, port_feature/1, configuration/1, reason/1,
          removed_reason/1, port_reason/1, match_type/1, oxm_class/1,
          oxm_field/1, action_type/1, table_config/1, flow_command/1,
-         flow_flag/1, instruction_type/1, group_type/1, group_command/1]).
+         flow_flag/1, instruction_type/1, group_type/1, group_command/1,
+         controller_role/1]).
 -export([encode_port_number/1, decode_port_number/1,
          encode_max_length/1, decode_max_length/1,
          encode_table_id/1, decode_table_id/1,
@@ -735,3 +736,14 @@ group_type(ff)                         -> ?OFPGT_FF;
 group_type(?OFPGT_FF)                  -> ff;
 group_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
 group_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+controller_role(nochange)                   -> ?OFPCR_ROLE_NOCHANGE;
+controller_role(?OFPCR_ROLE_NOCHANGE)       -> nochange;
+controller_role(equal)                      -> ?OFPCR_ROLE_EQUAL;
+controller_role(?OFPCR_ROLE_EQUAL)          -> equal;
+controller_role(master)                     -> ?OFPCR_ROLE_MASTER;
+controller_role(?OFPCR_ROLE_MASTER)         -> master;
+controller_role(slave)                      -> ?OFPCR_ROLE_SLAVE;
+controller_role(?OFPCR_ROLE_SLAVE)          -> slave;
+controller_role(Type) when is_atom(Type)    -> throw({bad_type, Type});
+controller_role(Type) when is_integer(Type) -> throw({bad_value, Type}).

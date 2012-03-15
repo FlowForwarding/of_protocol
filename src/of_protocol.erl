@@ -346,6 +346,14 @@ encode2(#barrier_request{header = Header}) ->
 encode2(#barrier_reply{header = Header}) ->
     HeaderBin = encode_header(Header, barrier_reply, ?BARRIER_REPLY_SIZE),
     << HeaderBin/binary >>;
+encode2(#role_request{header = Header, role = Role, generation_id = Gen}) ->
+    RoleInt = ofp_map:controller_role(Role),
+    HeaderBin = encode_header(Header, role_request, ?ROLE_REQUEST_SIZE),
+    << HeaderBin/binary, RoleInt:32/integer, 0:32/integer, Gen:64/integer >>;
+encode2(#role_reply{header = Header, role = Role, generation_id = Gen}) ->
+    RoleInt = ofp_map:controller_role(Role),
+    HeaderBin = encode_header(Header, role_reply, ?ROLE_REPLY_SIZE),
+    << HeaderBin/binary, RoleInt:32/integer, 0:32/integer, Gen:64/integer >>;
 encode2(Other) ->
     throw({bad_message, Other}).
 
@@ -695,7 +703,15 @@ decode(table_mod, _, Header, Binary) ->
 decode(barrier_request, _, Header, Rest) ->
     {#barrier_request{header = Header}, Rest};
 decode(barrier_reply, _, Header, Rest) ->
-    {#barrier_reply{header = Header}, Rest}.
+    {#barrier_reply{header = Header}, Rest};
+decode(role_request, _, Header, Binary) ->
+    << RoleInt:32/integer, 0:32/integer, Gen:64/integer, Rest/binary >> = Binary,
+    Role = ofp_map:controller_role(RoleInt),
+    {#role_request{header = Header, role = Role, generation_id = Gen}, Rest};
+decode(role_reply, _, Header, Binary) ->
+    << RoleInt:32/integer, 0:32/integer, Gen:64/integer, Rest/binary >> = Binary,
+    Role = ofp_map:controller_role(RoleInt),
+    {#role_reply{header = Header, role = Role, generation_id = Gen}, Rest}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions
