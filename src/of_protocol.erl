@@ -325,6 +325,16 @@ encode2(#group_mod{header = Header, command = Command, type = Type,
     HeaderBin = encode_header(Header, group_mod, Length),
     << HeaderBin/binary, CommandInt:16/integer, TypeInt:8/integer, 0:8/integer,
        GroupInt:32/integer, BucketsBin/binary >>;
+encode2(#port_mod{header = Header, port_no = Port, hw_addr = Addr,
+                  config = Config, mask = Mask, advertise = Advertise}) ->
+    PortInt = ofp_map:encode_port_number(Port),
+    ConfigBin = flags_to_binary(port_config, Config, 4),
+    MaskBin = flags_to_binary(port_config, Mask, 4),
+    AdvertiseBin = flags_to_binary(port_feature, Advertise, 4),
+    HeaderBin = encode_header(Header, port_mod, ?PORT_MOD_SIZE),
+    << HeaderBin/binary, PortInt:32/integer, 0:32/integer, Addr:6/binary,
+       0:16/integer, ConfigBin:4/binary, MaskBin:4/binary,
+       AdvertiseBin:4/binary, 0:32/integer >>;
 encode2(#table_mod{header = Header, table_id = Table, config = Config}) ->
     TableInt = ofp_map:encode_table_id(Table),
     ConfigBin = flags_to_binary(table_config, Config, 4),
@@ -660,6 +670,16 @@ decode(group_mod, Length, Header, Binary) ->
     Buckets = decode_buckets(BucketsBin),
     {#group_mod{header = Header, command = Command, type = Type,
                 group_id = Group, buckets = Buckets}, Rest};
+decode(port_mod, _, Header, Binary) ->
+    << PortInt:32/integer, 0:32/integer, Addr:6/binary,
+       0:16/integer, ConfigBin:4/binary, MaskBin:4/binary,
+       AdvertiseBin:4/binary, 0:32/integer, Rest/binary >> = Binary,
+    Port = ofp_map:decode_port_number(PortInt),
+    Config = binary_to_flags(port_config, ConfigBin),
+    Mask = binary_to_flags(port_config, MaskBin),
+    Advertise = binary_to_flags(port_feature, AdvertiseBin),
+    {#port_mod{header = Header, port_no = Port, hw_addr = Addr,
+               config = Config, mask = Mask, advertise = Advertise}, Rest};
 decode(table_mod, _, Header, Binary) ->
     << TableInt:8/integer, 0:24/integer, ConfigBin:4/binary,
        Rest/binary >> = Binary,

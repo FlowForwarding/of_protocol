@@ -153,13 +153,14 @@
 -define(OFPG_ANY, 16#ffff).
 
 %% Modify behavior of the physical port
+-define(PORT_MOD_SIZE, 40).
 -record(port_mod, {
           header = #header{} :: #header{},
-          port_no,
-          hw_addr,
-          config,
-          mask,
-          advertise
+          port_no :: integer() | atom(),
+          hw_addr :: binary(),
+          config :: [atom()],
+          mask :: [atom()],
+          advertise :: [atom()]
          }).
 
 %%% Read-State -----------------------------------------------------------------
