@@ -335,10 +335,14 @@
 
 %%% Barrier ----------------------------------------------------------
 
+%% Barrier request
+-define(BARRIER_REQUEST_SIZE, 8).
 -record(barrier_request, {
           header = #header{} :: #header{}
          }).
 
+%% Barrier reply
+-define(BARRIER_REPLY_SIZE, 8).
 -record(barrier_reply, {
           header = #header{} :: #header{}
          }).

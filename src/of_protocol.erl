@@ -340,6 +340,12 @@ encode2(#table_mod{header = Header, table_id = Table, config = Config}) ->
     ConfigBin = flags_to_binary(table_config, Config, 4),
     HeaderBin = encode_header(Header, table_mod, ?TABLE_MOD_SIZE),
     << HeaderBin/binary, TableInt:8/integer, 0:24/integer, ConfigBin/binary >>;
+encode2(#barrier_request{header = Header}) ->
+    HeaderBin = encode_header(Header, barrier_request, ?BARRIER_REQUEST_SIZE),
+    << HeaderBin/binary >>;
+encode2(#barrier_reply{header = Header}) ->
+    HeaderBin = encode_header(Header, barrier_reply, ?BARRIER_REPLY_SIZE),
+    << HeaderBin/binary >>;
 encode2(Other) ->
     throw({bad_message, Other}).
 
@@ -685,7 +691,11 @@ decode(table_mod, _, Header, Binary) ->
        Rest/binary >> = Binary,
     Table = ofp_map:decode_table_id(TableInt),
     Config = binary_to_flags(table_config, ConfigBin),
-    {#table_mod{header = Header, table_id = Table, config = Config}, Rest}.
+    {#table_mod{header = Header, table_id = Table, config = Config}, Rest};
+decode(barrier_request, _, Header, Rest) ->
+    {#barrier_request{header = Header}, Rest};
+decode(barrier_reply, _, Header, Rest) ->
+    {#barrier_reply{header = Header}, Rest}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions
