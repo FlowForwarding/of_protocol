@@ -607,8 +607,10 @@
          }).
 
 %% Experimenter
--record(experimenter_header, {
+-define(EXPERIMENTER_SIZE, 16).
+-record(experimenter, {
           header = #header{} :: #header{},
-          experimenter,
-          exp_type
+          experimenter :: integer(),
+          exp_type :: integer(),
+          data :: binary()
          }).

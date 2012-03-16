@@ -202,6 +202,10 @@ encode_struct(#instruction_clear_actions{}) ->
     Type = ofp_map:instruction_type(clear_actions),
     Length = ?INSTRUCTION_CLEAR_ACTIONS_SIZE,
     << Type:16/integer, Length:16/integer, 0:32/integer >>;
+encode_struct(#instruction_experimenter{experimenter = Experimenter}) ->
+    Type = ofp_map:instruction_type(experimenter),
+    Length = ?INSTRUCTION_EXPERIMENTER_SIZE,
+    << Type:16/integer, Length:16/integer, Experimenter:32/integer >>;
 encode_struct(#bucket{weight = Weight, watch_port = Port, watch_group = Group,
                       actions = Actions}) ->
     ActionsBin = encode_list(Actions),
@@ -252,6 +256,12 @@ encode2(#echo_reply{header = Header, data = Data}) ->
     Length = size(Data) + ?ECHO_REPLY_SIZE,
     HeaderBin = encode_header(Header, echo_reply, Length),
     << HeaderBin/binary, Data/binary >>;
+encode2(#experimenter{header = Header, experimenter = Experimenter,
+                      exp_type = Type, data = Data}) ->
+    Length = ?EXPERIMENTER_SIZE + size(Data),
+    HeaderBin = encode_header(Header, experimenter, Length),
+    << HeaderBin/binary, Experimenter:32/integer, Type:32/integer,
+       Data/binary >>;
 encode2(#features_request{header = Header}) ->
     HeaderBin = encode_header(Header, features_request, ?FEATURES_REQUEST_SIZE),
     << HeaderBin/binary >>;
@@ -572,7 +582,10 @@ decode_instructions(Binary, Instructions) ->
             Instruction = #instruction_apply_actions{actions = Actions};
         clear_actions ->
             << 0:32/integer, Rest/binary >> = Data,
-            Instruction = #instruction_clear_actions{}
+            Instruction = #instruction_clear_actions{};
+        experimenter ->
+            << Experimenter:32/integer, Rest/binary >> = Data,
+            Instruction = #instruction_experimenter{experimenter = Experimenter}
     end,
     decode_instructions(Rest, [Instruction | Instructions]).
 
@@ -664,6 +677,12 @@ decode(echo_reply, Length, Header, Binary) ->
     DataLength = Length - ?ECHO_REPLY_SIZE,
     << Data:DataLength/binary, Rest/binary >> = Binary,
     {#echo_reply{header = Header, data = Data}, Rest};
+decode(experimenter, Length, Header, Binary) ->
+    DataLength = Length - ?EXPERIMENTER_SIZE,
+    << Experimenter:32/integer, Type:32/integer, Data:DataLength/binary,
+       Rest/binary >> = Binary,
+    {#experimenter{header = Header, experimenter = Experimenter,
+                   exp_type = Type, data = Data}, Rest};
 decode(features_request, _, Header, Rest) ->
     {#features_request{header = Header}, Rest};
 decode(features_reply, Length, Header, Binary) ->
