@@ -119,15 +119,6 @@
 -define(OFPFF_CHECK_OVERLAP, 1).
 -define(OFPFF_RESET_COUNTS, 2).
 
-%% Bucket for use in groups
--define(BUCKET_SIZE, 16).
--record(bucket, {
-          weight :: integer(),
-          watch_port :: integer() | atom(),
-          watch_group :: integer() | atom(),
-          actions = [] :: [action()]
-         }).
-
 %% Group setup and teardown
 -define(GROUP_MOD_SIZE, 16).
 -record(group_mod, {
@@ -150,7 +141,9 @@
 -define(OFPGT_FF, 3).
 
 %% Group ids
--define(OFPG_ANY, 16#ffff).
+-define(OFPG_MAX, 16#fffffffd).
+-define(OFPG_ANY, 16#fffffffe).
+-define(OFPG_ALL, 16#ffffffff).
 
 %% Modify behavior of the physical port
 -define(PORT_MOD_SIZE, 40).
@@ -165,21 +158,18 @@
 
 %%% Read-State -----------------------------------------------------------------
 
--record(stats_request, {
+%% Request for desc stats
+-define(DESC_STATS_REQUEST_SIZE, 16).
+-record(desc_stats_request, {
           header = #header{} :: #header{},
-          type :: atom(),
-          flags :: list(atom()),
-          body :: term() %% request type dependent
+          flags = [] :: [atom()]
          }).
 
--record(stats_reply, {
+%% Desc stats
+-define(DESC_STATS_REPLY_SIZE, 1072).
+-record(desc_stats_reply, {
           header = #header{} :: #header{},
-          type :: atom(),
-          flags :: list(atom()),
-          body :: term() %% reply type dependent
-         }).
-
--record(desc_stats, {
+          flags = [] :: [atom()],
           mfr_desc :: binary(),
           hw_desc :: binary(),
           sw_desc :: binary(),
@@ -187,128 +177,189 @@
           dp_desc :: binary()
          }).
 
+%% Request for flow stats
+-define(FLOW_STATS_REQUEST_SIZE, 56).
 -record(flow_stats_request, {
-          table_id :: integer(),
-          out_port :: integer(),
-          out_group :: integer(),
-          cookie :: integer(),
-          cookie_mask :: integer(),
-          match :: #match{}}).
-
--record(flow_stats, {
-          table_id :: integer(),
-          duration_sec :: integer(),
-          duration_nsec :: integer(),
-          priority :: integer(),
-          idle_timeout :: integer(),
-          hard_timeout :: integer(),
-          cookie :: integer(),
-          packet_count :: integer(),
-          byte_count :: integer(),
+          header = #header{} :: #header{},
+          flags = [] :: [atom()],
+          table_id :: table_id(),
+          out_port :: port_no(),
+          out_group :: group_id(),
+          cookie :: binary(),
+          cookie_mask :: binary(),
           match :: #match{}
          }).
 
+%% Flow stats reply
+-define(FLOW_STATS_REPLY_SIZE, 16).
+-record(flow_stats_reply, {
+          header = #header{} :: #header{},
+          flags = [] :: [atom()],
+          stats = [] :: [#flow_stats{}]
+         }).
+
+%% Request for aggregate stats
+-define(AGGREGATE_STATS_REQUEST_SIZE, 56).
 -record(aggregate_stats_request, {
-          table_id :: integer(),
-          out_port :: integer(),
-          out_group :: integer(),
-          cookie :: integer(),
-          cookie_mask :: integer(),
+          header = #header{} :: #header{},
+          flags :: [atom()],
+          table_id :: table_id(),
+          out_port :: port_no(),
+          out_group :: group_id(),
+          cookie :: binary(),
+          cookie_mask :: binary(),
           match :: #match{}}).
 
+%% Aggregate stats reply
+-define(AGGREGATE_STATS_REPLY_SIZE, 40).
 -record(aggregate_stats_reply, {
+          header = #header{} :: #header{},
+          flags :: [atom()],
           packet_count :: integer(),
           byte_count :: integer(),
           flow_count :: integer()
          }).
 
--record(table_stats, {
-          table_id :: integer(),
-          name :: binary(),
-          match :: list(),
-          wildcards :: list(),
-          write_actions :: list(),
-          apply_actions :: list(),
-          write_setfields :: list(),
-          apply_setfields :: list(),
-          metadata_match :: integer(),
-          metadata_write :: integer(),
-          instructions :: list(),
-          config :: list(),
-          max_entries :: integer(),
-          active_count :: integer(),
-          lookup_count :: integer(),
-          matched_count :: integer()
+%% Request for table stats
+-define(TABLE_STATS_REQUEST_SIZE, 16).
+-record(table_stats_request, {
+          header = #header{} :: #header{},
+          flags :: [atom()]
          }).
 
+%% Table stats reply
+-define(TABLE_STATS_REPLY_SIZE, 16).
+-record(table_stats_reply, {
+          header = #header{} :: #header{},
+          flags :: [atom()],
+          stats = [] :: [#table_stats{}]
+         }).
+
+%% Request for port stats
+-define(PORT_STATS_REQUEST_SIZE, 24).
 -record(port_stats_request, {
-          port_no :: integer()
+          header = #header{} :: #header{},
+          flags :: [atom()],
+          port_no :: port_no()
          }).
 
--record(port_stats, {
-          port_no :: integer(),
-          rx_packets :: integer(),
-          tx_packets :: integer(),
-          rx_bytes :: integer(),
-          tx_bytes :: integer(),
-          rx_dropped :: integer(),
-          tx_dropped :: integer(),
-          rx_errors :: integer(),
-          tx_errors :: integer(),
-          rx_frame_err :: integer(),
-          rx_over_err :: integer(),
-          rx_crc_err :: integer(),
-          collisions :: integer()
+%% Port stats reply
+-define(PORT_STATS_REPLY_SIZE, 16).
+-record(port_stats_reply, {
+          header = #header{} :: #header{},
+          flags :: [atom()],
+          stats = [] :: [#port_stats{}]
          }).
 
+%% Request for queue stats
+-define(QUEUE_STATS_REQUEST_SIZE, 24).
 -record(queue_stats_request, {
-          port_no :: integer(),
-          queue_id :: integer()
+          header = #header{} :: #header{},
+          flags :: [atom()],
+          port_no :: port_no(),
+          queue_id :: queue_id()
          }).
 
--record(queue_stats, {
-          port_no :: integer(),
-          queue_id :: integer(),
-          tx_bytes :: integer(),
-          tx_packets :: integer(),
-          tx_errors :: integer()
+%% Queue stats reply
+-define(QUEUE_STATS_REPLY_SIZE, 16).
+-record(queue_stats_reply, {
+          header = #header{} :: #header{},
+          flags :: [atom()],
+          stats = [] :: [#queue_stats{}]
          }).
 
+%% Request for group stats
+-define(GROUP_STATS_REQUEST_SIZE, 24).
 -record(group_stats_request, {
-          group_id :: integer()
+          header = #header{} :: #header{},
+          flags :: [atom()],
+          group_id :: group_id()
          }).
 
--record(bucket_counter, {
-          packet_count :: integer(),
-          byte_count :: integer()
+%% Group stats reply
+-define(GROUP_STATS_REPLY_SIZE, 16).
+-record(group_stats_reply, {
+          header = #header{} :: #header{},
+          flags :: [atom()],
+          stats = [] :: [#group_stats{}]
          }).
 
--record(group_stats, {
-          group_id :: integer(),
-          ref_count :: integer(),
-          packet_count :: integer(),
-          byte_count :: integer(),
-          bucket_stats = [] :: [#bucket_counter{}]
+%% Request for group desc stats
+-define(GROUP_DESC_STATS_REQUEST_SIZE, 16).
+-record(group_desc_stats_request, {
+          header = #header{} :: #header{},
+          flags :: [atom()]
          }).
 
--record(group_desc_stats, {
-          type :: atom(),
-          group_id :: integer(),
-          buckets = [] :: [#bucket{}]
+%% Group desc stats reply
+-define(GROUP_DESC_STATS_REPLY_SIZE, 16).
+-record(group_desc_stats_reply, {
+          header = #header{} :: #header{},
+          flags :: [atom()],
+          stats = [] :: [#group_desc_stats{}]
          }).
 
--record(group_features_stats, {
-          types :: list(atom()),
-          capabilities :: list(atom()),
-          max_groups :: list(),
-          actions :: list()
+%% Request for group features stats
+-define(GROUP_FEATURES_STATS_REQUEST_SIZE, 16).
+-record(group_features_stats_request, {
+          header = #header{} :: #header{},
+          flags :: [atom()]
          }).
 
--record(experimenter_stats_header, {
+%% Group features stats reply
+-define(GROUP_FEATURES_STATS_REPLY_SIZE, 56).
+-record(group_features_stats_reply, {
+          header = #header{} :: #header{},
+          flags :: [atom()],
+          types :: [atom()],
+          capabilities :: [atom()],
+          max_groups :: {integer(), integer(), integer(), integer()},
+          actions :: {[atom()], [atom()], [atom()], [atom()]}
+         }).
+
+%% Group capabilities
+-define(OFPGFC_SELECT_WEIGHT, 0).
+-define(OFPGFC_SELECT_LIVENESS, 1).
+-define(OFPGFC_CHAINING, 2).
+-define(OFPGFC_CHAINING_CHECKS, 3).
+
+%% Request for experimenter stats
+-define(EXPERIMENTER_STATS_REQUEST_SIZE, 24).
+-record(experimenter_stats_request, {
+          header = #header{} :: #header{},
+          flags :: [atom()],
           experimenter :: integer(),
           exp_type :: integer(),
-          additional_data :: binary()
+          data :: binary()
          }).
+
+%% Experimenter stats reply
+-define(EXPERIMENTER_STATS_REPLY_SIZE, 24).
+-record(experimenter_stats_reply, {
+          header = #header{} :: #header{},
+          flags :: [atom()],
+          experimenter :: integer(),
+          exp_type :: integer(),
+          data :: binary()
+         }).
+
+%% Stats types
+-define(OFPST_DESC, 0).
+-define(OFPST_FLOW, 1).
+-define(OFPST_AGGREGATE, 2).
+-define(OFPST_TABLE, 3).
+-define(OFPST_PORT, 4).
+-define(OFPST_QUEUE, 5).
+-define(OFPST_GROUP, 6).
+-define(OFPST_GROUP_DESC, 7).
+-define(OFPST_GROUP_FEATURES, 8).
+-define(OFPST_EXPERIMENTER, 16#ffff).
+
+%% Stats request flags - none yet defined
+%% -define(OFPSF_REQ_*)
+
+%% Stats reply flags
+-define(OFPSF_REPLY_MORE, 1).
 
 %%% Queue Configuration --------------------------------------------------------
 
@@ -326,6 +377,10 @@
           port :: integer() | atom(),
           queues = [] :: [#packet_queue{}]
          }).
+
+%% Queue numbering
+-define(OFPQ_MAX, 16#fffffffe).
+-define(OFPQ_ALL, 16#ffffffff).
 
 %%% Packet-out -----------------------------------------------------------------
 

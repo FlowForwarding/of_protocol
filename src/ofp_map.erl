@@ -18,11 +18,13 @@
          removed_reason/1, port_reason/1, match_type/1, oxm_class/1,
          oxm_field/1, action_type/1, table_config/1, flow_command/1,
          flow_flag/1, instruction_type/1, group_type/1, group_command/1,
-         controller_role/1, queue_property/1]).
+         controller_role/1, queue_property/1, stats_type/1,
+         stats_request_flag/1, stats_reply_flag/1, group_capability/1]).
 -export([encode_port_number/1, decode_port_number/1,
          encode_max_length/1, decode_max_length/1,
+         encode_group_id/1, decode_group_id/1,
          encode_table_id/1, decode_table_id/1,
-         encode_group_id/1, decode_group_id/1]).
+         encode_queue_id/1, decode_queue_id/1]).
 
 -include("of_protocol.hrl").
 
@@ -392,29 +394,6 @@ capability(?OFPC_PORT_BLOCKED)         -> port_blocked;
 capability(Type) when is_atom(Type)    -> throw({bad_type, Type});
 capability(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
-encode_port_number(max)                      -> ?OFPP_MAX;
-encode_port_number(in_port)                  -> ?OFPP_IN_PORT;
-encode_port_number(table)                    -> ?OFPP_TABLE;
-encode_port_number(normal)                   -> ?OFPP_NORMAL;
-encode_port_number(flood)                    -> ?OFPP_FLOOD;
-encode_port_number(all)                      -> ?OFPP_ALL;
-encode_port_number(controller)               -> ?OFPP_CONTROLLER;
-encode_port_number(local)                    -> ?OFPP_LOCAL;
-encode_port_number(any)                      -> ?OFPP_ANY;
-encode_port_number(Type) when is_atom(Type)  -> throw({bad_type, Type});
-encode_port_number(Int) when is_integer(Int) -> Int.
-
-decode_port_number(?OFPP_MAX)                -> max;
-decode_port_number(?OFPP_IN_PORT)            -> in_port;
-decode_port_number(?OFPP_TABLE)              -> table;
-decode_port_number(?OFPP_NORMAL)             -> normal;
-decode_port_number(?OFPP_FLOOD)              -> flood;
-decode_port_number(?OFPP_ALL)                -> all;
-decode_port_number(?OFPP_CONTROLLER)         -> controller;
-decode_port_number(?OFPP_LOCAL)              -> local;
-decode_port_number(?OFPP_ANY)                -> any;
-decode_port_number(Int) when is_integer(Int) -> Int.
-
 port_config(port_down)                  -> ?OFPPC_PORT_DOWN;
 port_config(?OFPPC_PORT_DOWN)           -> port_down;
 port_config(no_stp)                     -> ?OFPPC_NO_STP;
@@ -643,6 +622,7 @@ action_type(set_field)                  -> ?OFPAT_SET_FIELD;
 action_type(?OFPAT_SET_FIELD)           -> set_field;
 action_type(experimenter)               -> ?OFPAT_EXPERIMENTER;
 action_type(?OFPAT_EXPERIMENTER)        -> experimenter;
+action_type(?OFPAT_EXPERIMENTER_BIT)    -> experimenter;
 action_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
 action_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
@@ -654,15 +634,6 @@ encode_max_length(Int) when is_integer(Int) -> Int.
 decode_max_length(?OFPCML_MAX)              -> max;
 decode_max_length(?OFPCML_NO_BUFFER)        -> no_buffer;
 decode_max_length(Int) when is_integer(Int) -> Int.
-
-encode_table_id(max)                      -> ?OFPTT_MAX;
-encode_table_id(all)                      -> ?OFPTT_ALL;
-encode_table_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
-encode_table_id(Int) when is_integer(Int) -> Int.
-
-decode_table_id(?OFPTT_MAX)               -> max;
-decode_table_id(?OFPTT_ALL)               -> all;
-decode_table_id(Int) when is_integer(Int) -> Int.
 
 table_config(continue)                   -> ?OFPTC_TABLE_MISS_CONTINUE;
 table_config(?OFPTC_TABLE_MISS_CONTINUE) -> continue;
@@ -707,15 +678,9 @@ instruction_type(clear_actions)              -> ?OFPIT_CLEAR_ACTIONS;
 instruction_type(?OFPIT_CLEAR_ACTIONS)       -> clear_actions;
 instruction_type(experimenter)               -> ?OFPIT_EXPERIMENTER;
 instruction_type(?OFPIT_EXPERIMENTER)        -> experimenter;
+instruction_type(?OFPIT_EXPERIMENTER_BIT)    -> experimenter;
 instruction_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
 instruction_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
-
-encode_group_id(any)                      -> ?OFPG_ANY;
-encode_group_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
-encode_group_id(Int) when is_integer(Int) -> Int.
-
-decode_group_id(?OFPG_ANY)                -> any;
-decode_group_id(Int) when is_integer(Int) -> Int.
 
 group_command(add)                        -> ?OFPGC_ADD;
 group_command(?OFPGC_ADD)                 -> add;
@@ -756,3 +721,99 @@ queue_property(experimenter)               -> ?OFPQT_EXPERIMENTER;
 queue_property(?OFPQT_EXPERIMENTER)        -> experimenter;
 queue_property(Type) when is_atom(Type)    -> throw({bad_type, Type});
 queue_property(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+stats_type(desc)                       -> ?OFPST_DESC;
+stats_type(?OFPST_DESC)                -> desc;
+stats_type(flow)                       -> ?OFPST_FLOW;
+stats_type(?OFPST_FLOW)                -> flow;
+stats_type(aggregate)                  -> ?OFPST_AGGREGATE;
+stats_type(?OFPST_AGGREGATE)           -> aggregate;
+stats_type(table)                      -> ?OFPST_TABLE;
+stats_type(?OFPST_TABLE)               -> table;
+stats_type(port)                       -> ?OFPST_PORT;
+stats_type(?OFPST_PORT)                -> port;
+stats_type(queue)                      -> ?OFPST_QUEUE;
+stats_type(?OFPST_QUEUE)               -> queue;
+stats_type(group)                      -> ?OFPST_GROUP;
+stats_type(?OFPST_GROUP)               -> group;
+stats_type(group_desc)                 -> ?OFPST_GROUP_DESC;
+stats_type(?OFPST_GROUP_DESC)          -> group_desc;
+stats_type(group_features)             -> ?OFPST_GROUP_FEATURES;
+stats_type(?OFPST_GROUP_FEATURES)      -> group_features;
+stats_type(experimenter)               -> ?OFPST_EXPERIMENTER;
+stats_type(?OFPST_EXPERIMENTER)        -> experimenter;
+stats_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
+stats_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+stats_request_flag(Type) when is_atom(Type)    -> throw({bad_type, Type});
+stats_request_flag(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+stats_reply_flag(more)                       -> ?OFPSF_REPLY_MORE;
+stats_reply_flag(?OFPSF_REPLY_MORE)          -> more;
+stats_reply_flag(Type) when is_atom(Type)    -> throw({bad_type, Type});
+stats_reply_flag(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+group_capability(select_weight)              -> ?OFPGFC_SELECT_WEIGHT;
+group_capability(?OFPGFC_SELECT_WEIGHT)      -> select_weight;
+group_capability(select_liveness)            -> ?OFPGFC_SELECT_LIVENESS;
+group_capability(?OFPGFC_SELECT_LIVENESS)    -> select_liveness;
+group_capability(chaining)                   -> ?OFPGFC_CHAINING;
+group_capability(?OFPGFC_CHAINING)           -> chaining;
+group_capability(chaining_checks)            -> ?OFPGFC_CHAINING_CHECKS;
+group_capability(?OFPGFC_CHAINING_CHECKS)    -> chaining_checks;
+group_capability(Type) when is_atom(Type)    -> throw({bad_type, Type});
+group_capability(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+%%% Ids ------------------------------------------------------------------------
+
+encode_port_number(max)                      -> ?OFPP_MAX;
+encode_port_number(in_port)                  -> ?OFPP_IN_PORT;
+encode_port_number(table)                    -> ?OFPP_TABLE;
+encode_port_number(normal)                   -> ?OFPP_NORMAL;
+encode_port_number(flood)                    -> ?OFPP_FLOOD;
+encode_port_number(all)                      -> ?OFPP_ALL;
+encode_port_number(controller)               -> ?OFPP_CONTROLLER;
+encode_port_number(local)                    -> ?OFPP_LOCAL;
+encode_port_number(any)                      -> ?OFPP_ANY;
+encode_port_number(Type) when is_atom(Type)  -> throw({bad_type, Type});
+encode_port_number(Int) when is_integer(Int) -> Int.
+
+decode_port_number(?OFPP_MAX)                -> max;
+decode_port_number(?OFPP_IN_PORT)            -> in_port;
+decode_port_number(?OFPP_TABLE)              -> table;
+decode_port_number(?OFPP_NORMAL)             -> normal;
+decode_port_number(?OFPP_FLOOD)              -> flood;
+decode_port_number(?OFPP_ALL)                -> all;
+decode_port_number(?OFPP_CONTROLLER)         -> controller;
+decode_port_number(?OFPP_LOCAL)              -> local;
+decode_port_number(?OFPP_ANY)                -> any;
+decode_port_number(Int) when is_integer(Int) -> Int.
+
+encode_group_id(max)                      -> ?OFPG_MAX;
+encode_group_id(any)                      -> ?OFPG_ANY;
+encode_group_id(all)                      -> ?OFPG_ALL;
+encode_group_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
+encode_group_id(Int) when is_integer(Int) -> Int.
+
+decode_group_id(?OFPG_MAX)                -> max;
+decode_group_id(?OFPG_ANY)                -> any;
+decode_group_id(?OFPG_ALL)                -> all;
+decode_group_id(Int) when is_integer(Int) -> Int.
+
+encode_table_id(max)                      -> ?OFPTT_MAX;
+encode_table_id(all)                      -> ?OFPTT_ALL;
+encode_table_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
+encode_table_id(Int) when is_integer(Int) -> Int.
+
+decode_table_id(?OFPTT_MAX)               -> max;
+decode_table_id(?OFPTT_ALL)               -> all;
+decode_table_id(Int) when is_integer(Int) -> Int.
+
+encode_queue_id(max)                      -> ?OFPQ_MAX;
+encode_queue_id(all)                      -> ?OFPQ_ALL;
+encode_queue_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
+encode_queue_id(Int) when is_integer(Int) -> Int.
+
+decode_queue_id(?OFPQ_MAX)               -> max;
+decode_queue_id(?OFPQ_ALL)               -> all;
+decode_queue_id(Int) when is_integer(Int) -> Int.

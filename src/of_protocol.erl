@@ -65,7 +65,7 @@ encode_struct(#port{port_no = PortNo, hw_addr = HWAddr, name = Name,
     AdvertisedBin = flags_to_binary(port_feature, Advertised, 4),
     SupportedBin = flags_to_binary(port_feature, Supported, 4),
     PeerBin = flags_to_binary(port_feature, Peer, 4),
-    Padding = (16 - size(Name)) * 8,
+    Padding = (?OFP_MAX_PORT_NAME_LEN - size(Name)) * 8,
     << PortNoInt:32/integer, 0:32/integer, HWAddr:6/binary, 0:16/integer,
        Name/binary, 0:Padding/integer, ConfigBin:4/binary, StateBin:4/binary,
        CurrBin:4/binary, AdvertisedBin:4/binary, SupportedBin:4/binary,
@@ -229,7 +229,84 @@ encode_struct(#queue_prop_experimenter{experimenter = Experimenter,
     Length = ?QUEUE_PROP_EXPERIMENTER_SIZE + byte_size(Data),
     HeaderBin = encode_queue_header(experimenter, Length),
     << HeaderBin/binary, Experimenter:32/integer, 0:32/integer,
-       Data/binary >>.
+       Data/binary >>;
+encode_struct(#flow_stats{table_id = Table, duration_sec = Sec,
+                          duration_nsec = NSec, priority = Priority,
+                          idle_timeout = Idle, hard_timeout = Hard,
+                          cookie = Cookie, packet_count = PCount,
+                          byte_count = BCount, match = Match,
+                          instructions = Instructions}) ->
+    TableInt = ofp_map:encode_table_id(Table),
+    MatchBin = encode_struct(Match),
+    InstrsBin = encode_list(Instructions),
+    Length = ?FLOW_STATS_SIZE + size(MatchBin) - ?MATCH_SIZE + size(InstrsBin),
+    << Length:16/integer, TableInt:8/integer, 0:8/integer, Sec:32/integer,
+       NSec:32/integer, Priority:16/integer, Idle:16/integer, Hard:16/integer,
+       0:48/integer, Cookie:8/binary, PCount:64/integer, BCount:64/integer,
+       MatchBin/binary, InstrsBin/binary >>;
+encode_struct(#table_stats{table_id = Table, name = Name, match = Match,
+                           wildcards = Wildcards, write_actions = WriteActions,
+                           apply_actions = ApplyActions,
+                           write_setfields = WriteSet, apply_setfields = ApplySet,
+                           metadata_match = MetaMatch, metadata_write = MetaWrite,
+                           instructions = Instructions, config = Config,
+                           max_entries = Max, active_count = ACount,
+                           lookup_count = LCount, matched_count = MCount}) ->
+    TableInt = ofp_map:encode_table_id(Table),
+    Padding = (?OFP_MAX_TABLE_NAME_LEN - size(Name)) * 8,
+    MatchBin = flags_to_binary(oxm_field, Match, 8),
+    WildcardsBin = flags_to_binary(oxm_field, Wildcards, 8),
+    WriteActionsBin = flags_to_binary(action_type, WriteActions, 4),
+    ApplyActionsBin = flags_to_binary(action_type, ApplyActions, 4),
+    WriteSetBin = flags_to_binary(oxm_field, WriteSet, 8),
+    ApplySetBin = flags_to_binary(oxm_field, ApplySet, 8),
+    InstructionsBin = flags_to_binary(instruction_type, Instructions, 4),
+    ConfigBin = flags_to_binary(table_config, Config, 4),
+    << TableInt:8/integer, 0:56/integer, Name/binary, 0:Padding/integer,
+       MatchBin/binary, WildcardsBin/binary, WriteActionsBin/binary,
+       ApplyActionsBin/binary, WriteSetBin/binary, ApplySetBin/binary,
+       MetaMatch:64/integer, MetaWrite:64/integer, InstructionsBin/binary,
+       ConfigBin/binary, Max:32/integer, ACount:32/integer, LCount:64/integer,
+       MCount:64/integer >>;
+encode_struct(#port_stats{port_no = Port,
+                          rx_packets = RXPackets, tx_packets = TXPackets,
+                          rx_bytes = RXBytes, tx_bytes = TXBytes,
+                          rx_dropped = RXDropped, tx_dropped = TXDropped,
+                          rx_errors = RXErrors, tx_errors = TXErrors,
+                          rx_frame_err = FrameErr, rx_over_err = OverErr,
+                          rx_crc_err = CRCErr, collisions = Collisions}) ->
+    PortInt = ofp_map:encode_port_number(Port),
+    << PortInt:32/integer, 0:32/integer, RXPackets:64/integer,
+       TXPackets:64/integer, RXBytes:64/integer, TXBytes:64/integer,
+       RXDropped:64/integer, TXDropped:64/integer, RXErrors:64/integer,
+       TXErrors:64/integer, FrameErr:64/integer, OverErr:64/integer,
+       CRCErr:64/integer, Collisions:64/integer >>;
+encode_struct(#queue_stats{port_no = Port, queue_id = Queue,
+                           tx_bytes = Bytes, tx_packets = Packets,
+                           tx_errors = Errors}) ->
+    PortInt = ofp_map:encode_port_number(Port),
+    QueueInt = ofp_map:encode_queue_id(Queue),
+    << PortInt:32/integer, QueueInt:32/integer, Bytes:64/integer,
+       Packets:64/integer, Errors:64/integer >>;
+encode_struct(#group_stats{group_id = Group, ref_count = RefCount,
+                           packet_count = PCount, byte_count = BCount,
+                           bucket_stats = Buckets}) ->
+    GroupInt = ofp_map:encode_group_id(Group),
+    BucketsBin = encode_list(Buckets),
+    Length = ?GROUP_STATS_SIZE + size(BucketsBin),
+    << Length:16/integer, 0:16/integer, GroupInt:32/integer,
+       RefCount:32/integer, 0:32/integer, PCount:64/integer,
+       BCount:64/integer, BucketsBin/binary >>;
+encode_struct(#bucket_counter{packet_count = PCount, byte_count = BCount}) ->
+    << PCount:64/integer, BCount:64/integer >>;
+encode_struct(#group_desc_stats{type = Type, group_id = Group,
+                                buckets = Buckets}) ->
+    TypeInt = ofp_map:group_type(Type),
+    GroupInt = ofp_map:encode_group_id(Group),
+    BucketsBin = encode_list(Buckets),
+    Length = ?GROUP_DESC_STATS_SIZE + size(BucketsBin),
+    << Length:16/integer, TypeInt:8/integer, 0:8/integer,
+       GroupInt:32/integer, BucketsBin/binary >>.
 
 %% @doc Actual encoding of the messages
 encode2(#hello{header = Header}) ->
@@ -386,6 +463,192 @@ encode2(#table_mod{header = Header, table_id = Table, config = Config}) ->
     ConfigBin = flags_to_binary(table_config, Config, 4),
     HeaderBin = encode_header(Header, table_mod, ?TABLE_MOD_SIZE),
     << HeaderBin/binary, TableInt:8/integer, 0:24/integer, ConfigBin/binary >>;
+encode2(#desc_stats_request{header = Header, flags = Flags}) ->
+    TypeInt = ofp_map:stats_type(desc),
+    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
+    HeaderBin = encode_header(Header, stats_request, ?DESC_STATS_REQUEST_SIZE),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin:2/binary, 0:32/integer >>;
+encode2(#desc_stats_reply{header = Header, flags = Flags, mfr_desc = MFR,
+                          hw_desc = HW, sw_desc = SW, serial_num = Serial,
+                          dp_desc = DP}) ->
+    TypeInt = ofp_map:stats_type(desc),
+    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    MFRPad = (?DESC_STR_LEN - size(MFR)) * 8,
+    HWPad = (?DESC_STR_LEN - size(HW)) * 8,
+    SWPad = (?DESC_STR_LEN - size(SW)) * 8,
+    SerialPad = (?SERIAL_NUM_LEN - size(Serial)) * 8,
+    DPPad = (?DESC_STR_LEN - size(DP)) * 8,
+    HeaderBin = encode_header(Header, stats_reply, ?DESC_STATS_REPLY_SIZE),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin/binary, 0:32/integer,
+       MFR/binary, 0:MFRPad/integer, HW/binary, 0:HWPad/integer,
+       SW/binary, 0:SWPad/integer, Serial/binary, 0:SerialPad/integer,
+       DP/binary, 0:DPPad/integer >>;
+encode2(#flow_stats_request{header = Header, flags = Flags, table_id = Table,
+                            out_port = Port, out_group = Group, cookie = Cookie,
+                            cookie_mask = CookieMask, match = Match}) ->
+    TypeInt = ofp_map:stats_type(flow),
+    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
+    TableInt = ofp_map:encode_table_id(Table),
+    PortInt = ofp_map:encode_port_number(Port),
+    GroupInt = ofp_map:encode_group_id(Group),
+    MatchBin = encode_struct(Match),
+    Length = ?FLOW_STATS_REQUEST_SIZE + size(MatchBin),
+    HeaderBin = encode_header(Header, stats_request, Length),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin/binary, 0:32/integer,
+       TableInt:8/integer, 0:24/integer, PortInt:32/integer,
+       GroupInt:32/integer, 0:32/integer, Cookie:8/binary, CookieMask:8/binary,
+       MatchBin/binary >>;
+encode2(#flow_stats_reply{header = Header, flags = Flags, stats = Stats}) ->
+    TypeInt = ofp_map:stats_type(flow),
+    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    StatsBin = encode_list(Stats),
+    Length = ?FLOW_STATS_REPLY_SIZE + size(StatsBin),
+    HeaderBin = encode_header(Header, stats_reply, Length),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin/binary, 0:32/integer,
+       StatsBin/binary >>;
+encode2(#aggregate_stats_request{header = Header, flags = Flags,
+                                 table_id = Table, out_port = Port,
+                                 out_group = Group, cookie = Cookie,
+                                 cookie_mask = CookieMask, match = Match}) ->
+    TypeInt = ofp_map:stats_type(aggregate),
+    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
+    TableInt = ofp_map:encode_table_id(Table),
+    PortInt = ofp_map:encode_port_number(Port),
+    GroupInt = ofp_map:encode_group_id(Group),
+    MatchBin = encode_struct(Match),
+    Length = ?AGGREGATE_STATS_REQUEST_SIZE + size(MatchBin),
+    HeaderBin = encode_header(Header, stats_request, Length),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin/binary, 0:32/integer,
+       TableInt:8/integer, 0:24/integer, PortInt:32/integer,
+       GroupInt:32/integer, 0:32/integer, Cookie:8/binary, CookieMask:8/binary,
+       MatchBin/binary >>;
+encode2(#aggregate_stats_reply{header = Header, flags = Flags,
+                               packet_count = PCount, byte_count = BCount,
+                               flow_count = FCount}) ->
+    TypeInt = ofp_map:stats_type(aggregate),
+    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    HeaderBin = encode_header(Header, stats_reply, ?AGGREGATE_STATS_REPLY_SIZE),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin/binary, 0:32/integer,
+       PCount:64/integer, BCount:64/integer, FCount:32/integer, 0:32/integer >>;
+encode2(#table_stats_request{header = Header, flags = Flags}) ->
+    TypeInt = ofp_map:stats_type(table),
+    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
+    HeaderBin = encode_header(Header, stats_request, ?TABLE_STATS_REQUEST_SIZE),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin:2/binary, 0:32/integer >>;
+encode2(#table_stats_reply{header = Header, flags = Flags, stats = Stats}) ->
+    TypeInt = ofp_map:stats_type(table),
+    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    StatsBin = encode_list(Stats),
+    Length = ?TABLE_STATS_REPLY_SIZE + size(StatsBin),
+    HeaderBin = encode_header(Header, stats_reply, Length),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin/binary, 0:32/integer,
+       StatsBin/binary >>;
+encode2(#port_stats_request{header = Header, flags = Flags, port_no = Port}) ->
+    TypeInt = ofp_map:stats_type(port),
+    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
+    PortInt = ofp_map:encode_port_number(Port),
+    HeaderBin = encode_header(Header, stats_request, ?PORT_STATS_REQUEST_SIZE),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin:2/binary, 0:32/integer,
+       PortInt:32/integer, 0:32/integer >>;
+encode2(#port_stats_reply{header = Header, flags = Flags, stats = Stats}) ->
+    TypeInt = ofp_map:stats_type(port),
+    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    StatsBin = encode_list(Stats),
+    Length = ?TABLE_STATS_REPLY_SIZE + size(StatsBin),
+    HeaderBin = encode_header(Header, stats_reply, Length),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin/binary, 0:32/integer,
+       StatsBin/binary >>;
+encode2(#queue_stats_request{header = Header, flags = Flags,
+                             port_no = Port, queue_id = Queue}) ->
+    TypeInt = ofp_map:stats_type(queue),
+    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
+    PortInt = ofp_map:encode_port_number(Port),
+    QueueInt = ofp_map:encode_queue_id(Queue),
+    HeaderBin = encode_header(Header, stats_request, ?QUEUE_STATS_REQUEST_SIZE),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin:2/binary, 0:32/integer,
+       PortInt:32/integer, QueueInt:32/integer >>;
+encode2(#queue_stats_reply{header = Header, flags = Flags, stats = Stats}) ->
+    TypeInt = ofp_map:stats_type(queue),
+    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    StatsBin = encode_list(Stats),
+    Length = ?QUEUE_STATS_REPLY_SIZE + size(StatsBin),
+    HeaderBin = encode_header(Header, stats_reply, Length),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin/binary, 0:32/integer,
+       StatsBin/binary >>;
+encode2(#group_stats_request{header = Header, flags = Flags,
+                             group_id = Group}) ->
+    TypeInt = ofp_map:stats_type(group),
+    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
+    GroupInt = ofp_map:encode_group_id(Group),
+    HeaderBin = encode_header(Header, stats_request, ?GROUP_STATS_REQUEST_SIZE),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin:2/binary, 0:32/integer,
+       GroupInt:32/integer, 0:32/integer >>;
+encode2(#group_stats_reply{header = Header, flags = Flags, stats = Stats}) ->
+    TypeInt = ofp_map:stats_type(group),
+    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    StatsBin = encode_list(Stats),
+    Length = ?GROUP_STATS_REPLY_SIZE + size(StatsBin),
+    HeaderBin = encode_header(Header, stats_reply, Length),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin/binary, 0:32/integer,
+       StatsBin/binary >>;
+encode2(#group_desc_stats_request{header = Header, flags = Flags}) ->
+    TypeInt = ofp_map:stats_type(group_desc),
+    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
+    HeaderBin = encode_header(Header, stats_request,
+                              ?GROUP_DESC_STATS_REQUEST_SIZE),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin:2/binary, 0:32/integer >>;
+encode2(#group_desc_stats_reply{header = Header, flags = Flags, stats = Stats}) ->
+    TypeInt = ofp_map:stats_type(group_desc),
+    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    StatsBin = encode_list(Stats),
+    Length = ?GROUP_DESC_STATS_REPLY_SIZE + size(StatsBin),
+    HeaderBin = encode_header(Header, stats_reply, Length),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin/binary, 0:32/integer,
+       StatsBin/binary >>;
+encode2(#group_features_stats_request{header = Header, flags = Flags}) ->
+    TypeInt = ofp_map:stats_type(group_features),
+    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
+    HeaderBin = encode_header(Header, stats_request,
+                              ?GROUP_FEATURES_STATS_REQUEST_SIZE),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin:2/binary, 0:32/integer >>;
+encode2(#group_features_stats_reply{header = Header, flags = Flags,
+                                    types = Types, capabilities = Capabilities,
+                                    max_groups = {Max1, Max2, Max3, Max4},
+                                    actions = {Actions1, Actions2,
+                                               Actions3, Actions4}}) ->
+    TypeInt = ofp_map:stats_type(group_features),
+    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    TypesBin = flags_to_binary(group_type, Types, 4),
+    CapabilitiesBin = flags_to_binary(group_capability, Capabilities, 4),
+    Actions1Bin = flags_to_binary(action_type, Actions1, 4),
+    Actions2Bin = flags_to_binary(action_type, Actions2, 4),
+    Actions3Bin = flags_to_binary(action_type, Actions3, 4),
+    Actions4Bin = flags_to_binary(action_type, Actions4, 4),
+    HeaderBin = encode_header(Header, stats_reply,
+                              ?GROUP_FEATURES_STATS_REPLY_SIZE),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin/binary, 0:32/integer,
+       TypesBin/binary, CapabilitiesBin/binary,
+       Max1:32/integer, Max2:32/integer, Max3:32/integer, Max4:32/integer,
+       Actions1Bin/binary, Actions2Bin/binary, Actions3Bin/binary,
+       Actions4Bin/binary >>;
+encode2(#experimenter_stats_request{header = Header, flags = Flags,
+                                    experimenter = Experimenter,
+                                    exp_type = ExpType, data = Data}) ->
+    TypeInt = ofp_map:stats_type(experimenter),
+    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
+    Length = ?EXPERIMENTER_STATS_REQUEST_SIZE + byte_size(Data),
+    HeaderBin = encode_header(Header, stats_request, Length),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin:2/binary, 0:32/integer,
+       Experimenter:32/integer, ExpType:32/integer, Data/binary >>;
+encode2(#experimenter_stats_reply{header = Header, flags = Flags,
+                                  experimenter = Experimenter,
+                                  exp_type = ExpType, data = Data}) ->
+    TypeInt = ofp_map:stats_type(experimenter),
+    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    Length = ?EXPERIMENTER_STATS_REPLY_SIZE + byte_size(Data),
+    HeaderBin = encode_header(Header, stats_reply, Length),
+    << HeaderBin/binary, TypeInt:16/integer, FlagsBin:2/binary, 0:32/integer,
+       Experimenter:32/integer, ExpType:32/integer, Data/binary >>;
 encode2(#barrier_request{header = Header}) ->
     HeaderBin = encode_header(Header, barrier_request, ?BARRIER_REQUEST_SIZE),
     << HeaderBin/binary >>;
@@ -647,6 +910,133 @@ decode_properties(Binary, Properties) ->
     end,
     decode_properties(Rest, [Property | Properties]).
 
+decode_flow_stats(Binary) ->
+    << _:16/integer, TableInt:8/integer, 0:8/integer, Sec:32/integer,
+       NSec:32/integer, Priority:16/integer, Idle:16/integer, Hard:16/integer,
+       0:48/integer, Cookie:8/binary, PCount:64/integer, BCount:64/integer,
+       Data/binary >> = Binary,
+    Table = ofp_map:decode_table_id(TableInt),
+    << _:16/integer, MatchLength:16/integer, _/binary >> = Data,
+    MatchLengthPad = MatchLength + (MatchLength rem 8),
+    << MatchBin:MatchLengthPad/binary, InstrsBin/binary >> = Data,
+    Match = decode_match(MatchBin),
+    Instrs = decode_instructions(InstrsBin),
+    #flow_stats{table_id = Table, duration_sec = Sec, duration_nsec = NSec,
+                priority = Priority, idle_timeout = Idle, hard_timeout = Hard,
+                cookie = Cookie, packet_count = PCount, byte_count = BCount,
+                match = Match, instructions = Instrs}.
+
+decode_flow_stats_list(Binary) ->
+    decode_flow_stats_list(Binary, []).
+
+decode_flow_stats_list(<<>>, FlowStatsList) ->
+    lists:reverse(FlowStatsList);
+decode_flow_stats_list(Binary, FlowStatsList) ->
+    << Length:16/integer, _/binary >> = Binary,
+    << FlowStatsBin:Length/binary, Rest/binary >> = Binary,
+    FlowStats = decode_flow_stats(FlowStatsBin),
+    decode_flow_stats_list(Rest, [FlowStats | FlowStatsList]).
+
+decode_table_stats(Binary) ->
+    << TableInt:8/integer, 0:56/integer, NameBin:?OFP_MAX_TABLE_NAME_LEN/binary,
+       MatchBin:8/binary, WildcardsBin:8/binary, WriteActionsBin:4/binary,
+       ApplyActionsBin:4/binary, WriteSetBin:8/binary, ApplySetBin:8/binary,
+       MetaMatch:64/integer, MetaWrite:64/integer, InstructionsBin:4/binary,
+       ConfigBin:4/binary, Max:32/integer, ACount:32/integer, LCount:64/integer,
+       MCount:64/integer >> = Binary,
+    Table = ofp_map:decode_table_id(TableInt),
+    Name = rstrip(NameBin),
+    Match = binary_to_flags(oxm_field, MatchBin),
+    Wildcards = binary_to_flags(oxm_field, WildcardsBin),
+    WriteActions = binary_to_flags(action_type, WriteActionsBin),
+    ApplyActions = binary_to_flags(action_type, ApplyActionsBin),
+    WriteSet = binary_to_flags(oxm_field, WriteSetBin),
+    ApplySet = binary_to_flags(oxm_field, ApplySetBin),
+    Instructions = binary_to_flags(instruction_type, InstructionsBin),
+    Config = binary_to_flags(table_config, ConfigBin),
+    #table_stats{table_id = Table, name = Name, match = Match,
+                           wildcards = Wildcards, write_actions = WriteActions,
+                           apply_actions = ApplyActions,
+                           write_setfields = WriteSet, apply_setfields = ApplySet,
+                           metadata_match = MetaMatch, metadata_write = MetaWrite,
+                           instructions = Instructions, config = Config,
+                           max_entries = Max, active_count = ACount,
+                           lookup_count = LCount, matched_count = MCount}.
+
+decode_port_stats(Binary) ->
+    << PortInt:32/integer, 0:32/integer, RXPackets:64/integer,
+       TXPackets:64/integer, RXBytes:64/integer, TXBytes:64/integer,
+       RXDropped:64/integer, TXDropped:64/integer, RXErrors:64/integer,
+       TXErrors:64/integer, FrameErr:64/integer, OverErr:64/integer,
+       CRCErr:64/integer, Collisions:64/integer >> = Binary,
+    Port = ofp_map:decode_port_number(PortInt),
+    #port_stats{port_no = Port,
+                rx_packets = RXPackets, tx_packets = TXPackets,
+                rx_bytes = RXBytes, tx_bytes = TXBytes,
+                rx_dropped = RXDropped, tx_dropped = TXDropped,
+                rx_errors = RXErrors, tx_errors = TXErrors,
+                rx_frame_err = FrameErr, rx_over_err = OverErr,
+                rx_crc_err = CRCErr, collisions = Collisions}.
+
+decode_queue_stats(Binary) ->
+    << PortInt:32/integer, QueueInt:32/integer, Bytes:64/integer,
+       Packets:64/integer, Errors:64/integer >> = Binary,
+    Port = ofp_map:decode_port_number(PortInt),
+    Queue = ofp_map:decode_queue_id(QueueInt),
+    #queue_stats{port_no = Port, queue_id = Queue, tx_bytes = Bytes,
+                 tx_packets = Packets, tx_errors = Errors}.
+
+decode_group_stats(Binary) ->
+    << _:16/integer, 0:16/integer, GroupInt:32/integer, RefCount:32/integer,
+       0:32/integer, PCount:64/integer, BCount:64/integer,
+       BucketsBin/binary >> = Binary,
+    Group = ofp_map:decode_group_id(GroupInt),
+    Buckets = decode_bucket_counters(BucketsBin),
+    #group_stats{group_id = Group, ref_count = RefCount, packet_count = PCount,
+                 byte_count = BCount, bucket_stats = Buckets}.
+
+decode_group_stats_list(Binary) ->
+    decode_group_stats_list(Binary, []).
+
+decode_group_stats_list(<<>>, StatsList) ->
+    lists:reverse(StatsList);
+decode_group_stats_list(Binary, StatsList) ->
+    << Length:16/integer, _/binary >> = Binary,
+    << StatsBin:Length/binary, Rest/binary >> = Binary,
+    Stats = decode_group_stats(StatsBin),
+    decode_group_stats_list(Rest, [Stats | StatsList]).
+
+decode_bucket_counters(Binary) ->
+    decode_bucket_counters(Binary, []).
+
+decode_bucket_counters(<<>>, Buckets) ->
+    lists:reverse(Buckets);
+decode_bucket_counters(<< PCount:64/integer, BCount:64/integer, Rest/binary >>,
+               Buckets) ->
+    decode_bucket_counters(Rest,
+                           [#bucket_counter{packet_count = PCount,
+                                            byte_count = BCount} | Buckets]).
+
+decode_group_desc_stats(Binary) ->
+    << _:16/integer, TypeInt:8/integer, 0:8/integer,
+       GroupInt:32/integer, BucketsBin/binary >> = Binary,
+    Type = ofp_map:group_type(TypeInt),
+    Group = ofp_map:decode_group_id(GroupInt),
+    Buckets = decode_buckets(BucketsBin),
+    #group_desc_stats{type = Type, group_id = Group,
+                      buckets = Buckets}.
+
+decode_group_desc_stats_list(Binary) ->
+    decode_group_desc_stats_list(Binary, []).
+
+decode_group_desc_stats_list(<<>>, StatsList) ->
+    lists:reverse(StatsList);
+decode_group_desc_stats_list(Binary, StatsList) ->
+    << Length:16/integer, _/binary >> = Binary,
+    << StatsBin:Length/binary, Rest/binary >> = Binary,
+    Stats = decode_group_desc_stats(StatsBin),
+    decode_group_desc_stats_list(Rest, [Stats | StatsList]).
+
 %% @doc Actual decoding of the messages
 -spec decode(atom(), integer(), #header{}, binary()) -> record().
 decode(hello, _, Header, Rest) ->
@@ -737,6 +1127,163 @@ decode(port_status, _, Header, Binary) ->
     Reason = ofp_map:port_reason(ReasonInt),
     Port = decode_port(PortBin),
     {#port_status{header = Header, reason = Reason, desc = Port}, Rest};
+decode(stats_request, Length, Header, Binary) ->
+    << TypeInt:16/integer, FlagsBin:2/binary, 0:32/integer,
+       Data/binary >> = Binary,
+    Type = ofp_map:stats_type(TypeInt),
+    Flags = binary_to_flags(stats_request_flag, FlagsBin),
+    case Type of
+        desc ->
+            {#desc_stats_request{header = Header, flags = Flags}, Data};
+        flow ->
+            MatchLength = Length - ?FLOW_STATS_REQUEST_SIZE,
+            << TableInt:8/integer, 0:24/integer, PortInt:32/integer,
+               GroupInt:32/integer, 0:32/integer, Cookie:8/binary,
+               CookieMask:8/binary, MatchBin:MatchLength/binary,
+               Rest/binary >> = Data,
+            Table = ofp_map:decode_table_id(TableInt),
+            Port = ofp_map:decode_port_number(PortInt),
+            Group = ofp_map:decode_group_id(GroupInt),
+            Match = decode_match(MatchBin),
+            {#flow_stats_request{header = Header, flags = Flags,
+                                 table_id = Table, out_port = Port,
+                                 out_group = Group, cookie = Cookie,
+                                 cookie_mask = CookieMask, match = Match},
+             Rest};
+        aggregate ->
+            MatchLength = Length - ?AGGREGATE_STATS_REQUEST_SIZE,
+            << TableInt:8/integer, 0:24/integer, PortInt:32/integer,
+               GroupInt:32/integer, 0:32/integer, Cookie:8/binary,
+               CookieMask:8/binary, MatchBin:MatchLength/binary,
+               Rest/binary >> = Data,
+            Table = ofp_map:decode_table_id(TableInt),
+            Port = ofp_map:decode_port_number(PortInt),
+            Group = ofp_map:decode_group_id(GroupInt),
+            Match = decode_match(MatchBin),
+            {#aggregate_stats_request{header = Header, flags = Flags,
+                                      table_id = Table, out_port = Port,
+                                      out_group = Group, cookie = Cookie,
+                                      cookie_mask = CookieMask, match = Match},
+             Rest};
+        table ->
+            {#table_stats_request{header = Header, flags = Flags}, Data};
+        port ->
+            << PortInt:32/integer, 0:32/integer, Rest/binary >> = Data,
+            Port = ofp_map:decode_port_number(PortInt),
+            {#port_stats_request{header = Header, flags = Flags,
+                                 port_no = Port}, Rest};
+        queue ->
+            << PortInt:32/integer, QueueInt:32/integer, Rest/binary >> = Data,
+            Port = ofp_map:decode_port_number(PortInt),
+            Queue = ofp_map:decode_queue_id(QueueInt),
+            {#queue_stats_request{header = Header, flags = Flags,
+                                  port_no = Port, queue_id = Queue}, Rest};
+        group ->
+            << GroupInt:32/integer, 0:32/integer, Rest/binary >> = Data,
+            Group = ofp_map:decode_group_id(GroupInt),
+            {#group_stats_request{header = Header, flags = Flags,
+                                  group_id = Group}, Rest};
+        group_desc ->
+            {#group_desc_stats_request{header = Header, flags = Flags}, Data};
+        group_features ->
+            {#group_features_stats_request{header = Header,
+                                           flags = Flags}, Data};
+        experimenter ->
+            DataLength = Length - ?EXPERIMENTER_STATS_REQUEST_SIZE,
+            << Experimenter:32/integer, ExpType:32/integer,
+               ExpData:DataLength/binary, Rest/binary >> = Data,
+            {#experimenter_stats_request{header = Header, flags = Flags,
+                                         experimenter = Experimenter,
+                                         exp_type = ExpType, data = ExpData},
+             Rest}
+    end;
+decode(stats_reply, Length, Header, Binary) ->
+    << TypeInt:16/integer, FlagsBin:2/binary, 0:32/integer,
+       Data/binary >> = Binary,
+    Type = ofp_map:stats_type(TypeInt),
+    Flags = binary_to_flags(stats_reply_flag, FlagsBin),
+    case Type of
+        desc ->
+            << MFR:?DESC_STR_LEN/binary, HW:?DESC_STR_LEN/binary,
+               SW:?DESC_STR_LEN/binary, Serial:?SERIAL_NUM_LEN/binary,
+               DP:?DESC_STR_LEN/binary, Rest/binary >> = Data,
+            {#desc_stats_reply{header = Header, flags = Flags,
+                               mfr_desc = rstrip(MFR), hw_desc = rstrip(HW),
+                               sw_desc = rstrip(SW),
+                               serial_num = rstrip(Serial),
+                               dp_desc = rstrip(DP)}, Rest};
+        flow ->
+            StatsLength = Length - ?FLOW_STATS_REPLY_SIZE,
+            << StatsBin:StatsLength/binary, Rest/binary >> = Data,
+            Stats = decode_flow_stats_list(StatsBin),
+            {#flow_stats_reply{header = Header, flags = Flags,
+                               stats = Stats}, Rest};
+        aggregate ->
+            << PCount:64/integer, BCount:64/integer, FCount:32/integer,
+               0:32/integer, Rest/binary >> = Data,
+            {#aggregate_stats_reply{header = Header, flags = Flags,
+                                    packet_count = PCount, byte_count = BCount,
+                                    flow_count = FCount}, Rest};
+        table ->
+            StatsLength = Length - ?TABLE_STATS_REPLY_SIZE,
+            << StatsBin:StatsLength/binary, Rest/binary >> = Data,
+            Stats = [decode_table_stats(TStats)
+                     || TStats <- split_binaries(StatsBin, ?TABLE_STATS_SIZE)],
+            {#table_stats_reply{header = Header, flags = Flags,
+                                stats = Stats}, Rest};
+        port ->
+            StatsLength = Length - ?PORT_STATS_REPLY_SIZE,
+            << StatsBin:StatsLength/binary, Rest/binary >> = Data,
+            Stats = [decode_port_stats(PStats)
+                     || PStats <- split_binaries(StatsBin, ?PORT_STATS_SIZE)],
+            {#port_stats_reply{header = Header, flags = Flags,
+                               stats = Stats}, Rest};
+        queue ->
+            StatsLength = Length - ?QUEUE_STATS_REPLY_SIZE,
+            << StatsBin:StatsLength/binary, Rest/binary >> = Data,
+            Stats = [decode_queue_stats(QStats)
+                     || QStats <- split_binaries(StatsBin, ?QUEUE_STATS_SIZE)],
+            {#queue_stats_reply{header = Header, flags = Flags,
+                                stats = Stats}, Rest};
+        group ->
+            StatsLength = Length - ?GROUP_STATS_REPLY_SIZE,
+            << StatsBin:StatsLength/binary, Rest/binary >> = Data,
+            Stats = decode_group_stats_list(StatsBin),
+            {#group_stats_reply{header = Header, flags = Flags,
+                                stats = Stats}, Rest};
+        group_desc ->
+            StatsLength = Length - ?GROUP_DESC_STATS_REPLY_SIZE,
+            << StatsBin:StatsLength/binary, Rest/binary >> = Data,
+            Stats = decode_group_desc_stats_list(StatsBin),
+            {#group_desc_stats_reply{header = Header, flags = Flags,
+                                     stats = Stats}, Rest};
+        group_features ->
+            << TypesBin:4/binary, CapabilitiesBin:4/binary, Max1:32/integer,
+               Max2:32/integer, Max3:32/integer, Max4:32/integer,
+               Actions1Bin:4/binary, Actions2Bin:4/binary, Actions3Bin:4/binary,
+               Actions4Bin:4/binary, Rest/binary >> = Data,
+            Types = binary_to_flags(group_type, TypesBin),
+            Capabilities = binary_to_flags(group_capability, CapabilitiesBin),
+            Actions1 = binary_to_flags(action_type, Actions1Bin),
+            Actions2 = binary_to_flags(action_type, Actions2Bin),
+            Actions3 = binary_to_flags(action_type, Actions3Bin),
+            Actions4 = binary_to_flags(action_type, Actions4Bin),
+            {#group_features_stats_reply{header = Header, flags = Flags,
+                                         types = Types,
+                                         capabilities = Capabilities,
+                                         max_groups = {Max1, Max2, Max3, Max4},
+                                         actions = {Actions1, Actions2,
+                                                    Actions3, Actions4}},
+             Rest};
+        experimenter ->
+            DataLength = Length - ?EXPERIMENTER_STATS_REPLY_SIZE,
+            << Experimenter:32/integer, ExpType:32/integer,
+               ExpData:DataLength/binary, Rest/binary >> = Data,
+            {#experimenter_stats_reply{header = Header, flags = Flags,
+                                       experimenter = Experimenter,
+                                       exp_type = ExpType, data = ExpData},
+             Rest}
+    end;
 decode(queue_get_config_request, _, Header, Binary) ->
     << PortInt:32/integer, 0:32/integer, Rest/binary >> = Binary,
     Port = ofp_map:decode_port_number(PortInt),
@@ -845,16 +1392,20 @@ split_binaries(Binaries, List, Size) ->
     split_binaries(Rest, [Binary | List], Size).
 
 flags_to_binary(Type, Flags, Size) ->
-    flags_to_binary(Type, Flags, << 0:(Size*8)/integer >>, Size).
+    flags_to_binary(Type, Flags, << 0:(Size*8)/integer >>, Size*8).
 
 flags_to_binary(_, [], Binary, _) ->
     Binary;
-flags_to_binary(Type, [Flag | Rest], Binary, Size) ->
-    BitSize = Size*8,
+flags_to_binary(Type, [Flag | Rest], Binary, BitSize) ->
     << Binary2:BitSize/integer >> = Binary,
-    Bit = ofp_map:Type(Flag),
+    case Flag of
+        experimenter ->
+            Bit = get_experimenter_bit(Type);
+        _ ->
+            Bit = ofp_map:Type(Flag)
+    end,
     NewBinary = (Binary2 bor (1 bsl Bit)),
-    flags_to_binary(Type, Rest, << NewBinary:BitSize/integer >>, Size).
+    flags_to_binary(Type, Rest, << NewBinary:BitSize/integer >>, BitSize).
 
 binary_to_flags(Type, Binary) ->
     BitSize = size(Binary) * 8,
@@ -864,7 +1415,8 @@ binary_to_flags(Type, Binary) ->
 binary_to_flags(Type, Integer, Bit, Flags) when Bit >= 0 ->
     case 0 /= (Integer band (1 bsl Bit)) of
         true ->
-            binary_to_flags(Type, Integer, Bit - 1, [ofp_map:Type(Bit) | Flags]);
+            Flag = ofp_map:Type(Bit),
+            binary_to_flags(Type, Integer, Bit - 1, [Flag | Flags]);
         false ->
             binary_to_flags(Type, Integer, Bit - 1, Flags)
     end;
@@ -879,7 +1431,8 @@ rstrip(Binary, Byte) when Byte >= 0 ->
         0 ->
             rstrip(Binary, Byte - 1);
         _ ->
-            binary:part(Binary, 0, Byte + 2)
+            String = binary:part(Binary, 0, Byte + 1),
+            << String/binary, 0:8/integer >>
     end;
 rstrip(_, _) ->
     <<"\0">>.
@@ -894,3 +1447,8 @@ cut(Binary, Bits) ->
         false ->
             Binary
     end.
+
+get_experimenter_bit(instruction_type) ->
+    ?OFPIT_EXPERIMENTER_BIT;
+get_experimenter_bit(action_type) ->
+    ?OFPAT_EXPERIMENTER_BIT.

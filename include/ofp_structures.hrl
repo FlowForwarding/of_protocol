@@ -7,6 +7,18 @@
 %%% Common Structures
 %%%-----------------------------------------------------------------------------
 
+-define(OFP_ETH_ALEN, 6).
+-define(OFP_MAX_PORT_NAME_LEN, 16).
+-define(OFP_MAX_TABLE_NAME_LEN, 32).
+-define(DESC_STR_LEN, 256).
+-define(SERIAL_NUM_LEN, 32).
+
+-type port_no() :: integer() | max | in_port | table | normal |
+                   flood | all | controller | local | any.
+-type group_id() :: integer() | max | any | all.
+-type table_id() :: integer() | max | all.
+-type queue_id() :: integer() | max | all.
+
 %% Header on all OpenFlow packets
 -define(HEADER_SIZE, 8).
 -record(header, {
@@ -293,6 +305,7 @@
 -define(OFPIT_APPLY_ACTIONS, 4).
 -define(OFPIT_CLEAR_ACTIONS, 5).
 -define(OFPIT_EXPERIMENTER, 16#ffff).
+-define(OFPIT_EXPERIMENTER_BIT, 31).
 
 %%% Action Structures ----------------------------------------------------------
 
@@ -397,6 +410,7 @@
 -define(OFPAT_DEC_NW_TTL, 24).
 -define(OFPAT_SET_FIELD, 25).
 -define(OFPAT_EXPERIMENTER, 16#ffff).
+-define(OFPAT_EXPERIMENTER_BIT, 31).
 
 -type action() :: #action_output{} | #action_group{} | #action_set_queue{} |
                   #action_set_mpls_ttl{} | #action_dec_mpls_ttl{} |
@@ -405,3 +419,104 @@
                   #action_push_vlan{} | #action_pop_vlan{} |
                   #action_push_mpls{} | #action_pop_mpls{} |
                   #action_set_field{} | #action_experimenter{}.
+
+%%% Other Structures -----------------------------------------------------------
+
+%% Bucket for use in groups
+-define(BUCKET_SIZE, 16).
+-record(bucket, {
+          weight :: integer(),
+          watch_port :: integer() | atom(),
+          watch_group :: integer() | atom(),
+          actions = [] :: [action()]
+         }).
+
+%% Bucket counter for use in group stats
+-define(BUCKET_COUNTER_SIZE, 16).
+-record(bucket_counter, {
+          packet_count :: integer(),
+          byte_count :: integer()
+         }).
+
+%% Flow stats
+-define(FLOW_STATS_SIZE, 56).
+-record(flow_stats, {
+          table_id :: table_id(),
+          duration_sec :: integer(),
+          duration_nsec :: integer(),
+          priority :: integer(),
+          idle_timeout :: integer(),
+          hard_timeout :: integer(),
+          cookie :: binary(),
+          packet_count :: integer(),
+          byte_count :: integer(),
+          match :: #match{},
+          instructions = [] :: [instruction()]
+         }).
+
+%% Table stats
+-define(TABLE_STATS_SIZE, 128).
+-record(table_stats, {
+          table_id :: table_id(),
+          name :: binary(),
+          match :: [atom()],
+          wildcards :: [atom()],
+          write_actions :: [atom()],
+          apply_actions :: [atom()],
+          write_setfields :: [atom()],
+          apply_setfields :: [atom()],
+          metadata_match :: integer(),
+          metadata_write :: integer(),
+          instructions :: [atom()],
+          config :: [atom()],
+          max_entries :: integer(),
+          active_count :: integer(),
+          lookup_count :: integer(),
+          matched_count :: integer()
+         }).
+
+%% Port stats
+-define(PORT_STATS_SIZE, 104).
+-record(port_stats, {
+          port_no :: port_no(),
+          rx_packets :: integer(),
+          tx_packets :: integer(),
+          rx_bytes :: integer(),
+          tx_bytes :: integer(),
+          rx_dropped :: integer(),
+          tx_dropped :: integer(),
+          rx_errors :: integer(),
+          tx_errors :: integer(),
+          rx_frame_err :: integer(),
+          rx_over_err :: integer(),
+          rx_crc_err :: integer(),
+          collisions :: integer()
+         }).
+
+%% Queue stats
+-define(QUEUE_STATS_SIZE, 32).
+-record(queue_stats, {
+          port_no :: port_no(),
+          queue_id :: queue_id(),
+          tx_bytes :: integer(),
+          tx_packets :: integer(),
+          tx_errors :: integer()
+         }).
+
+%% Group stats
+-define(GROUP_STATS_SIZE, 32).
+-record(group_stats, {
+          group_id :: group_id(),
+          ref_count :: integer(),
+          packet_count :: integer(),
+          byte_count :: integer(),
+          bucket_stats = [] :: [#bucket_counter{}]
+         }).
+
+%% Group desc stats
+-define(GROUP_DESC_STATS_SIZE, 8).
+-record(group_desc_stats, {
+          type :: atom(),
+          group_id :: group_id(),
+          buckets = [] :: [#bucket{}]
+         }).
