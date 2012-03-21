@@ -125,7 +125,6 @@ msg_type(role_request)                   -> ?OFPT_ROLE_REQUEST;
 msg_type(?OFPT_ROLE_REQUEST)             -> role_request;
 msg_type(role_reply)                     -> ?OFPT_ROLE_REPLY;
 msg_type(?OFPT_ROLE_REPLY)               -> role_reply;
-msg_type(Type) when is_atom(Type)        -> throw({bad_type, Type});
 msg_type(Type) when is_integer(Type)     -> throw({bad_value, Type}).
 
 error_type(hello_failed)                -> ?OFPET_HELLO_FAILED;
@@ -514,8 +513,10 @@ oxm_class(Type) when is_atom(Type)    -> throw({bad_type, Type});
 oxm_class(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 oxm_field(openflow_basic, Field)           -> oxm_field(Field);
-oxm_field(_, Field) when is_atom(Field)    -> 0;
-oxm_field(_, Field) when is_integer(Field) -> not_used.
+oxm_field(_, not_used)                     -> 0;
+oxm_field(_, 0)                            -> not_used;
+oxm_field(_, Field) when is_atom(Field)    -> throw({bad_type, Field});
+oxm_field(_, Field) when is_integer(Field) -> throw({bad_value, Field}).
 
 oxm_field(in_port)                    -> ?OFPXMT_OFB_IN_PORT;
 oxm_field(?OFPXMT_OFB_IN_PORT)        -> in_port;
@@ -719,7 +720,6 @@ queue_property(max_rate)                   -> ?OFPQT_MAX_RATE;
 queue_property(?OFPQT_MAX_RATE)            -> max_rate;
 queue_property(experimenter)               -> ?OFPQT_EXPERIMENTER;
 queue_property(?OFPQT_EXPERIMENTER)        -> experimenter;
-queue_property(Type) when is_atom(Type)    -> throw({bad_type, Type});
 queue_property(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 stats_type(desc)                       -> ?OFPST_DESC;
@@ -742,7 +742,6 @@ stats_type(group_features)             -> ?OFPST_GROUP_FEATURES;
 stats_type(?OFPST_GROUP_FEATURES)      -> group_features;
 stats_type(experimenter)               -> ?OFPST_EXPERIMENTER;
 stats_type(?OFPST_EXPERIMENTER)        -> experimenter;
-stats_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
 stats_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 stats_request_flag(Type) when is_atom(Type)    -> throw({bad_type, Type});

@@ -153,6 +153,7 @@
 
 %%% Flow Match Structures ------------------------------------------------------
 
+-define(OXM_FIELD_SIZE, 4).
 -record(oxm_field, {
           class :: atom(),
           field :: atom(),

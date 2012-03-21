@@ -21,18 +21,19 @@
 -spec encode(record()) -> binary() | {error, term()}.
 encode(Record) ->
     try
-        encode2(Record)
+        {ok, encode2(Record)}
     catch
         _:Exception ->
             {error, Exception}
     end.
 
 %% @doc Decode binary to erlang representation.
--spec decode(binary()) -> {record(), binary()} | {error, term()}.
-decode(<< HeaderBin:8/binary, Rest/binary >>) ->
+-spec decode(binary()) -> {ok, {record(), binary()}} | {error, term()}.
+decode(Binary) ->
     try
+        << HeaderBin:8/binary, Rest/binary >> = Binary,
         {Header, Type, Length} = decode_header(HeaderBin),
-        decode(Type, Length, Header, Rest)
+        {ok, decode(Type, Length, Header, Rest)}
     catch
         _:Exception ->
             {error, Exception}
@@ -75,7 +76,12 @@ encode_struct(#match{type = Type, oxm_fields = Fields}) ->
     FieldsBin = encode_list(Fields),
     FieldsLength = size(FieldsBin),
     Length = FieldsLength + ?MATCH_SIZE - 4,
-    Padding = (Length rem 8) * 8,
+    case FieldsLength of
+        0 ->
+            Padding = 32;
+        _ ->
+            Padding = (8 - (Length rem 8)) * 8
+    end,
     << TypeInt:16/integer, Length:16/integer, FieldsBin/binary,
        0:Padding/integer >>;
 encode_struct(#oxm_field{class = Class, field = Field, has_mask = HasMask,
@@ -118,8 +124,9 @@ encode_struct(#action_group{group_id = Group}) ->
     << Type:16/integer, Length:16/integer, GroupInt:32/integer >>;
 encode_struct(#action_set_queue{queue_id = Queue}) ->
     Type = ofp_map:action_type(set_queue),
+    QueueInt = ofp_map:encode_queue_id(Queue),
     Length = ?ACTION_SET_QUEUE_SIZE,
-    << Type:16/integer, Length:16/integer, Queue:32/integer >>;
+    << Type:16/integer, Length:16/integer, QueueInt:32/integer >>;
 encode_struct(#action_set_mpls_ttl{mpls_ttl = TTL}) ->
     Type = ofp_map:action_type(set_mpls_ttl),
     Length = ?ACTION_SET_MPLS_TTL_SIZE,
@@ -169,8 +176,8 @@ encode_struct(#action_set_field{field = Field}) ->
     Type = ofp_map:action_type(set_field),
     FieldBin = encode_struct(Field),
     FieldSize = size(FieldBin),
-    Padding = FieldSize rem 8,
-    Length = ?ACTION_SET_FIELD_SIZE + FieldSize + Padding - 4,
+    Padding = 8 - (?ACTION_SET_FIELD_SIZE - 4 + FieldSize) rem 8,
+    Length = ?ACTION_SET_FIELD_SIZE + FieldSize + Padding,
     << Type:16/integer, Length:16/integer, FieldBin/binary,
        0:(Padding*8)/integer >>;
 encode_struct(#action_experimenter{experimenter = Experimenter}) ->
@@ -372,7 +379,7 @@ encode2(#packet_in{header = Header, buffer_id = BufferId, reason = Reason,
     ReasonInt = ofp_map:reason(Reason),
     MatchBin = encode_struct(Match),
     TotalLen = byte_size(Data),
-    Length = ?PACKET_IN_SIZE + size(MatchBin) - ?MATCH_SIZE,
+    Length = ?PACKET_IN_SIZE + 2 + size(MatchBin) - ?MATCH_SIZE,
     HeaderBin = encode_header(Header, packet_in, Length),
     << HeaderBin/binary, BufferId:32/integer, TotalLen:16/integer,
        ReasonInt:8/integer, TableId:8/integer, MatchBin/binary,
@@ -767,8 +774,9 @@ decode_actions(Binary, Actions) ->
             Group = ofp_map:decode_group_id(GroupInt),
             Action = #action_group{group_id = Group};
         set_queue ->
-            << QueueId:32/integer, Rest/binary >> = Data,
-            Action = #action_set_queue{queue_id = QueueId};
+            << QueueInt:32/integer, Rest/binary >> = Data,
+            Queue = ofp_map:decode_queue_id(QueueInt),
+            Action = #action_set_queue{queue_id = Queue};
         set_mpls_ttl ->
             << TTL:8/integer, 0:24/integer, Rest/binary >> = Data,
             Action = #action_set_mpls_ttl{mpls_ttl = TTL};
@@ -1099,7 +1107,7 @@ decode(set_config, _, Header, Binary) ->
     Flags = binary_to_flags(configuration, FlagsBin),
     {#set_config{header = Header, flags = Flags, miss_send_len = Miss}, Rest};
 decode(packet_in, Length, Header, Binary) ->
-    MatchLength = Length - ?PACKET_IN_SIZE + ?MATCH_SIZE,
+    MatchLength = Length - ?PACKET_IN_SIZE - 2 + ?MATCH_SIZE,
     << BufferId:32/integer, TotalLen:16/integer, ReasonInt:8/integer,
        TableId:8/integer, MatchBin:MatchLength/binary, 0:16,
        Payload/binary >> = Binary,
