@@ -11,7 +11,7 @@
 
 -include("of_protocol.hrl").
 
--define(VERSION, << 1:1/integer, 3:7/integer >>).
+-define(VERSION, 3).
 
 %%%-----------------------------------------------------------------------------
 %%% API functions
@@ -28,12 +28,13 @@ encode(Record) ->
     end.
 
 %% @doc Decode binary to erlang representation.
--spec decode(binary()) -> {ok, {record(), binary()}} | {error, term()}.
+-spec decode(binary()) -> {ok, record(), binary()} | {error, term()}.
 decode(Binary) ->
     try
         << HeaderBin:8/binary, Rest/binary >> = Binary,
         {Header, Type, Length} = decode_header(HeaderBin),
-        {ok, decode(Type, Length, Header, Rest)}
+        {Structure, Leftovers} = decode(Type, Length, Header, Rest),
+        {ok, Structure, Leftovers}
     catch
         _:Exception ->
             {error, Exception}
@@ -46,7 +47,8 @@ decode(Binary) ->
 %% @doc Encode header
 encode_header(#header{xid = Xid}, Type, Length) ->
     TypeInt = ofp_map:msg_type(Type),
-    << ?VERSION/binary, TypeInt:8/integer, Length:16/integer, Xid:32/integer >>.
+    << 1:1/integer, ?VERSION:7/integer, TypeInt:8/integer,
+       Length:16/integer, Xid:32/integer >>.
 
 %% @doc Encode queue property header
 encode_queue_header(Property, Length) ->
@@ -177,7 +179,7 @@ encode_struct(#action_set_field{field = Field}) ->
     FieldBin = encode_struct(Field),
     FieldSize = size(FieldBin),
     Padding = 8 - (?ACTION_SET_FIELD_SIZE - 4 + FieldSize) rem 8,
-    Length = ?ACTION_SET_FIELD_SIZE + FieldSize + Padding,
+    Length = ?ACTION_SET_FIELD_SIZE - 4 + FieldSize + Padding,
     << Type:16/integer, Length:16/integer, FieldBin/binary,
        0:(Padding*8)/integer >>;
 encode_struct(#action_experimenter{experimenter = Experimenter}) ->
@@ -675,10 +677,15 @@ encode2(Other) ->
 
 %% @doc Decode header structure
 decode_header(Binary) ->
-    << _:1/integer, Version:7/integer, TypeInt:8/integer,
+    << 1:1/integer, ?VERSION:7/integer, TypeInt:8/integer,
        Length:16/integer, XID:32/integer >> = Binary,
-    Type = ofp_map:msg_type(TypeInt),
-    {#header{version = Version, xid = XID}, Type, Length}.
+    case Length < 8 of
+        true ->
+            throw({error, bad_message});
+        false ->
+            Type = ofp_map:msg_type(TypeInt),
+            {#header{version = ?VERSION, xid = XID}, Type, Length}
+    end.
 
 %% @doc Decode port structure
 decode_port(Binary) ->
@@ -925,7 +932,7 @@ decode_flow_stats(Binary) ->
        Data/binary >> = Binary,
     Table = ofp_map:decode_table_id(TableInt),
     << _:16/integer, MatchLength:16/integer, _/binary >> = Data,
-    MatchLengthPad = MatchLength + (MatchLength rem 8),
+    MatchLengthPad = MatchLength + (8 - (MatchLength rem 8)),
     << MatchBin:MatchLengthPad/binary, InstrsBin/binary >> = Data,
     Match = decode_match(MatchBin),
     Instrs = decode_instructions(InstrsBin),
@@ -1326,7 +1333,7 @@ decode(flow_mod, Length, Header, Binary) ->
     OutGroup = ofp_map:decode_group_id(OutGroupInt),
     Flags = binary_to_flags(flow_flag, FlagsBin),
     << _:16/integer, MatchLength:16/integer, _/binary >> = Data,
-    MatchLengthPad = MatchLength + (MatchLength rem 8),
+    MatchLengthPad = MatchLength + (8 - (MatchLength rem 8)),
     InstrLength = Length - ?FLOW_MOD_SIZE + ?MATCH_SIZE - MatchLengthPad,
     << MatchBin:MatchLengthPad/binary, InstrBin:InstrLength/binary,
        Rest/binary >> = Data,
