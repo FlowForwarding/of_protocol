@@ -3,7 +3,7 @@
 %%% @author Krzysztof Rutka <krzysztof.rutka@erlang-solutions.com>
 %%%-----------------------------------------------------------------------------
 
--include("ofp_structures.hrl").
+-include_lib("of_protocol/include/ofp_structures.hrl").
 
 -record(parser, {
           stack = <<>> :: binary()
