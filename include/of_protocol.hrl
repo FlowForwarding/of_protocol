@@ -5,6 +5,10 @@
 
 -include("ofp_structures.hrl").
 
+-record(parser, {
+          stack = <<>> :: binary()
+         }).
+
 %%%-----------------------------------------------------------------------------
 %%% Controller-to-Switch Messages
 %%%-----------------------------------------------------------------------------
@@ -330,7 +334,7 @@
           flags :: [atom()],
           experimenter :: integer(),
           exp_type :: integer(),
-          data :: binary()
+          data = <<>> :: binary()
          }).
 
 %% Experimenter stats reply
@@ -340,7 +344,7 @@
           flags :: [atom()],
           experimenter :: integer(),
           exp_type :: integer(),
-          data :: binary()
+          data = <<>> :: binary()
          }).
 
 %% Stats types
@@ -391,7 +395,7 @@
           buffer_id :: integer(),
           in_port :: integer() | atom(),
           actions = [] :: [action()],
-          data :: binary()
+          data = <<>> :: binary()
          }).
 
 %%% Barrier --------------------------------------------------------------------
@@ -444,7 +448,7 @@
           reason :: atom(),
           table_id :: integer(),
           match :: #match{},
-          data :: binary()
+          data = <<>> :: binary()
          }).
 
 %% Reason packet is being sent
@@ -494,7 +498,7 @@
           header = #header{} :: #header{},
           type :: atom(),
           code :: atom(),
-          data :: binary()
+          data = <<>> :: binary()
          }).
 
 %% Error types
@@ -634,7 +638,7 @@
           header = #header{} :: #header{},
           exp_type :: integer(),
           experimenter :: integer(),
-          data :: binary()
+          data = <<>> :: binary()
          }).
 
 %%%-----------------------------------------------------------------------------
@@ -651,14 +655,14 @@
 -define(ECHO_REQUEST_SIZE, 8).
 -record(echo_request, {
           header = #header{} :: #header{},
-          data :: binary()
+          data = <<>> :: binary()
          }).
 
 %% Echo Reply
 -define(ECHO_REPLY_SIZE, 8).
 -record(echo_reply, {
           header = #header{} :: #header{},
-          data :: binary()
+          data = <<>> :: binary()
          }).
 
 %% Experimenter
@@ -667,5 +671,5 @@
           header = #header{} :: #header{},
           experimenter :: integer(),
           exp_type :: integer(),
-          data :: binary()
+          data = <<>> :: binary()
          }).
