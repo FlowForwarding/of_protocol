@@ -82,6 +82,7 @@
           table_id :: integer() | atom(),
           config = [] :: [atom()]
          }).
+-type table_mod() :: #table_mod{}.
 
 %% Table numbering
 -define(OFPTT_MAX, 16#fe).
@@ -110,6 +111,7 @@
           match :: #match{},
           instructions = [] :: [instruction()]
          }).
+-type flow_mod() :: #flow_mod{}.
 
 %% Flow mod commands
 -define(OFPFC_ADD, 0).
@@ -132,6 +134,7 @@
           group_id :: integer() | atom(),
           buckets = [] :: [#bucket{}]
          }).
+-type group_mod() :: #group_mod{}.
 
 %% Group commands
 -define(OFPGC_ADD, 0).
@@ -159,6 +162,7 @@
           mask = [] :: [atom()],
           advertise = [] :: [atom()]
          }).
+-type port_mod() :: #port_mod{}.
 
 %%% Read-State -----------------------------------------------------------------
 
@@ -168,6 +172,7 @@
           header = #header{} :: #header{},
           flags = [] :: [atom()]
          }).
+-type desc_stats_request() :: #desc_stats_request{}.
 
 %% Desc stats
 -define(DESC_STATS_REPLY_SIZE, 1072).
@@ -180,6 +185,7 @@
           serial_num :: binary(),
           dp_desc :: binary()
          }).
+-type desc_stats_reply() :: #desc_stats_reply{}.
 
 %% Request for flow stats
 -define(FLOW_STATS_REQUEST_SIZE, 56).
@@ -193,6 +199,7 @@
           cookie_mask :: binary(),
           match :: #match{}
          }).
+-type flow_stats_request() :: #flow_stats_request{}.
 
 %% Flow stats reply
 -define(FLOW_STATS_REPLY_SIZE, 16).
@@ -201,6 +208,7 @@
           flags = [] :: [atom()],
           stats = [] :: [#flow_stats{}]
          }).
+-type flow_stats_reply() :: #flow_stats_reply{}.
 
 %% Request for aggregate stats
 -define(AGGREGATE_STATS_REQUEST_SIZE, 56).
@@ -213,6 +221,7 @@
           cookie :: binary(),
           cookie_mask :: binary(),
           match :: #match{}}).
+-type aggregate_stats_request() :: #aggregate_stats_request{}.
 
 %% Aggregate stats reply
 -define(AGGREGATE_STATS_REPLY_SIZE, 40).
@@ -223,6 +232,7 @@
           byte_count :: integer(),
           flow_count :: integer()
          }).
+-type aggregate_stats_reply() :: #aggregate_stats_reply{}.
 
 %% Request for table stats
 -define(TABLE_STATS_REQUEST_SIZE, 16).
@@ -230,6 +240,7 @@
           header = #header{} :: #header{},
           flags :: [atom()]
          }).
+-type table_stats_request() :: #table_stats_request{}.
 
 %% Table stats reply
 -define(TABLE_STATS_REPLY_SIZE, 16).
@@ -238,6 +249,7 @@
           flags :: [atom()],
           stats = [] :: [#table_stats{}]
          }).
+-type table_stats_reply() :: #table_stats_reply{}.
 
 %% Request for port stats
 -define(PORT_STATS_REQUEST_SIZE, 24).
@@ -246,6 +258,7 @@
           flags :: [atom()],
           port_no :: port_no()
          }).
+-type port_stats_request() :: #port_stats_request{}.
 
 %% Port stats reply
 -define(PORT_STATS_REPLY_SIZE, 16).
@@ -254,6 +267,7 @@
           flags :: [atom()],
           stats = [] :: [#port_stats{}]
          }).
+-type port_stats_reply() :: #port_stats_reply{}.
 
 %% Request for queue stats
 -define(QUEUE_STATS_REQUEST_SIZE, 24).
@@ -263,6 +277,7 @@
           port_no :: port_no(),
           queue_id :: queue_id()
          }).
+-type queue_stats_request() :: #queue_stats_request{}.
 
 %% Queue stats reply
 -define(QUEUE_STATS_REPLY_SIZE, 16).
@@ -271,6 +286,7 @@
           flags :: [atom()],
           stats = [] :: [#queue_stats{}]
          }).
+-type queue_stats_reply() :: #queue_stats_reply{}.
 
 %% Request for group stats
 -define(GROUP_STATS_REQUEST_SIZE, 24).
@@ -279,6 +295,7 @@
           flags :: [atom()],
           group_id :: group_id()
          }).
+-type group_stats_request() :: #group_stats_request{}.
 
 %% Group stats reply
 -define(GROUP_STATS_REPLY_SIZE, 16).
@@ -287,6 +304,7 @@
           flags :: [atom()],
           stats = [] :: [#group_stats{}]
          }).
+-type group_stats_reply() :: #group_stats_reply{}.
 
 %% Request for group desc stats
 -define(GROUP_DESC_STATS_REQUEST_SIZE, 16).
@@ -294,6 +312,7 @@
           header = #header{} :: #header{},
           flags :: [atom()]
          }).
+-type group_desc_stats_request() :: #group_desc_stats_request{}.
 
 %% Group desc stats reply
 -define(GROUP_DESC_STATS_REPLY_SIZE, 16).
@@ -302,6 +321,7 @@
           flags :: [atom()],
           stats = [] :: [#group_desc_stats{}]
          }).
+-type group_desc_stats_reply() :: #group_desc_stats_reply{}.
 
 %% Request for group features stats
 -define(GROUP_FEATURES_STATS_REQUEST_SIZE, 16).
@@ -309,6 +329,7 @@
           header = #header{} :: #header{},
           flags :: [atom()]
          }).
+-type group_features_stats_request() :: #group_features_stats_request{}.
 
 %% Group features stats reply
 -define(GROUP_FEATURES_STATS_REPLY_SIZE, 56).
@@ -320,6 +341,7 @@
           max_groups :: {integer(), integer(), integer(), integer()},
           actions :: {[atom()], [atom()], [atom()], [atom()]}
          }).
+-type group_features_stats_reply() :: #group_features_stats_reply{}.
 
 %% Group capabilities
 -define(OFPGFC_SELECT_WEIGHT, 0).
@@ -650,6 +672,7 @@
 -record(hello, {
           header = #header{} :: #header{}
          }).
+-type hello() :: #hello{}.
 
 %% Echo Request
 -define(ECHO_REQUEST_SIZE, 8).
@@ -657,6 +680,7 @@
           header = #header{} :: #header{},
           data = <<>> :: binary()
          }).
+-type echo_request() :: #echo_request{}.
 
 %% Echo Reply
 -define(ECHO_REPLY_SIZE, 8).
@@ -664,6 +688,7 @@
           header = #header{} :: #header{},
           data = <<>> :: binary()
          }).
+-type echo_reply() :: #echo_reply{}.
 
 %% Experimenter
 -define(EXPERIMENTER_SIZE, 16).
