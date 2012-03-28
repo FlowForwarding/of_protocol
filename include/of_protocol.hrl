@@ -20,6 +20,7 @@
 -record(features_request, {
           header = #header{} :: #header{}
          }).
+-type features_request() :: #features_request{}.
 
 %% Switch features (Features reply)
 -define(FEATURES_REPLY_SIZE, 32).
@@ -32,6 +33,7 @@
           capabilities = [] :: [atom()],
           ports = [] :: [#port{}]
          }).
+-type features_reply() :: #features_reply{}.
 
 %% Capabilities supported by the datapath
 -define(OFPC_FLOW_STATS, 0).
@@ -49,6 +51,7 @@
 -record(get_config_request, {
           header = #header{} :: #header{}
          }).
+-type get_config_request() :: #get_config_request{}.
 
 %% Configuration reply
 -define(GET_CONFIG_REPLY_SIZE, 12).
@@ -57,6 +60,7 @@
           flags = [] :: [atom()],
           miss_send_len :: integer()
          }).
+-type get_config_reply() :: #get_config_reply{}.
 
 %% Set configuration
 -define(SET_CONFIG_SIZE, 12).
@@ -65,6 +69,7 @@
           flags = [] :: [atom()],
           miss_send_len :: integer()
          }).
+-type set_config() :: #set_config{}.
 
 %% Configuration flags
 -define(OFPC_FRAG_NORMAL, 0).
@@ -358,6 +363,7 @@
           exp_type :: integer(),
           data = <<>> :: binary()
          }).
+-type experimenter_stats_request() :: #experimenter_stats_request{}.
 
 %% Experimenter stats reply
 -define(EXPERIMENTER_STATS_REPLY_SIZE, 24).
@@ -368,6 +374,7 @@
           exp_type :: integer(),
           data = <<>> :: binary()
          }).
+-type experimenter_stats_reply() :: #experimenter_stats_reply{}.
 
 %% Stats types
 -define(OFPST_DESC, 0).
@@ -387,6 +394,20 @@
 %% Stats reply flags
 -define(OFPSF_REPLY_MORE, 1).
 
+-type stats_request() :: desc_stats_request() | flow_stats_request() |
+                         aggregate_stats_request() | table_stats_request() |
+                         port_stats_request() | queue_stats_request() |
+                         group_stats_request() | group_desc_stats_request() |
+                         group_features_stats_request() |
+                         experimenter_stats_request().
+
+-type stats_reply() :: desc_stats_reply() | flow_stats_reply() |
+                       aggregate_stats_reply() | table_stats_reply() |
+                       port_stats_reply() | queue_stats_reply() |
+                       group_stats_reply() | group_desc_stats_reply() |
+                       group_features_stats_reply() |
+                       experimenter_stats_reply().
+
 %%% Queue Configuration --------------------------------------------------------
 
 %% Get queue config request message
@@ -395,6 +416,7 @@
           header = #header{} :: #header{},
           port :: integer() | atom()
          }).
+-type queue_get_config_request() :: #queue_get_config_request{}.
 
 %% Get queue config reply message
 -define(QUEUE_GET_CONFIG_REPLY_SIZE, 16).
@@ -403,6 +425,7 @@
           port :: integer() | atom(),
           queues = [] :: [#packet_queue{}]
          }).
+-type queue_get_config_reply() :: #queue_get_config_reply{}.
 
 %% Queue numbering
 -define(OFPQ_MAX, 16#fffffffe).
@@ -419,6 +442,7 @@
           actions = [] :: [action()],
           data = <<>> :: binary()
          }).
+-type packet_out() :: #packet_out{}.
 
 %%% Barrier --------------------------------------------------------------------
 
@@ -427,12 +451,14 @@
 -record(barrier_request, {
           header = #header{} :: #header{}
          }).
+-type barrier_request() :: #barrier_request{}.
 
 %% Barrier reply
 -define(BARRIER_REPLY_SIZE, 8).
 -record(barrier_reply, {
           header = #header{} :: #header{}
          }).
+-type barrier_reply() :: #barrier_reply{}.
 
 %%% Role Request ---------------------------------------------------------------
 
@@ -443,6 +469,7 @@
           role :: atom(),
           generation_id :: integer()
          }).
+-type role_request() :: #role_request{}.
 
 %% Role reply message
 -define(ROLE_REPLY_SIZE, 24).
@@ -451,6 +478,7 @@
           role :: atom(),
           generation_id :: integer()
          }).
+-type role_reply() :: #role_reply{}.
 
 %% Controller roles
 -define(OFPCR_ROLE_NOCHANGE, 0).
@@ -472,6 +500,7 @@
           match :: #match{},
           data = <<>> :: binary()
          }).
+-type packet_in() :: #packet_in{}.
 
 %% Reason packet is being sent
 -define(OFPR_NO_MATCH, 0).
@@ -494,6 +523,7 @@
           byte_count :: integer(),
           match :: #match{}
          }).
+-type flow_removed() :: #flow_removed{}.
 
 %% Flow Removed reasons
 -define(OFPRR_IDLE_TIMEOUT, 0).
@@ -508,6 +538,7 @@
           reason :: atom(),
           desc :: #port{}
          }).
+-type port_status() :: #port_status{}.
 
 %% Reason for Port Status
 -define(OFPPR_ADD, 0).
@@ -662,6 +693,9 @@
           experimenter :: integer(),
           data = <<>> :: binary()
          }).
+-type error_experimenter_msg() :: #error_experimenter_msg{}.
+
+-type error_msg() :: #error_msg{} | error_experimenter_msg().
 
 %%%-----------------------------------------------------------------------------
 %%% Symmetric Messages
@@ -698,3 +732,14 @@
           exp_type :: integer(),
           data = <<>> :: binary()
          }).
+-type experimenter() :: #experimenter{}.
+
+-type ofp_message() :: hello() | error_msg() | echo_request() | echo_reply() |
+                       experimenter() | features_request() | features_reply() |
+                       get_config_request() | get_config_reply() |
+                       set_config() | packet_in() | flow_removed() |
+                       port_status() | packet_out() | flow_mod() | group_mod() |
+                       table_mod() | stats_request() | stats_reply() |
+                       barrier_request() | barrier_reply() |
+                       queue_get_config_request() | queue_get_config_reply() |
+                       role_request() | role_reply().

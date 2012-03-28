@@ -25,6 +25,7 @@
           version = 3 :: integer(),
           xid :: integer()
          }).
+-type header() :: #header{}.
 
 %% Message types
 -define(OFPT_HELLO, 0).

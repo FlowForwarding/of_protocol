@@ -18,23 +18,23 @@
 %%%-----------------------------------------------------------------------------
 
 %% @doc Encode erlang representation to binary.
--spec encode(record()) -> binary() | {error, term()}.
-encode(Record) ->
+-spec encode(ofp_message()) -> binary() | {error, term()}.
+encode(Message) ->
     try
-        {ok, encode2(Record)}
+        {ok, encode2(Message)}
     catch
         _:Exception ->
             {error, Exception}
     end.
 
 %% @doc Decode binary to erlang representation.
--spec decode(binary()) -> {ok, record(), binary()} | {error, term()}.
+-spec decode(binary()) -> {ok, ofp_message(), binary()} | {error, term()}.
 decode(Binary) ->
     try
         << HeaderBin:8/binary, Rest/binary >> = Binary,
         {Header, Type, Length} = decode_header(HeaderBin),
-        {Structure, Leftovers} = decode(Type, Length, Header, Rest),
-        {ok, Structure, Leftovers}
+        {Message, Leftovers} = decode(Type, Length, Header, Rest),
+        {ok, Message, Leftovers}
     catch
         _:Exception ->
             {error, Exception}
@@ -676,6 +676,7 @@ encode2(Other) ->
     throw({bad_message, Other}).
 
 %% @doc Decode header structure
+-spec decode_header(binary()) -> header().
 decode_header(Binary) ->
     << 1:1/integer, Version:7/integer, TypeInt:8/integer,
        Length:16/integer, XID:32/integer >> = Binary,
@@ -1053,7 +1054,7 @@ decode_group_desc_stats_list(Binary, StatsList) ->
     decode_group_desc_stats_list(Rest, [Stats | StatsList]).
 
 %% @doc Actual decoding of the messages
--spec decode(atom(), integer(), #header{}, binary()) -> record().
+-spec decode(atom(), integer(), header(), binary()) -> ofp_message().
 decode(hello, _, Header, Rest) ->
     {#hello{header = Header}, Rest};
 decode(error, Length, Header, Binary) ->
