@@ -7,7 +7,7 @@
 -module(ofp_parser).
 
 %% API
--export([new_parser/0, parse/2]).
+-export([new/0, parse/2]).
 
 -include("of_protocol.hrl").
 
@@ -15,8 +15,8 @@
 %%% API functions
 %%%-----------------------------------------------------------------------------
 
--spec new_parser() -> {ok, #parser{}}.
-new_parser() ->
+-spec new() -> {ok, #parser{}}.
+new() ->
     {ok, #parser{}}.
 
 -spec parse(#parser{}, binary()) -> {ok, #parser{}, [record()]}.
