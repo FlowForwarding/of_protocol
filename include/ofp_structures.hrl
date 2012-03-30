@@ -252,6 +252,8 @@
           oxm_fields = [] :: [#oxm_field{}]
          }).
 
+-type match() :: #match{}.
+
 %% Match type
 -define(OFPMT_STANDARD, 0).
 -define(OFPMT_OXM, 1).
@@ -452,7 +454,7 @@
           cookie :: binary(),
           packet_count :: integer(),
           byte_count :: integer(),
-          match :: #match{},
+          match :: match(),
           instructions = [] :: [instruction()]
          }).
 

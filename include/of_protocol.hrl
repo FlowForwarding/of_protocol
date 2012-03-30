@@ -104,16 +104,16 @@
           header = #header{} :: #header{},
           cookie :: binary(),
           cookie_mask :: binary(),
-          table_id :: integer() | atom(),
-          command :: atom(),
+          table_id :: table_id(),
+          command :: add | modify | delete,
           idle_timeout :: integer(),
           hard_timeout :: integer(),
           priority :: integer(),
           buffer_id :: integer(),
           out_port :: integer() | atom(),
           out_group :: integer() | atom(),
-          flags = [] :: [atom()],
-          match :: #match{},
+          flags = [] :: [flow_mod_flag()],
+          match :: match(),
           instructions = [] :: [instruction()]
          }).
 -type flow_mod() :: #flow_mod{}.
@@ -126,6 +126,7 @@
 -define(OFPFC_DELETE_STRICT, 4).
 
 %% Flow mod flags
+-type flow_mod_flag() :: send_flow_rem | check_overlap | reset_counts.
 -define(OFPFF_SEND_FLOW_REM, 0).
 -define(OFPFF_CHECK_OVERLAP, 1).
 -define(OFPFF_RESET_COUNTS, 2).
@@ -202,7 +203,7 @@
           out_group :: group_id(),
           cookie :: binary(),
           cookie_mask :: binary(),
-          match :: #match{}
+          match :: match()
          }).
 -type flow_stats_request() :: #flow_stats_request{}.
 
@@ -225,7 +226,7 @@
           out_group :: group_id(),
           cookie :: binary(),
           cookie_mask :: binary(),
-          match :: #match{}}).
+          match :: match()}).
 -type aggregate_stats_request() :: #aggregate_stats_request{}.
 
 %% Aggregate stats reply
@@ -497,7 +498,7 @@
           buffer_id :: integer(),
           reason :: atom(),
           table_id :: integer(),
-          match :: #match{},
+          match :: match(),
           data = <<>> :: binary()
          }).
 -type packet_in() :: #packet_in{}.
@@ -521,7 +522,7 @@
           hard_timeout :: integer(),
           packet_count :: integer(),
           byte_count :: integer(),
-          match :: #match{}
+          match :: match()
          }).
 -type flow_removed() :: #flow_removed{}.
 

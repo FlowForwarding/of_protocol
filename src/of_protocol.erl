@@ -11,6 +11,8 @@
 
 -include("of_protocol.hrl").
 
+-export_type([instruction/0, match/0]).
+
 -define(VERSION, 3).
 
 %%%-----------------------------------------------------------------------------
