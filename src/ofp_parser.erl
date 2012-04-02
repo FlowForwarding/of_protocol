@@ -19,12 +19,12 @@
 new() ->
     {ok, #parser{}}.
 
--spec parse(#parser{}, binary()) -> {ok, #parser{}, [record()]}.
+-spec parse(#parser{}, binary()) -> {ok, #parser{}, [ofp_message()]}.
 parse(Parser = #parser{stack = Stack}, Binary) ->
     {ok, NewStack, Structs} = parse(Binary, Stack, []),
     {ok, Parser#parser{stack = NewStack}, lists:reverse(Structs)}.
 
--spec parse(binary(), binary(), [record()]) -> {ok, binary(), [record()]}.
+-spec parse(binary(), binary(), [ofp_message()]) -> {ok, binary(), [ofp_message()]}.
 parse(Binary, Stack, Structs) ->
     NewBinary = << Stack/binary, Binary/binary >>,
     case of_protocol:decode(NewBinary) of
