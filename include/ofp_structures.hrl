@@ -316,88 +316,108 @@
 
 %%% Action Structures ----------------------------------------------------------
 
-%% Output action
--define(ACTION_OUTPUT_SIZE, 16).
--record(action_output, {
-          port :: integer() | atom(),
-          max_len :: integer() | atom()
-         }).
-
 %% Controller max length
 -define(OFPCML_MAX, 16#ffe5).
 -define(OFPCML_NO_BUFFER, 16#ffff).
 
-%% Group action
--define(ACTION_GROUP_SIZE, 8).
--record(action_group, {
-          group_id :: integer()
-         }).
-
-%% Set queue action
--define(ACTION_SET_QUEUE_SIZE, 8).
--record(action_set_queue, {
-          queue_id :: integer()
-         }).
-
-%% Set MPLS TTL action
--define(ACTION_SET_MPLS_TTL_SIZE, 8).
--record(action_set_mpls_ttl, {
-          mpls_ttl :: integer()
-         }).
-
-%% Decrement MPLS TTL action
--define(ACTION_DEC_MPLS_TTL_SIZE, 8).
--record(action_dec_mpls_ttl, {}).
-
-%% Set IPv4 TTL action
--define(ACTION_SET_NW_TTL_SIZE, 8).
--record(action_set_nw_ttl, {
-          nw_ttl :: integer()
-         }).
-
-%% Decrement IPv4 TTL action
--define(ACTION_DEC_NW_TTL_SIZE, 8).
--record(action_dec_nw_ttl, {}).
-
-%% Copy TTL outwards action
--define(ACTION_COPY_TTL_OUT_SIZE, 8).
--record(action_copy_ttl_out, {}).
-
 %% Copy TTL inwards action
 -define(ACTION_COPY_TTL_IN_SIZE, 8).
--record(action_copy_ttl_in, {}).
-
-%% Push VLAN header action
--define(ACTION_PUSH_VLAN_SIZE, 8).
--record(action_push_vlan, {
-          ethertype :: integer()
-         }).
-
-%% Pop VLAN header action
--define(ACTION_POP_VLAN_SIZE, 8).
--record(action_pop_vlan, {}).
-
-%% Push MPLS header action
--define(ACTION_PUSH_MPLS_SIZE, 8).
--record(action_push_mpls, {
-          ethertype :: integer()
+-record(action_copy_ttl_in, {
+          seq = 1
          }).
 
 %% Pop MPLS header action
 -define(ACTION_POP_MPLS_SIZE, 8).
 -record(action_pop_mpls, {
+          seq = 2,
           ethertype :: integer()
+         }).
+
+%% Pop VLAN header action
+-define(ACTION_POP_VLAN_SIZE, 8).
+-record(action_pop_vlan, {
+          seq = 3
+         }).
+
+%% Push MPLS header action
+-define(ACTION_PUSH_MPLS_SIZE, 8).
+-record(action_push_mpls, {
+          seq = 4,
+          ethertype :: integer()
+         }).
+
+%% Push VLAN header action
+-define(ACTION_PUSH_VLAN_SIZE, 8).
+-record(action_push_vlan, {
+          seq = 5,
+          ethertype :: integer()
+         }).
+
+%% Copy TTL outwards action
+-define(ACTION_COPY_TTL_OUT_SIZE, 8).
+-record(action_copy_ttl_out, {
+          seq = 6
+         }).
+
+%% Decrement MPLS TTL action
+-define(ACTION_DEC_MPLS_TTL_SIZE, 8).
+-record(action_dec_mpls_ttl, {
+          seq = 7
+         }).
+
+%% Decrement IPv4 TTL action
+-define(ACTION_DEC_NW_TTL_SIZE, 8).
+-record(action_dec_nw_ttl, {
+          seq = 8
+         }).
+
+%% Set MPLS TTL action
+-define(ACTION_SET_MPLS_TTL_SIZE, 8).
+-record(action_set_mpls_ttl, {
+          seq = 9,
+          mpls_ttl :: integer()
+         }).
+
+%% Set IPv4 TTL action
+-define(ACTION_SET_NW_TTL_SIZE, 8).
+-record(action_set_nw_ttl, {
+          seq = 10,
+          nw_ttl :: integer()
          }).
 
 %% Set field action
 -define(ACTION_SET_FIELD_SIZE, 8).
 -record(action_set_field, {
+          seq = 11,
           field :: #oxm_field{}
+         }).
+
+%% Set queue action
+-define(ACTION_SET_QUEUE_SIZE, 8).
+-record(action_set_queue, {
+          seq = 12,
+          queue_id :: integer()
+         }).
+
+%% Group action
+-define(ACTION_GROUP_SIZE, 8).
+-record(action_group, {
+          seq = 13,
+          group_id :: integer()
+         }).
+
+%% Output action
+-define(ACTION_OUTPUT_SIZE, 16).
+-record(action_output, {
+          seq = 14,
+          port :: integer() | atom(),
+          max_len :: integer() | atom()
          }).
 
 %% Experimenter action
 -define(ACTION_EXPERIMENTER_SIZE, 8).
 -record(action_experimenter, {
+          seq = 99,
           experimenter :: integer()
          }).
 
