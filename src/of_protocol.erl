@@ -11,7 +11,33 @@
 
 -include("of_protocol.hrl").
 
--export_type([instruction/0, match/0]).
+-export_type([instruction/0,
+              match/0,
+              flow_mod/0,
+              table_mod/0,
+              port_mod/0,
+              group_mod/0,
+              echo_request/0,
+              echo_reply/0,
+              barrier_request/0,
+              desc_stats_request/0,
+              desc_stats_reply/0,
+              flow_stats_request/0,
+              flow_stats_reply/0,
+              aggregate_stats_request/0,
+              aggregate_stats_reply/0,
+              table_stats_request/0,
+              table_stats_reply/0,
+              port_stats_request/0,
+              port_stats_reply/0,
+              queue_stats_request/0,
+              queue_stats_reply/0,
+              group_stats_request/0,
+              group_stats_reply/0,
+              group_desc_stats_request/0,
+              group_desc_stats_reply/0,
+              group_features_stats_request/0,
+              group_features_stats_reply/0]).
 
 -define(VERSION, 3).
 
