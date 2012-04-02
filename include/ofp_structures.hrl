@@ -156,18 +156,20 @@
 
 -define(OXM_FIELD_SIZE, 4).
 -record(oxm_field, {
-          class :: atom(),
+          class :: oxm_field_class(),
           field :: atom(),
           has_mask :: boolean(),
           value :: binary(),
           mask :: binary()
          }).
+-type oxm_field() :: #oxm_field{}.
 
 %% OXM Class IDs
 -define(OFPXMC_NXM_0, 0).
 -define(OFPXMC_NXM_1, 1).
 -define(OFPXMC_OPENFLOW_BASIC, 16#8000).
 -define(OFPXMC_EXPERIMENTER, 16#ffff).
+-type oxm_field_class() :: nxm_0 | nxm_1 | openflow_basic | experimenter.
 
 %% OXM Flow match field types
 -define(OFPXMT_OFB_IN_PORT, 0).
@@ -248,8 +250,8 @@
 %% Fields to match against flows
 -define(MATCH_SIZE, 8).
 -record(match, {
-          type :: atom(),
-          oxm_fields = [] :: [#oxm_field{}]
+          type :: match_type(),
+          oxm_fields = [] :: [oxm_field()]
          }).
 
 -type match() :: #match{}.
@@ -257,6 +259,7 @@
 %% Match type
 -define(OFPMT_STANDARD, 0).
 -define(OFPMT_OXM, 1).
+-type match_type() :: standard | oxm.
 
 %%% Flow Instruction Structures ------------------------------------------------
 
