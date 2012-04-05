@@ -16,7 +16,7 @@
 -type port_no() :: integer() | max | in_port | table | normal |
                    flood | all | controller | local | any.
 -type group_id() :: integer() | max | any | all.
--type table_id() :: integer() | max | all.
+-type table_id() :: integer() | all.
 -type queue_id() :: integer() | max | all.
 
 %% Header on all OpenFlow packets

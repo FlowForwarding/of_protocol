@@ -105,7 +105,7 @@
           cookie :: binary(),
           cookie_mask :: binary(),
           table_id :: table_id(),
-          command :: add | modify | delete,
+          command :: flow_mod_command(),
           idle_timeout :: integer(),
           hard_timeout :: integer(),
           priority :: integer(),
@@ -119,6 +119,11 @@
 -type flow_mod() :: #flow_mod{}.
 
 %% Flow mod commands
+-type flow_mod_command() :: add
+                          | modify
+                          | modify_strict
+                          | delete
+                          | delete_strict.
 -define(OFPFC_ADD, 0).
 -define(OFPFC_MODIFY, 1).
 -define(OFPFC_MODIFY_STRICT, 2).
