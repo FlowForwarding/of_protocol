@@ -37,7 +37,8 @@
               group_desc_stats_request/0,
               group_desc_stats_reply/0,
               group_features_stats_request/0,
-              group_features_stats_reply/0]).
+              group_features_stats_reply/0,
+              error_msg/0]).
 
 -define(VERSION, 3).
 
