@@ -38,7 +38,8 @@
               group_desc_stats_reply/0,
               group_features_stats_request/0,
               group_features_stats_reply/0,
-              error_msg/0]).
+              error_msg/0,
+              table_config/0]).
 
 -define(VERSION, 3).
 
@@ -299,12 +300,12 @@ encode_struct(#table_stats{table_id = Table, name = Name, match = Match,
     WriteSetBin = flags_to_binary(oxm_field, WriteSet, 8),
     ApplySetBin = flags_to_binary(oxm_field, ApplySet, 8),
     InstructionsBin = flags_to_binary(instruction_type, Instructions, 4),
-    ConfigBin = flags_to_binary(table_config, Config, 4),
+    ConfigInt = ofp_map:table_config(Config),
     << TableInt:8/integer, 0:56/integer, Name/binary, 0:Padding/integer,
        MatchBin/binary, WildcardsBin/binary, WriteActionsBin/binary,
        ApplyActionsBin/binary, WriteSetBin/binary, ApplySetBin/binary,
        MetaMatch:64/integer, MetaWrite:64/integer, InstructionsBin/binary,
-       ConfigBin/binary, Max:32/integer, ACount:32/integer, LCount:64/integer,
+       ConfigInt:32/integer, Max:32/integer, ACount:32/integer, LCount:64/integer,
        MCount:64/integer >>;
 encode_struct(#port_stats{port_no = Port,
                           rx_packets = RXPackets, tx_packets = TXPackets,
@@ -498,9 +499,9 @@ encode2(#port_mod{header = Header, port_no = Port, hw_addr = Addr,
        AdvertiseBin:4/binary, 0:32/integer >>;
 encode2(#table_mod{header = Header, table_id = Table, config = Config}) ->
     TableInt = ofp_map:encode_table_id(Table),
-    ConfigBin = flags_to_binary(table_config, Config, 4),
+    ConfigInt = ofp_map:table_config(Config),
     HeaderBin = encode_header(Header, table_mod, ?TABLE_MOD_SIZE),
-    << HeaderBin/binary, TableInt:8/integer, 0:24/integer, ConfigBin/binary >>;
+    << HeaderBin/binary, TableInt:8/integer, 0:24/integer, ConfigInt:32/integer >>;
 encode2(#desc_stats_request{header = Header, flags = Flags}) ->
     TypeInt = ofp_map:stats_type(desc),
     FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
@@ -987,7 +988,7 @@ decode_table_stats(Binary) ->
        MatchBin:8/binary, WildcardsBin:8/binary, WriteActionsBin:4/binary,
        ApplyActionsBin:4/binary, WriteSetBin:8/binary, ApplySetBin:8/binary,
        MetaMatch:64/integer, MetaWrite:64/integer, InstructionsBin:4/binary,
-       ConfigBin:4/binary, Max:32/integer, ACount:32/integer, LCount:64/integer,
+       ConfigInt:32/integer, Max:32/integer, ACount:32/integer, LCount:64/integer,
        MCount:64/integer >> = Binary,
     Table = ofp_map:decode_table_id(TableInt),
     Name = rstrip(NameBin),
@@ -998,7 +999,7 @@ decode_table_stats(Binary) ->
     WriteSet = binary_to_flags(oxm_field, WriteSetBin),
     ApplySet = binary_to_flags(oxm_field, ApplySetBin),
     Instructions = binary_to_flags(instruction_type, InstructionsBin),
-    Config = binary_to_flags(table_config, ConfigBin),
+    Config = ofp_map:table_config(ConfigInt),
     #table_stats{table_id = Table, name = Name, match = Match,
                            wildcards = Wildcards, write_actions = WriteActions,
                            apply_actions = ApplyActions,
@@ -1396,10 +1397,10 @@ decode(port_mod, _, Header, Binary) ->
     {#port_mod{header = Header, port_no = Port, hw_addr = Addr,
                config = Config, mask = Mask, advertise = Advertise}, Rest};
 decode(table_mod, _, Header, Binary) ->
-    << TableInt:8/integer, 0:24/integer, ConfigBin:4/binary,
+    << TableInt:8/integer, 0:24/integer, ConfigInt:32/integer,
        Rest/binary >> = Binary,
     Table = ofp_map:decode_table_id(TableInt),
-    Config = binary_to_flags(table_config, ConfigBin),
+    Config = ofp_map:table_config(ConfigInt),
     {#table_mod{header = Header, table_id = Table, config = Config}, Rest};
 decode(barrier_request, _, Header, Rest) ->
     {#barrier_request{header = Header}, Rest};

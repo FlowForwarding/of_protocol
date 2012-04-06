@@ -495,7 +495,7 @@
           metadata_match :: integer(),
           metadata_write :: integer(),
           instructions :: [atom()],
-          config :: [atom()],
+          config :: table_config(),
           max_entries :: integer(),
           active_count :: integer(),
           lookup_count :: integer(),

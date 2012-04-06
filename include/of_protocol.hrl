@@ -72,6 +72,7 @@
 -type set_config() :: #set_config{}.
 
 %% Configuration flags
+-type table_config() :: drop | controller | continue.
 -define(OFPC_FRAG_NORMAL, 0).
 -define(OFPC_FRAG_DROP, 0).
 -define(OFPC_FRAG_REASM, 1).
@@ -85,7 +86,7 @@
 -record(table_mod, {
           header = #header{} :: #header{},
           table_id :: integer() | atom(),
-          config = [] :: [atom()]
+          config = drop :: table_config()
          }).
 -type table_mod() :: #table_mod{}.
 
