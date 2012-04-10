@@ -75,7 +75,7 @@ decode(Binary) ->
 %%%-----------------------------------------------------------------------------
 
 %% @doc Encode header
-encode_header(#header{version = Version, xid = Xid}, Type, Length) ->
+encode_header(#ofp_header{version = Version, xid = Xid}, Type, Length) ->
     TypeInt = ofp_map:msg_type(Type),
     << 1:1/integer, Version:7/integer, TypeInt:8/integer,
        Length:16/integer, Xid:32/integer >>.
@@ -349,7 +349,7 @@ encode_struct(#group_desc_stats{type = Type, group_id = Group,
 
 %% @doc Actual encoding of the messages
 encode2(#hello{header = Header}) ->
-    HeaderBin = encode_header(Header, hello, ?HEADER_SIZE),
+    HeaderBin = encode_header(Header, hello, ?OFP_HEADER_SIZE),
     << HeaderBin/binary >>;
 encode2(#error_msg{header = Header, type = Type, code = Code, data = Data}) ->
     Length = size(Data) + ?ERROR_MSG_SIZE,
@@ -706,7 +706,7 @@ encode2(Other) ->
     throw({bad_message, Other}).
 
 %% @doc Decode header structure
--spec decode_header(binary()) -> header().
+-spec decode_header(binary()) -> ofp_header().
 decode_header(Binary) ->
     << 1:1/integer, Version:7/integer, TypeInt:8/integer,
        Length:16/integer, XID:32/integer >> = Binary,
@@ -715,7 +715,7 @@ decode_header(Binary) ->
             throw({error, bad_message});
         false ->
             Type = ofp_map:msg_type(TypeInt),
-            {#header{version = Version, xid = XID}, Type, Length}
+            {#ofp_header{version = Version, xid = XID}, Type, Length}
     end.
 
 %% @doc Decode port structure
@@ -1084,7 +1084,7 @@ decode_group_desc_stats_list(Binary, StatsList) ->
     decode_group_desc_stats_list(Rest, [Stats | StatsList]).
 
 %% @doc Actual decoding of the messages
--spec decode(atom(), integer(), header(), binary()) -> ofp_message().
+-spec decode(atom(), integer(), ofp_header(), binary()) -> ofp_message().
 decode(hello, _, Header, Rest) ->
     {#hello{header = Header}, Rest};
 decode(error, Length, Header, Binary) ->

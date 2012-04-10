@@ -20,12 +20,12 @@
 -type queue_id() :: integer() | max | all.
 
 %% Header on all OpenFlow packets
--define(HEADER_SIZE, 8).
--record(header, {
+-define(OFP_HEADER_SIZE, 8).
+-record(ofp_header, {
           version = 3 :: integer(),
           xid :: integer()
          }).
--type header() :: #header{}.
+-type ofp_header() :: #ofp_header{}.
 
 %% Message types
 -define(OFPT_HELLO, 0).

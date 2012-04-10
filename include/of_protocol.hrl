@@ -18,14 +18,14 @@
 %% Features request
 -define(FEATURES_REQUEST_SIZE, 8).
 -record(features_request, {
-          header = #header{} :: #header{}
+          header = #ofp_header{} :: #ofp_header{}
          }).
 -type features_request() :: #features_request{}.
 
 %% Switch features (Features reply)
 -define(FEATURES_REPLY_SIZE, 32).
 -record(features_reply, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           datapath_mac :: binary(),
           datapath_id :: integer(),
           n_buffers :: integer(),
@@ -49,14 +49,14 @@
 %% Configuration request
 -define(GET_CONFIG_REQUEST_SIZE, 8).
 -record(get_config_request, {
-          header = #header{} :: #header{}
+          header = #ofp_header{} :: #ofp_header{}
          }).
 -type get_config_request() :: #get_config_request{}.
 
 %% Configuration reply
 -define(GET_CONFIG_REPLY_SIZE, 12).
 -record(get_config_reply, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags = [] :: [atom()],
           miss_send_len :: integer()
          }).
@@ -65,7 +65,7 @@
 %% Set configuration
 -define(SET_CONFIG_SIZE, 12).
 -record(set_config, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags = [] :: [atom()],
           miss_send_len :: integer()
          }).
@@ -84,7 +84,7 @@
 %% Configure/Modify behavior of a flow table
 -define(TABLE_MOD_SIZE, 16).
 -record(table_mod, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           table_id :: integer() | atom(),
           config = drop :: table_config()
          }).
@@ -102,7 +102,7 @@
 %% Flow setup and teardown
 -define(FLOW_MOD_SIZE, 56).
 -record(flow_mod, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           cookie :: binary(),
           cookie_mask :: binary(),
           table_id :: table_id(),
@@ -140,7 +140,7 @@
 %% Group setup and teardown
 -define(GROUP_MOD_SIZE, 16).
 -record(group_mod, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           command :: atom(),
           type :: atom(),
           group_id :: integer() | atom(),
@@ -167,7 +167,7 @@
 %% Modify behavior of the physical port
 -define(PORT_MOD_SIZE, 40).
 -record(port_mod, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           port_no :: integer() | atom(),
           hw_addr :: binary(),
           config = [] :: [atom()],
@@ -181,7 +181,7 @@
 %% Request for desc stats
 -define(DESC_STATS_REQUEST_SIZE, 16).
 -record(desc_stats_request, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags = [] :: [atom()]
          }).
 -type desc_stats_request() :: #desc_stats_request{}.
@@ -189,7 +189,7 @@
 %% Desc stats
 -define(DESC_STATS_REPLY_SIZE, 1072).
 -record(desc_stats_reply, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags = [] :: [atom()],
           mfr_desc :: binary(),
           hw_desc :: binary(),
@@ -202,7 +202,7 @@
 %% Request for flow stats
 -define(FLOW_STATS_REQUEST_SIZE, 56).
 -record(flow_stats_request, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags = [] :: [atom()],
           table_id :: table_id(),
           out_port :: port_no(),
@@ -216,7 +216,7 @@
 %% Flow stats reply
 -define(FLOW_STATS_REPLY_SIZE, 16).
 -record(flow_stats_reply, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags = [] :: [atom()],
           stats = [] :: [#flow_stats{}]
          }).
@@ -225,7 +225,7 @@
 %% Request for aggregate stats
 -define(AGGREGATE_STATS_REQUEST_SIZE, 56).
 -record(aggregate_stats_request, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags :: [atom()],
           table_id :: table_id(),
           out_port :: port_no(),
@@ -238,7 +238,7 @@
 %% Aggregate stats reply
 -define(AGGREGATE_STATS_REPLY_SIZE, 40).
 -record(aggregate_stats_reply, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags :: [atom()],
           packet_count :: integer(),
           byte_count :: integer(),
@@ -249,7 +249,7 @@
 %% Request for table stats
 -define(TABLE_STATS_REQUEST_SIZE, 16).
 -record(table_stats_request, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags :: [atom()]
          }).
 -type table_stats_request() :: #table_stats_request{}.
@@ -257,7 +257,7 @@
 %% Table stats reply
 -define(TABLE_STATS_REPLY_SIZE, 16).
 -record(table_stats_reply, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags :: [atom()],
           stats = [] :: [#table_stats{}]
          }).
@@ -266,7 +266,7 @@
 %% Request for port stats
 -define(PORT_STATS_REQUEST_SIZE, 24).
 -record(port_stats_request, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags :: [atom()],
           port_no :: port_no()
          }).
@@ -275,7 +275,7 @@
 %% Port stats reply
 -define(PORT_STATS_REPLY_SIZE, 16).
 -record(port_stats_reply, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags :: [atom()],
           stats = [] :: [#port_stats{}]
          }).
@@ -284,7 +284,7 @@
 %% Request for queue stats
 -define(QUEUE_STATS_REQUEST_SIZE, 24).
 -record(queue_stats_request, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags :: [atom()],
           port_no :: port_no(),
           queue_id :: queue_id()
@@ -294,7 +294,7 @@
 %% Queue stats reply
 -define(QUEUE_STATS_REPLY_SIZE, 16).
 -record(queue_stats_reply, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags :: [atom()],
           stats = [] :: [#queue_stats{}]
          }).
@@ -303,7 +303,7 @@
 %% Request for group stats
 -define(GROUP_STATS_REQUEST_SIZE, 24).
 -record(group_stats_request, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags :: [atom()],
           group_id :: group_id()
          }).
@@ -312,7 +312,7 @@
 %% Group stats reply
 -define(GROUP_STATS_REPLY_SIZE, 16).
 -record(group_stats_reply, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags :: [atom()],
           stats = [] :: [#group_stats{}]
          }).
@@ -321,7 +321,7 @@
 %% Request for group desc stats
 -define(GROUP_DESC_STATS_REQUEST_SIZE, 16).
 -record(group_desc_stats_request, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags :: [atom()]
          }).
 -type group_desc_stats_request() :: #group_desc_stats_request{}.
@@ -329,7 +329,7 @@
 %% Group desc stats reply
 -define(GROUP_DESC_STATS_REPLY_SIZE, 16).
 -record(group_desc_stats_reply, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags :: [atom()],
           stats = [] :: [#group_desc_stats{}]
          }).
@@ -338,7 +338,7 @@
 %% Request for group features stats
 -define(GROUP_FEATURES_STATS_REQUEST_SIZE, 16).
 -record(group_features_stats_request, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags :: [atom()]
          }).
 -type group_features_stats_request() :: #group_features_stats_request{}.
@@ -346,7 +346,7 @@
 %% Group features stats reply
 -define(GROUP_FEATURES_STATS_REPLY_SIZE, 56).
 -record(group_features_stats_reply, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags :: [atom()],
           types :: [atom()],
           capabilities :: [atom()],
@@ -364,7 +364,7 @@
 %% Request for experimenter stats
 -define(EXPERIMENTER_STATS_REQUEST_SIZE, 24).
 -record(experimenter_stats_request, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags :: [atom()],
           experimenter :: integer(),
           exp_type :: integer(),
@@ -375,7 +375,7 @@
 %% Experimenter stats reply
 -define(EXPERIMENTER_STATS_REPLY_SIZE, 24).
 -record(experimenter_stats_reply, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           flags :: [atom()],
           experimenter :: integer(),
           exp_type :: integer(),
@@ -420,7 +420,7 @@
 %% Get queue config request message
 -define(QUEUE_GET_CONFIG_REQUEST_SIZE, 16).
 -record(queue_get_config_request, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           port :: integer() | atom()
          }).
 -type queue_get_config_request() :: #queue_get_config_request{}.
@@ -428,7 +428,7 @@
 %% Get queue config reply message
 -define(QUEUE_GET_CONFIG_REPLY_SIZE, 16).
 -record(queue_get_config_reply, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           port :: integer() | atom(),
           queues = [] :: [#packet_queue{}]
          }).
@@ -443,7 +443,7 @@
 %% Send packet
 -define(PACKET_OUT_SIZE, 24).
 -record(packet_out, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           buffer_id :: integer(),
           in_port :: integer() | atom(),
           actions = [] :: [action()],
@@ -456,14 +456,14 @@
 %% Barrier request
 -define(BARRIER_REQUEST_SIZE, 8).
 -record(barrier_request, {
-          header = #header{} :: #header{}
+          header = #ofp_header{} :: #ofp_header{}
          }).
 -type barrier_request() :: #barrier_request{}.
 
 %% Barrier reply
 -define(BARRIER_REPLY_SIZE, 8).
 -record(barrier_reply, {
-          header = #header{} :: #header{}
+          header = #ofp_header{} :: #ofp_header{}
          }).
 -type barrier_reply() :: #barrier_reply{}.
 
@@ -472,7 +472,7 @@
 %% Role request messages
 -define(ROLE_REQUEST_SIZE, 24).
 -record(role_request, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           role :: atom(),
           generation_id :: integer()
          }).
@@ -481,7 +481,7 @@
 %% Role reply message
 -define(ROLE_REPLY_SIZE, 24).
 -record(role_reply, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           role :: atom(),
           generation_id :: integer()
          }).
@@ -500,7 +500,7 @@
 %% Packet received on port
 -define(PACKET_IN_SIZE, 24).
 -record(packet_in, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           buffer_id :: integer(),
           reason :: atom(),
           table_id :: integer(),
@@ -517,7 +517,7 @@
 %% Flow removed
 -define(FLOW_REMOVED_SIZE, 56).
 -record(flow_removed, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           cookie :: binary(),
           priority :: integer(),
           reason :: atom(),
@@ -541,7 +541,7 @@
 %% A physical port has changed in the datapath
 -define(PORT_STATUS_SIZE, 80).
 -record(port_status, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           reason :: atom(),
           desc :: #port{}
          }).
@@ -555,7 +555,7 @@
 %% Error message
 -define(ERROR_MSG_SIZE, 12).
 -record(error_msg, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           type :: atom(),
           code :: atom(),
           data = <<>> :: binary()
@@ -695,7 +695,7 @@
 %% Experimenter error message
 -define(ERROR_EXPERIMENTER_MSG_SIZE, 16).
 -record(error_experimenter_msg, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           exp_type :: integer(),
           experimenter :: integer(),
           data = <<>> :: binary()
@@ -711,14 +711,14 @@
 %% Hello message
 -define(HELLO_SIZE, 8).
 -record(hello, {
-          header = #header{} :: #header{}
+          header = #ofp_header{} :: #ofp_header{}
          }).
 -type hello() :: #hello{}.
 
 %% Echo Request
 -define(ECHO_REQUEST_SIZE, 8).
 -record(echo_request, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           data = <<>> :: binary()
          }).
 -type echo_request() :: #echo_request{}.
@@ -726,7 +726,7 @@
 %% Echo Reply
 -define(ECHO_REPLY_SIZE, 8).
 -record(echo_reply, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           data = <<>> :: binary()
          }).
 -type echo_reply() :: #echo_reply{}.
@@ -734,7 +734,7 @@
 %% Experimenter
 -define(EXPERIMENTER_SIZE, 16).
 -record(experimenter, {
-          header = #header{} :: #header{},
+          header = #ofp_header{} :: #ofp_header{},
           experimenter :: integer(),
           exp_type :: integer(),
           data = <<>> :: binary()
