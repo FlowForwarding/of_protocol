@@ -17,6 +17,7 @@
               table_mod/0,
               port_mod/0,
               group_mod/0,
+              packet_out/0,
               echo_request/0,
               echo_reply/0,
               barrier_request/0,
