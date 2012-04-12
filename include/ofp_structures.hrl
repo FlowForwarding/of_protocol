@@ -22,6 +22,7 @@
 %% Header on all OpenFlow packets
 -define(OFP_HEADER_SIZE, 8).
 -record(ofp_header, {
+          experimental = true :: boolean(),
           version = 3 :: integer(),
           xid :: integer()
          }).

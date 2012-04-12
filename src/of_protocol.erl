@@ -76,9 +76,16 @@ decode(Binary) ->
 %%%-----------------------------------------------------------------------------
 
 %% @doc Encode header
-encode_header(#ofp_header{version = Version, xid = Xid}, Type, Length) ->
+encode_header(#ofp_header{experimental = Experimental, version = Version,
+                          xid = Xid}, Type, Length) ->
     TypeInt = ofp_map:msg_type(Type),
-    << 1:1/integer, Version:7/integer, TypeInt:8/integer,
+    ExperimentalInt = case Experimental of
+                          true ->
+                              1;
+                          false ->
+                              0
+                      end,
+    << ExperimentalInt:1/integer, Version:7/integer, TypeInt:8/integer,
        Length:16/integer, Xid:32/integer >>.
 
 %% @doc Encode queue property header
@@ -709,14 +716,15 @@ encode2(Other) ->
 %% @doc Decode header structure
 -spec decode_header(binary()) -> ofp_header().
 decode_header(Binary) ->
-    << 1:1/integer, Version:7/integer, TypeInt:8/integer,
+    << Experimental:1/integer, Version:7/integer, TypeInt:8/integer,
        Length:16/integer, XID:32/integer >> = Binary,
     case Length < 8 of
         true ->
             throw({error, bad_message});
         false ->
             Type = ofp_map:msg_type(TypeInt),
-            {#ofp_header{version = Version, xid = XID}, Type, Length}
+            {#ofp_header{experimental = Experimental == 1,
+                         version = Version, xid = XID}, Type, Length}
     end.
 
 %% @doc Decode port structure
