@@ -31,6 +31,7 @@
           n_buffers :: integer(),
           n_tables :: integer(),
           capabilities = [] :: [atom()],
+          actions = [] :: [atom()],
           ports = [] :: [#port{}]
          }).
 -type features_reply() :: #features_reply{}.
@@ -502,6 +503,7 @@
 -record(packet_in, {
           header = #ofp_header{} :: #ofp_header{},
           buffer_id :: integer(),
+          in_port :: integer(),
           reason :: atom(),
           table_id :: integer(),
           match :: match(),
