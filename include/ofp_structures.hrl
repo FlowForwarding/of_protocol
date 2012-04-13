@@ -397,6 +397,7 @@
 -define(ACTION_SET_QUEUE_SIZE, 8).
 -record(action_set_queue, {
           seq = 12,
+          port :: integer() | atom(),
           queue_id :: integer()
          }).
 
@@ -479,6 +480,7 @@
           packet_count :: integer(),
           byte_count :: integer(),
           match :: match(),
+          actions = [] :: [action()],
           instructions = [] :: [instruction()]
          }).
 

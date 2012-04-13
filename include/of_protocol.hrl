@@ -116,6 +116,7 @@
           out_group :: integer() | atom(),
           flags = [] :: [flow_mod_flag()],
           match :: match(),
+          actions = [] :: [action()],
           instructions = [] :: [instruction()]
          }).
 -type flow_mod() :: #flow_mod{}.
