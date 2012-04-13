@@ -1,529 +1,839 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012, Erlang Solutions Ltd.
-%%% @author Krzysztof Rutka <krzysztof.rutka@erlang-solutions.com>
+%%% @doc Common header file for all protocol versions.
+%%% @end
 %%%-----------------------------------------------------------------------------
 
--include_lib("of_protocol/include/ofp_structures.hrl").
-
--record(parser, {
+-record(ofp_parser, {
           stack = <<>> :: binary()
          }).
+-type ofp_parser() :: #ofp_parser{}.
+
+-define(OFP_HEADER_SIZE, 8).
+
+-record(ofp_message, {
+          experimental = false :: boolean(),
+          version = 3 :: integer(),
+          xid :: integer(),
+          body :: ofp_message_body()
+         }).
+
+-type ofp_message() :: #ofp_message{}.
+
+-type ofp_group_id() :: integer()
+                      | any
+                      | all.
+
+-type ofp_table_id() :: integer()
+                      | all.
+
+-type ofp_queue_id() :: integer()
+                      | all.
+
+-type ofp_buffer_id() :: integer()
+                       | no_buffer.
+
+-define(OFP_ETH_ALEN, 6).
+-define(OFP_MAX_PORT_NAME_LEN, 16).
+-define(OFP_MAX_TABLE_NAME_LEN, 32).
+-define(DESC_STR_LEN, 256).
+-define(SERIAL_NUM_LEN, 32).
+
+%%%-----------------------------------------------------------------------------
+%%% Common Structures
+%%%-----------------------------------------------------------------------------
+
+%%% Port Structures ------------------------------------------------------------
+
+-type ofp_port_config() :: port_down
+                         | no_recv
+                         | no_fwd
+                         | no_packet_in.
+
+-type ofp_port_state() :: link_down
+                        | blocked
+                        | live.
+
+-type ofp_port_no() :: integer()
+                     | in_port
+                     | table
+                     | normal
+                     | flood
+                     | all
+                     | controller
+                     | local
+                     | any.
+
+-type ofp_port_feature() :: '10mb_hd'
+                          | '10mb_fd'
+                          | '100mb_hd'
+                          | '100mb_fd'
+                          | '1gb_hd'
+                          | '1gb_fd'
+                          | '10gb_fd'
+                          | '40gb_fd'
+                          | '100gb_fd'
+                          | '1tb_fd'
+                          | other
+                          | copper
+                          | fiber
+                          | autoneg
+                          | pause
+                          | pause_asym.
+
+%% Port
+-record(ofp_port, {
+          port_no :: integer() | local,
+          hw_addr :: binary(),
+          name :: binary(),
+          config = [] :: [ofp_port_config()],
+          state = [] :: [ofp_port_state()],
+          curr = [] :: [ofp_port_feature()],
+          advertised = [] :: [ofp_port_feature()],
+          supported = [] :: [ofp_port_feature()],
+          peer = [] :: [ofp_port_feature()],
+          curr_speed = 0 :: integer(),
+          max_speed = 0 :: integer()
+         }).
+-type ofp_port() :: #ofp_port{}.
+
+%%% Queue Structures -----------------------------------------------------------
+
+%% Min-Rate queue property
+-record(ofp_queue_prop_min_rate, {
+          rate :: integer()
+         }).
+
+%% Max-Rate queue property
+-record(ofp_queue_prop_max_rate, {
+          rate :: integer()
+         }).
+
+%% Experimenter queue property
+-record(ofp_queue_prop_experimenter, {
+          experimenter :: integer(),
+          data :: binary()
+         }).
+
+-type ofp_queue_property() :: #ofp_queue_prop_min_rate{} |
+                              #ofp_queue_prop_max_rate{} |
+                              #ofp_queue_prop_experimenter{}.
+
+%% Packet queue
+-record(ofp_packet_queue, {
+          queue_id :: integer(),
+          port :: integer(),
+          properties :: [ofp_queue_property()]
+         }).
+-type ofp_packet_queue() :: #ofp_packet_queue{}.
+
+%%% Flow Match Structures ------------------------------------------------------
+
+-type ofp_field_class() :: nxm_0
+                         | nxm_1
+                         | openflow_basic
+                         | experimenter.
+
+-type openflow_basic_type() :: in_port
+                             | in_phy_port
+                             | metadata
+                             | eth_dst
+                             | eth_src
+                             | eth_type
+                             | vlan_vid
+                             | vlan_pcp
+                             | ip_dscp
+                             | ip_ecn
+                             | ip_proto
+                             | ipv4_src
+                             | ipv4_dst
+                             | tcp_src
+                             | tcp_dst
+                             | udp_src
+                             | udp_dst
+                             | sctp_src
+                             | sctp_dst
+                             | icmpv4_type
+                             | icmpv4_code
+                             | arp_op
+                             | arp_spa
+                             | arp_tpa
+                             | arp_sha
+                             | arp_tha
+                             | ipv6_src
+                             | ipv6_dst
+                             | ipv6_label
+                             | icmpv6_type
+                             | icmpv6_code
+                             | ipv6_nd_target
+                             | ipv6_nd_sll
+                             | ipv6_nd_tll
+                             | mpls_label
+                             | mpls_tc.
+
+-type ofp_field_type() :: openflow_basic_type().
+
+%% OXM field
+-record(ofp_field, {
+          class :: ofp_field_class(),
+          field :: ofp_field_type(),
+          has_mask :: boolean(),
+          value :: binary(),
+          mask :: binary()
+         }).
+-type ofp_field() :: #ofp_field{}.
+
+-type ofp_match_type() :: standard %% Deprecated
+                        | oxm.     %% OpenFlow Extensible Match
+
+%% Match
+-record(ofp_match, {
+          type :: ofp_match_type(),
+          oxm_fields = [] :: [ofp_field()]
+         }).
+
+-type ofp_match() :: #ofp_match{}.
+
+%%% Action Structures ----------------------------------------------------------
+
+%% Copy TTL inwards action
+-record(ofp_action_copy_ttl_in, {
+          seq = 1
+         }).
+
+%% Pop MPLS header action
+-record(ofp_action_pop_mpls, {
+          seq = 2,
+          ethertype :: integer()
+         }).
+
+%% Pop VLAN header action
+-record(ofp_action_pop_vlan, {
+          seq = 3
+         }).
+
+%% Push MPLS header action
+-record(ofp_action_push_mpls, {
+          seq = 4,
+          ethertype :: integer()
+         }).
+
+%% Push VLAN header action
+-record(ofp_action_push_vlan, {
+          seq = 5,
+          ethertype :: integer()
+         }).
+
+%% Copy TTL outwards action
+-record(ofp_action_copy_ttl_out, {
+          seq = 6
+         }).
+
+%% Decrement MPLS TTL action
+-record(ofp_action_dec_mpls_ttl, {
+          seq = 7
+         }).
+
+%% Decrement IPv4 TTL action
+-record(ofp_action_dec_nw_ttl, {
+          seq = 8
+         }).
+
+%% Set MPLS TTL action
+-record(ofp_action_set_mpls_ttl, {
+          seq = 9,
+          mpls_ttl :: integer()
+         }).
+
+%% Set IPv4 TTL action
+-record(ofp_action_set_nw_ttl, {
+          seq = 10,
+          nw_ttl :: integer()
+         }).
+
+%% Set field action
+-record(ofp_action_set_field, {
+          seq = 11,
+          field :: ofp_field()
+         }).
+
+%% Set queue action
+-record(ofp_action_set_queue, {
+          seq = 12,
+          queue_id :: integer()
+         }).
+
+%% Group action
+-record(ofp_action_group, {
+          seq = 13,
+          group_id :: integer()
+         }).
+
+%% Output action
+-record(ofp_action_output, {
+          seq = 14,
+          port :: ofp_port_no(),
+          max_len :: ofp_buffer_id()
+         }).
+
+%% Experimenter action
+-record(ofp_action_experimenter, {
+          seq = 99,
+          experimenter :: integer()
+         }).
+
+-type ofp_action() :: #ofp_action_output{}
+                    | #ofp_action_group{}
+                    | #ofp_action_set_queue{}
+                    | #ofp_action_set_mpls_ttl{}
+                    | #ofp_action_dec_mpls_ttl{}
+                    | #ofp_action_set_nw_ttl{}
+                    | #ofp_action_dec_nw_ttl{}
+                    | #ofp_action_copy_ttl_out{}
+                    | #ofp_action_copy_ttl_in{}
+                    | #ofp_action_push_vlan{}
+                    | #ofp_action_pop_vlan{}
+                    | #ofp_action_push_mpls{}
+                    | #ofp_action_pop_mpls{}
+                    | #ofp_action_set_field{}
+                    | #ofp_action_experimenter{}.
+
+%%% Flow Instruction Structures ------------------------------------------------
+
+%% Instruction structure for goto table
+-record(ofp_instruction_goto_table, {
+          table_id :: integer()
+         }).
+
+%% Instruction structure for write metadata
+-record(ofp_instruction_write_metadata, {
+          metadata :: binary(),
+          metadata_mask :: binary()
+         }).
+
+%% Instruction structure for write actions
+-record(ofp_instruction_write_actions, {
+          actions :: [ofp_action()]
+         }).
+
+%% Instruction structure for apply actions
+-record(ofp_instruction_apply_actions, {
+          actions :: [ofp_action()]
+         }).
+
+%% Instruction structure for clear actions
+-record(ofp_instruction_clear_actions, {}).
+
+%% Instruction structure for experimenter
+-record(ofp_instruction_experimenter, {
+          experimenter :: integer()
+         }).
+
+-type ofp_instruction() :: #ofp_instruction_goto_table{}
+                         | #ofp_instruction_write_metadata{}
+                         | #ofp_instruction_write_actions{}
+                         | #ofp_instruction_apply_actions{}
+                         | #ofp_instruction_clear_actions{}
+                         | #ofp_instruction_experimenter{}.
+
+%%% Other Structures -----------------------------------------------------------
+
+%% Bucket for use in groups
+-record(ofp_bucket, {
+          weight :: integer(),
+          watch_port :: integer(),
+          watch_group :: integer(),
+          actions = [] :: [ofp_action()]
+         }).
+-type ofp_bucket() :: #ofp_bucket{}.
+
+%% Bucket counter for use in group stats
+-record(ofp_bucket_counter, {
+          packet_count :: integer(),
+          byte_count :: integer()
+         }).
+-type ofp_bucket_counter() :: #ofp_bucket_counter{}.
+
+%% Flow stats
+-record(ofp_flow_stats, {
+          table_id :: ofp_table_id(),
+          duration_sec :: integer(),
+          duration_nsec :: integer(),
+          priority :: integer(),
+          idle_timeout :: integer(),
+          hard_timeout :: integer(),
+          cookie :: binary(),
+          packet_count :: integer(),
+          byte_count :: integer(),
+          match :: ofp_match(),
+          instructions = [] :: [ofp_instruction()]
+         }).
+-type ofp_flow_stats() :: #ofp_flow_stats{}.
+
+%% Table stats
+-record(ofp_table_stats, {
+          table_id :: ofp_table_id(),
+          name :: binary(),
+          match :: [atom()],
+          wildcards :: [atom()],
+          write_actions :: [atom()],
+          apply_actions :: [atom()],
+          write_setfields :: [atom()],
+          apply_setfields :: [atom()],
+          metadata_match :: integer(),
+          metadata_write :: integer(),
+          instructions :: [atom()],
+          config :: ofp_table_config(),
+          max_entries :: integer(),
+          active_count :: integer(),
+          lookup_count :: integer(),
+          matched_count :: integer()
+         }).
+-type ofp_table_stats() :: #ofp_table_stats{}.
+
+%% Port stats
+-record(ofp_port_stats, {
+          port_no :: ofp_port_no(),
+          rx_packets :: integer(),
+          tx_packets :: integer(),
+          rx_bytes :: integer(),
+          tx_bytes :: integer(),
+          rx_dropped :: integer(),
+          tx_dropped :: integer(),
+          rx_errors :: integer(),
+          tx_errors :: integer(),
+          rx_frame_err :: integer(),
+          rx_over_err :: integer(),
+          rx_crc_err :: integer(),
+          collisions :: integer()
+         }).
+-type ofp_port_stats() :: #ofp_port_stats{}.
+
+%% Queue stats
+-record(ofp_queue_stats, {
+          port_no :: ofp_port_no(),
+          queue_id :: ofp_queue_id(),
+          tx_bytes :: integer(),
+          tx_packets :: integer(),
+          tx_errors :: integer()
+         }).
+-type ofp_queue_stats() :: #ofp_queue_stats{}.
+
+%% Group stats
+-record(ofp_group_stats, {
+          group_id :: ofp_group_id(),
+          ref_count :: integer(),
+          packet_count :: integer(),
+          byte_count :: integer(),
+          bucket_stats = [] :: [ofp_bucket_counter()]
+         }).
+-type ofp_group_stats() :: #ofp_group_stats{}.
+
+%% Group desc stats
+-record(ofp_group_desc_stats, {
+          type :: atom(),
+          group_id :: ofp_group_id(),
+          buckets = [] :: [ofp_bucket()]
+         }).
+-type ofp_group_desc_stats() :: #ofp_group_desc_stats{}.
 
 %%%-----------------------------------------------------------------------------
 %%% Controller-to-Switch Messages
 %%%-----------------------------------------------------------------------------
 
-%%% Features -------------------------------------------------------------------
+%%% Features (Handshake) -------------------------------------------------------
 
 %% Features request
--define(FEATURES_REQUEST_SIZE, 8).
--record(features_request, {
-          header = #ofp_header{} :: #ofp_header{}
-         }).
--type features_request() :: #features_request{}.
+-record(ofp_features_request, {}).
+-type ofp_features_request() :: #ofp_features_request{}.
+
+-type ofp_switch_capability() :: flow_stats
+                               | table_stats
+                               | port_stats
+                               | group_stats
+                               | ip_reasm
+                               | queue_stats
+                               | port_blocked.
 
 %% Switch features (Features reply)
--define(FEATURES_REPLY_SIZE, 32).
--record(features_reply, {
-          header = #ofp_header{} :: #ofp_header{},
+-record(ofp_features_reply, {
           datapath_mac :: binary(),
           datapath_id :: integer(),
           n_buffers :: integer(),
           n_tables :: integer(),
-          capabilities = [] :: [atom()],
-          actions = [] :: [atom()],
-          ports = [] :: [#port{}]
+          capabilities = [] :: [ofp_switch_capability()],
+          ports = [] :: [ofp_port()]
          }).
--type features_reply() :: #features_reply{}.
+-type ofp_features_reply() :: #ofp_features_reply{}.
 
-%% Capabilities supported by the datapath
--define(OFPC_FLOW_STATS, 0).
--define(OFPC_TABLE_STATS, 1).
--define(OFPC_PORT_STATS, 2).
--define(OFPC_GROUP_STATS, 3).
--define(OFPC_IP_REASM, 5).
--define(OFPC_QUEUE_STATS, 6).
--define(OFPC_PORT_BLOCKED, 8).
-
-%%% Configuration --------------------------------------------------------------
+%%% Switch Configuration -------------------------------------------------------
 
 %% Configuration request
--define(GET_CONFIG_REQUEST_SIZE, 8).
--record(get_config_request, {
-          header = #ofp_header{} :: #ofp_header{}
-         }).
--type get_config_request() :: #get_config_request{}.
+-record(ofp_get_config_request, {}).
+-type ofp_get_config_request() :: #ofp_get_config_request{}.
+
+-type ofp_switch_configuration() :: frag_drop
+                                  | frag_reasm
+                                  | invalid_ttl_to_controller
+                                  | frag_mask.
 
 %% Configuration reply
--define(GET_CONFIG_REPLY_SIZE, 12).
--record(get_config_reply, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags = [] :: [atom()],
-          miss_send_len :: integer()
+-record(ofp_get_config_reply, {
+          flags = [] :: [ofp_switch_configuration()],
+          miss_send_len :: ofp_buffer_id()
          }).
--type get_config_reply() :: #get_config_reply{}.
+-type ofp_get_config_reply() :: #ofp_get_config_reply{}.
 
 %% Set configuration
--define(SET_CONFIG_SIZE, 12).
--record(set_config, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags = [] :: [atom()],
-          miss_send_len :: integer()
+-record(ofp_set_config, {
+          flags = [] :: [ofp_switch_configuration()],
+          miss_send_len :: ofp_buffer_id()
          }).
--type set_config() :: #set_config{}.
-
-%% Configuration flags
--type table_config() :: drop | controller | continue.
--define(OFPC_FRAG_NORMAL, 0).
--define(OFPC_FRAG_DROP, 0).
--define(OFPC_FRAG_REASM, 1).
--define(OFPC_INVALID_TTL_TO_CONTROLLER, 2).
--define(OFPC_FRAG_MASK, 3).
+-type ofp_set_config() :: #ofp_set_config{}.
 
 %%% Modify-State ---------------------------------------------------------------
 
-%% Configure/Modify behavior of a flow table
--define(TABLE_MOD_SIZE, 16).
--record(table_mod, {
-          header = #ofp_header{} :: #ofp_header{},
-          table_id :: integer() | atom(),
-          config = drop :: table_config()
-         }).
--type table_mod() :: #table_mod{}.
+-type ofp_flow_mod_command() :: add
+                              | modify
+                              | modify_strict
+                              | delete
+                              | delete_strict.
+-type ofp_flow_mod_flag() :: send_flow_rem
+                           | check_overlap
+                           | reset_counts.
 
-%% Table numbering
--define(OFPTT_MAX, 16#fe).
--define(OFPTT_ALL, 16#ff).
-
-%% Table config
--define(OFPTC_TABLE_MISS_CONTINUE, 0).
--define(OFPTC_TABLE_MISS_DROP, 1).
--define(OFPTC_TABLE_MISS_MASK, 3).
-
-%% Flow setup and teardown
--define(FLOW_MOD_SIZE, 56).
--record(flow_mod, {
-          header = #ofp_header{} :: #ofp_header{},
+%% Flow mod
+-record(ofp_flow_mod, {
           cookie :: binary(),
           cookie_mask :: binary(),
-          table_id :: table_id(),
-          command :: flow_mod_command(),
+          table_id :: ofp_table_id(),
+          command :: ofp_flow_mod_command(),
           idle_timeout :: integer(),
           hard_timeout :: integer(),
           priority :: integer(),
-          buffer_id :: integer(),
-          out_port :: integer() | atom(),
-          out_group :: integer() | atom(),
-          flags = [] :: [flow_mod_flag()],
-          match :: match(),
-          actions = [] :: [action()],
-          instructions = [] :: [instruction()]
+          buffer_id :: ofp_buffer_id(),
+          out_port :: ofp_port_no(),
+          out_group :: ofp_group_id(),
+          flags = [] :: [ofp_flow_mod_flag()],
+          match :: ofp_match(),
+          instructions = [] :: [ofp_instruction()]
          }).
--type flow_mod() :: #flow_mod{}.
+-type ofp_flow_mod() :: #ofp_flow_mod{}.
 
-%% Flow mod commands
--type flow_mod_command() :: add
-                          | modify
-                          | modify_strict
-                          | delete
-                          | delete_strict.
--define(OFPFC_ADD, 0).
--define(OFPFC_MODIFY, 1).
--define(OFPFC_MODIFY_STRICT, 2).
--define(OFPFC_DELETE, 3).
--define(OFPFC_DELETE_STRICT, 4).
+-type ofp_group_mod_command() :: add
+                               | modify
+                               | delete.
+-type ofp_group_type() :: all
+                        | select
+                        | indirect
+                        | ff.
 
-%% Flow mod flags
--type flow_mod_flag() :: send_flow_rem | check_overlap | reset_counts.
--define(OFPFF_SEND_FLOW_REM, 0).
--define(OFPFF_CHECK_OVERLAP, 1).
--define(OFPFF_RESET_COUNTS, 2).
-
-%% Group setup and teardown
--define(GROUP_MOD_SIZE, 16).
--record(group_mod, {
-          header = #ofp_header{} :: #ofp_header{},
-          command :: atom(),
-          type :: atom(),
-          group_id :: integer() | atom(),
-          buckets = [] :: [#bucket{}]
+%% Group mod
+-record(ofp_group_mod, {
+          command :: ofp_group_mod_command(),
+          type :: ofp_group_type(),
+          group_id :: ofp_group_id(),
+          buckets = [] :: [ofp_bucket()]
          }).
--type group_mod() :: #group_mod{}.
+-type ofp_group_mod() :: #ofp_group_mod{}.
 
-%% Group commands
--define(OFPGC_ADD, 0).
--define(OFPGC_MODIFY, 1).
--define(OFPGC_DELETE, 2).
-
-%% Group types
--define(OFPGT_ALL, 0).
--define(OFPGT_SELECT, 1).
--define(OFPGT_INDIRECT, 2).
--define(OFPGT_FF, 3).
-
-%% Group ids
--define(OFPG_MAX, 16#fffffffd).
--define(OFPG_ANY, 16#fffffffe).
--define(OFPG_ALL, 16#ffffffff).
-
-%% Modify behavior of the physical port
--define(PORT_MOD_SIZE, 40).
--record(port_mod, {
-          header = #ofp_header{} :: #ofp_header{},
-          port_no :: integer() | atom(),
+%% Port mod
+-record(ofp_port_mod, {
+          port_no :: ofp_port_no(),
           hw_addr :: binary(),
-          config = [] :: [atom()],
-          mask = [] :: [atom()],
-          advertise = [] :: [atom()]
+          config = [] :: [ofp_port_config()],
+          mask = [] :: [ofp_port_config()],
+          advertise = [] :: [ofp_port_feature()]
          }).
--type port_mod() :: #port_mod{}.
+-type ofp_port_mod() :: #ofp_port_mod{}.
+
+-type ofp_table_config() :: continue
+                          | drop
+                          | controller.
+
+%% Table mod
+-record(ofp_table_mod, {
+          table_id :: ofp_table_id(),
+          config = drop :: ofp_table_config()
+         }).
+-type ofp_table_mod() :: #ofp_table_mod{}.
 
 %%% Read-State -----------------------------------------------------------------
 
+-type ofp_stats_request_flags() :: any(). %% For future use
+-type ofp_stats_reply_flags() :: more.
+
 %% Request for desc stats
--define(DESC_STATS_REQUEST_SIZE, 16).
--record(desc_stats_request, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags = [] :: [atom()]
+-record(ofp_desc_stats_request, {
+          flags = [] :: [ofp_stats_request_flags()]
          }).
--type desc_stats_request() :: #desc_stats_request{}.
+-type ofp_desc_stats_request() :: #ofp_desc_stats_request{}.
 
 %% Desc stats
--define(DESC_STATS_REPLY_SIZE, 1072).
--record(desc_stats_reply, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags = [] :: [atom()],
+-record(ofp_desc_stats_reply, {
+          flags = [] :: [ofp_stats_reply_flags()],
           mfr_desc :: binary(),
           hw_desc :: binary(),
           sw_desc :: binary(),
           serial_num :: binary(),
           dp_desc :: binary()
          }).
--type desc_stats_reply() :: #desc_stats_reply{}.
+-type ofp_desc_stats_reply() :: #ofp_desc_stats_reply{}.
 
 %% Request for flow stats
--define(FLOW_STATS_REQUEST_SIZE, 56).
--record(flow_stats_request, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags = [] :: [atom()],
-          table_id :: table_id(),
-          out_port :: port_no(),
-          out_group :: group_id(),
+-record(ofp_flow_stats_request, {
+          flags = [] :: [ofp_stats_request_flags()],
+          table_id :: ofp_table_id(),
+          out_port :: ofp_port_no(),
+          out_group :: ofp_group_id(),
           cookie :: binary(),
           cookie_mask :: binary(),
-          match :: match()
+          match :: ofp_match()
          }).
--type flow_stats_request() :: #flow_stats_request{}.
+-type ofp_flow_stats_request() :: #ofp_flow_stats_request{}.
 
 %% Flow stats reply
--define(FLOW_STATS_REPLY_SIZE, 16).
--record(flow_stats_reply, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags = [] :: [atom()],
-          stats = [] :: [#flow_stats{}]
+-record(ofp_flow_stats_reply, {
+          flags = [] :: [ofp_stats_reply_flags()],
+          stats = [] :: [ofp_flow_stats()]
          }).
--type flow_stats_reply() :: #flow_stats_reply{}.
+-type ofp_flow_stats_reply() :: #ofp_flow_stats_reply{}.
 
 %% Request for aggregate stats
--define(AGGREGATE_STATS_REQUEST_SIZE, 56).
--record(aggregate_stats_request, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags :: [atom()],
-          table_id :: table_id(),
-          out_port :: port_no(),
-          out_group :: group_id(),
+-record(ofp_aggregate_stats_request, {
+          flags = [] :: [ofp_stats_request_flags()],
+          table_id :: ofp_table_id(),
+          out_port :: ofp_port_no(),
+          out_group :: ofp_group_id(),
           cookie :: binary(),
           cookie_mask :: binary(),
-          match :: match()}).
--type aggregate_stats_request() :: #aggregate_stats_request{}.
+          match :: ofp_match()}).
+-type ofp_aggregate_stats_request() :: #ofp_aggregate_stats_request{}.
 
 %% Aggregate stats reply
--define(AGGREGATE_STATS_REPLY_SIZE, 40).
--record(aggregate_stats_reply, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags :: [atom()],
+-record(ofp_aggregate_stats_reply, {
+          flags :: [ofp_stats_reply_flags()],
           packet_count :: integer(),
           byte_count :: integer(),
           flow_count :: integer()
          }).
--type aggregate_stats_reply() :: #aggregate_stats_reply{}.
+-type ofp_aggregate_stats_reply() :: #ofp_aggregate_stats_reply{}.
 
 %% Request for table stats
--define(TABLE_STATS_REQUEST_SIZE, 16).
--record(table_stats_request, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags :: [atom()]
+-record(ofp_table_stats_request, {
+          flags :: [ofp_stats_request_flags()]
          }).
--type table_stats_request() :: #table_stats_request{}.
+-type ofp_table_stats_request() :: #ofp_table_stats_request{}.
 
 %% Table stats reply
--define(TABLE_STATS_REPLY_SIZE, 16).
--record(table_stats_reply, {
-          header = #ofp_header{} :: #ofp_header{},
+-record(ofp_table_stats_reply, {
           flags :: [atom()],
-          stats = [] :: [#table_stats{}]
+          stats = [] :: [#ofp_table_stats{}]
          }).
--type table_stats_reply() :: #table_stats_reply{}.
+-type ofp_table_stats_reply() :: #ofp_table_stats_reply{}.
 
 %% Request for port stats
--define(PORT_STATS_REQUEST_SIZE, 24).
--record(port_stats_request, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags :: [atom()],
-          port_no :: port_no()
+-record(ofp_port_stats_request, {
+          flags = [] :: [ofp_stats_request_flags()],
+          port_no :: ofp_port_no()
          }).
--type port_stats_request() :: #port_stats_request{}.
+-type ofp_port_stats_request() :: #ofp_port_stats_request{}.
 
 %% Port stats reply
--define(PORT_STATS_REPLY_SIZE, 16).
--record(port_stats_reply, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags :: [atom()],
-          stats = [] :: [#port_stats{}]
+-record(ofp_port_stats_reply, {
+          flags = [] :: [ofp_stats_reply_flags()],
+          stats = [] :: [ofp_port_stats()]
          }).
--type port_stats_reply() :: #port_stats_reply{}.
+-type ofp_port_stats_reply() :: #ofp_port_stats_reply{}.
 
 %% Request for queue stats
--define(QUEUE_STATS_REQUEST_SIZE, 24).
--record(queue_stats_request, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags :: [atom()],
-          port_no :: port_no(),
-          queue_id :: queue_id()
+-record(ofp_queue_stats_request, {
+          flags = [] :: [ofp_stats_request_flags()],
+          port_no :: ofp_port_no(),
+          queue_id :: ofp_queue_id()
          }).
--type queue_stats_request() :: #queue_stats_request{}.
+-type ofp_queue_stats_request() :: #ofp_queue_stats_request{}.
 
 %% Queue stats reply
--define(QUEUE_STATS_REPLY_SIZE, 16).
--record(queue_stats_reply, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags :: [atom()],
-          stats = [] :: [#queue_stats{}]
+-record(ofp_queue_stats_reply, {
+          flags = [] :: [ofp_stats_reply_flags()],
+          stats = [] :: [ofp_queue_stats()]
          }).
--type queue_stats_reply() :: #queue_stats_reply{}.
+-type ofp_queue_stats_reply() :: #ofp_queue_stats_reply{}.
 
 %% Request for group stats
--define(GROUP_STATS_REQUEST_SIZE, 24).
--record(group_stats_request, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags :: [atom()],
-          group_id :: group_id()
+-record(ofp_group_stats_request, {
+          flags = [] :: [ofp_stats_request_flags()],
+          group_id :: ofp_group_id()
          }).
--type group_stats_request() :: #group_stats_request{}.
+-type ofp_group_stats_request() :: #ofp_group_stats_request{}.
 
 %% Group stats reply
--define(GROUP_STATS_REPLY_SIZE, 16).
--record(group_stats_reply, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags :: [atom()],
-          stats = [] :: [#group_stats{}]
+-record(ofp_group_stats_reply, {
+          flags = [] :: [ofp_stats_reply_flags()],
+          stats = [] :: [ofp_group_stats()]
          }).
--type group_stats_reply() :: #group_stats_reply{}.
+-type ofp_group_stats_reply() :: #ofp_group_stats_reply{}.
 
 %% Request for group desc stats
--define(GROUP_DESC_STATS_REQUEST_SIZE, 16).
--record(group_desc_stats_request, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags :: [atom()]
+-record(ofp_group_desc_stats_request, {
+          flags = [] :: [ofp_stats_request_flags()]
          }).
--type group_desc_stats_request() :: #group_desc_stats_request{}.
+-type ofp_group_desc_stats_request() :: #ofp_group_desc_stats_request{}.
 
 %% Group desc stats reply
--define(GROUP_DESC_STATS_REPLY_SIZE, 16).
--record(group_desc_stats_reply, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags :: [atom()],
-          stats = [] :: [#group_desc_stats{}]
+-record(ofp_group_desc_stats_reply, {
+          flags = [] :: [ofp_stats_reply_flags()],
+          stats = [] :: [ofp_group_desc_stats()]
          }).
--type group_desc_stats_reply() :: #group_desc_stats_reply{}.
+-type ofp_group_desc_stats_reply() :: #ofp_group_desc_stats_reply{}.
 
 %% Request for group features stats
--define(GROUP_FEATURES_STATS_REQUEST_SIZE, 16).
--record(group_features_stats_request, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags :: [atom()]
+-record(ofp_group_features_stats_request, {
+          flags = [] :: [ofp_stats_request_flags()]
          }).
--type group_features_stats_request() :: #group_features_stats_request{}.
+-type ofp_group_features_stats_request() :: #ofp_group_features_stats_request{}.
+
+-type ofp_group_features_capabilities() :: select_weight
+                                         | select_liveness
+                                         | chaining
+                                         | chaining_checks.
 
 %% Group features stats reply
--define(GROUP_FEATURES_STATS_REPLY_SIZE, 56).
--record(group_features_stats_reply, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags :: [atom()],
-          types :: [atom()],
-          capabilities :: [atom()],
+-record(ofp_group_features_stats_reply, {
+          flags = [] :: [ofp_stats_reply_flags()],
+          types = [] :: [atom()],
+          capabilities :: [ofp_group_features_capabilities()],
           max_groups :: {integer(), integer(), integer(), integer()},
           actions :: {[atom()], [atom()], [atom()], [atom()]}
          }).
--type group_features_stats_reply() :: #group_features_stats_reply{}.
-
-%% Group capabilities
--define(OFPGFC_SELECT_WEIGHT, 0).
--define(OFPGFC_SELECT_LIVENESS, 1).
--define(OFPGFC_CHAINING, 2).
--define(OFPGFC_CHAINING_CHECKS, 3).
+-type ofp_group_features_stats_reply() :: #ofp_group_features_stats_reply{}.
 
 %% Request for experimenter stats
--define(EXPERIMENTER_STATS_REQUEST_SIZE, 24).
--record(experimenter_stats_request, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags :: [atom()],
+-record(ofp_experimenter_stats_request, {
+          flags = [] :: [ofp_stats_request_flags()],
           experimenter :: integer(),
           exp_type :: integer(),
           data = <<>> :: binary()
          }).
--type experimenter_stats_request() :: #experimenter_stats_request{}.
+-type ofp_experimenter_stats_request() :: #ofp_experimenter_stats_request{}.
 
 %% Experimenter stats reply
--define(EXPERIMENTER_STATS_REPLY_SIZE, 24).
--record(experimenter_stats_reply, {
-          header = #ofp_header{} :: #ofp_header{},
-          flags :: [atom()],
+-record(ofp_experimenter_stats_reply, {
+          flags = [] :: [ofp_stats_reply_flags()],
           experimenter :: integer(),
           exp_type :: integer(),
           data = <<>> :: binary()
          }).
--type experimenter_stats_reply() :: #experimenter_stats_reply{}.
+-type ofp_experimenter_stats_reply() :: #ofp_experimenter_stats_reply{}.
 
-%% Stats types
--define(OFPST_DESC, 0).
--define(OFPST_FLOW, 1).
--define(OFPST_AGGREGATE, 2).
--define(OFPST_TABLE, 3).
--define(OFPST_PORT, 4).
--define(OFPST_QUEUE, 5).
--define(OFPST_GROUP, 6).
--define(OFPST_GROUP_DESC, 7).
--define(OFPST_GROUP_FEATURES, 8).
--define(OFPST_EXPERIMENTER, 16#ffff).
+-type ofp_stats_request() :: ofp_desc_stats_request()
+                           | ofp_flow_stats_request()
+                           | ofp_aggregate_stats_request()
+                           | ofp_table_stats_request()
+                           | ofp_port_stats_request()
+                           | ofp_queue_stats_request()
+                           | ofp_group_stats_request()
+                           | ofp_group_desc_stats_request()
+                           | ofp_group_features_stats_request()
+                           | ofp_experimenter_stats_request().
 
-%% Stats request flags - none yet defined
-%% -define(OFPSF_REQ_*)
-
-%% Stats reply flags
--define(OFPSF_REPLY_MORE, 1).
-
--type stats_request() :: desc_stats_request() | flow_stats_request() |
-                         aggregate_stats_request() | table_stats_request() |
-                         port_stats_request() | queue_stats_request() |
-                         group_stats_request() | group_desc_stats_request() |
-                         group_features_stats_request() |
-                         experimenter_stats_request().
-
--type stats_reply() :: desc_stats_reply() | flow_stats_reply() |
-                       aggregate_stats_reply() | table_stats_reply() |
-                       port_stats_reply() | queue_stats_reply() |
-                       group_stats_reply() | group_desc_stats_reply() |
-                       group_features_stats_reply() |
-                       experimenter_stats_reply().
+-type ofp_stats_reply() :: ofp_desc_stats_reply()
+                         | ofp_flow_stats_reply()
+                         | ofp_aggregate_stats_reply()
+                         | ofp_table_stats_reply()
+                         | ofp_port_stats_reply()
+                         | ofp_queue_stats_reply()
+                         | ofp_group_stats_reply()
+                         | ofp_group_desc_stats_reply()
+                         | ofp_group_features_stats_reply()
+                         | ofp_experimenter_stats_reply().
 
 %%% Queue Configuration --------------------------------------------------------
 
 %% Get queue config request message
--define(QUEUE_GET_CONFIG_REQUEST_SIZE, 16).
--record(queue_get_config_request, {
-          header = #ofp_header{} :: #ofp_header{},
-          port :: integer() | atom()
+-record(ofp_queue_get_config_request, {
+          port :: ofp_port_no()
          }).
--type queue_get_config_request() :: #queue_get_config_request{}.
+-type ofp_queue_get_config_request() :: #ofp_queue_get_config_request{}.
 
 %% Get queue config reply message
--define(QUEUE_GET_CONFIG_REPLY_SIZE, 16).
--record(queue_get_config_reply, {
-          header = #ofp_header{} :: #ofp_header{},
-          port :: integer() | atom(),
-          queues = [] :: [#packet_queue{}]
+-record(ofp_queue_get_config_reply, {
+          port :: ofp_port_no(),
+          queues = [] :: [ofp_packet_queue()]
          }).
--type queue_get_config_reply() :: #queue_get_config_reply{}.
-
-%% Queue numbering
--define(OFPQ_MAX, 16#fffffffe).
--define(OFPQ_ALL, 16#ffffffff).
+-type ofp_queue_get_config_reply() :: #ofp_queue_get_config_reply{}.
 
 %%% Packet-out -----------------------------------------------------------------
 
 %% Send packet
--define(PACKET_OUT_SIZE, 24).
--record(packet_out, {
-          header = #ofp_header{} :: #ofp_header{},
-          buffer_id :: integer(),
-          in_port :: integer() | atom(),
-          actions = [] :: [action()],
+-record(ofp_packet_out, {
+          buffer_id :: ofp_buffer_id(),
+          in_port = controller :: controller,
+          actions = [] :: [ofp_action()],
           data = <<>> :: binary()
          }).
--type packet_out() :: #packet_out{}.
+-type ofp_packet_out() :: #ofp_packet_out{}.
 
 %%% Barrier --------------------------------------------------------------------
 
 %% Barrier request
--define(BARRIER_REQUEST_SIZE, 8).
--record(barrier_request, {
-          header = #ofp_header{} :: #ofp_header{}
-         }).
--type barrier_request() :: #barrier_request{}.
+-record(ofp_barrier_request, {}).
+-type ofp_barrier_request() :: #ofp_barrier_request{}.
 
 %% Barrier reply
--define(BARRIER_REPLY_SIZE, 8).
--record(barrier_reply, {
-          header = #ofp_header{} :: #ofp_header{}
-         }).
--type barrier_reply() :: #barrier_reply{}.
+-record(ofp_barrier_reply, {}).
+-type ofp_barrier_reply() :: #ofp_barrier_reply{}.
 
 %%% Role Request ---------------------------------------------------------------
 
+-type ofp_controller_role() :: nochange
+                             | equal
+                             | master
+                             | slave.
+
 %% Role request messages
--define(ROLE_REQUEST_SIZE, 24).
--record(role_request, {
-          header = #ofp_header{} :: #ofp_header{},
-          role :: atom(),
+-record(ofp_role_request, {
+          role :: ofp_controller_role(),
           generation_id :: integer()
          }).
--type role_request() :: #role_request{}.
+-type ofp_role_request() :: #ofp_role_request{}.
 
 %% Role reply message
--define(ROLE_REPLY_SIZE, 24).
--record(role_reply, {
-          header = #ofp_header{} :: #ofp_header{},
-          role :: atom(),
+-record(ofp_role_reply, {
+          role :: ofp_controller_role(),
           generation_id :: integer()
          }).
--type role_reply() :: #role_reply{}.
-
-%% Controller roles
--define(OFPCR_ROLE_NOCHANGE, 0).
--define(OFPCR_ROLE_EQUAL, 1).
--define(OFPCR_ROLE_MASTER, 2).
--define(OFPCR_ROLE_SLAVE, 3).
+-type ofp_role_reply() :: #ofp_role_reply{}.
 
 %%%-----------------------------------------------------------------------------
 %%% Asynchronous Messages
 %%%-----------------------------------------------------------------------------
 
-%% Packet received on port
--define(PACKET_IN_SIZE, 24).
--record(packet_in, {
-          header = #ofp_header{} :: #ofp_header{},
-          buffer_id :: integer(),
-          in_port :: integer(),
-          reason :: atom(),
+-type ofp_packet_in_reason() :: no_match
+                              | action
+                              | invalid_ttl.
+
+%% Packet-in
+-record(ofp_packet_in, {
+          buffer_id :: ofp_buffer_id(),
+          reason :: ofp_packet_in_reason(),
           table_id :: integer(),
-          match :: match(),
+          match :: ofp_match(),
           data = <<>> :: binary()
          }).
--type packet_in() :: #packet_in{}.
+-type ofp_packet_in() :: #ofp_packet_in{}.
 
-%% Reason packet is being sent
--define(OFPR_NO_MATCH, 0).
--define(OFPR_ACTION, 1).
--define(OFPR_INVALID_TTL, 2).
+-type ofp_flow_removed_reason() :: idle_timeout
+                                 | hard_timeout
+                                 | delete
+                                 | group_delete.
 
 %% Flow removed
--define(FLOW_REMOVED_SIZE, 56).
--record(flow_removed, {
-          header = #ofp_header{} :: #ofp_header{},
+-record(ofp_flow_removed, {
           cookie :: binary(),
           priority :: integer(),
-          reason :: atom(),
+          reason :: ofp_flow_removed_reason(),
           table_id :: integer(),
           duration_sec :: integer(),
           duration_nsec :: integer(),
@@ -531,225 +841,94 @@
           hard_timeout :: integer(),
           packet_count :: integer(),
           byte_count :: integer(),
-          match :: match()
+          match :: ofp_match()
          }).
--type flow_removed() :: #flow_removed{}.
+-type ofp_flow_removed() :: #ofp_flow_removed{}.
 
-%% Flow Removed reasons
--define(OFPRR_IDLE_TIMEOUT, 0).
--define(OFPRR_HARD_TIMEOUT, 1).
--define(OFPRR_DELETE, 2).
--define(OFPRR_GROUP_DELETE, 3).
+-type ofp_port_status_reason() :: add
+                                | delete
+                                | modify.
 
-%% A physical port has changed in the datapath
--define(PORT_STATUS_SIZE, 80).
--record(port_status, {
-          header = #ofp_header{} :: #ofp_header{},
-          reason :: atom(),
-          desc :: #port{}
+%% Port status change
+-record(ofp_port_status, {
+          reason :: ofp_port_status_reason(),
+          desc :: ofp_port()
          }).
--type port_status() :: #port_status{}.
+-type ofp_port_status() :: #ofp_port_status{}.
 
-%% Reason for Port Status
--define(OFPPR_ADD, 0).
--define(OFPPR_DELETE, 1).
--define(OFPPR_MODIFY, 2).
+%% -type ofp_error_type() :: ...
+%% -type ofp_bad_request_code() :: ...
+%% -type ofp_error_code() :: bad_request_code()
+%%                         | ...
 
 %% Error message
--define(ERROR_MSG_SIZE, 12).
--record(error_msg, {
-          header = #ofp_header{} :: #ofp_header{},
+-record(ofp_error, {
           type :: atom(),
           code :: atom(),
           data = <<>> :: binary()
          }).
 
-%% Error types
--define(OFPET_HELLO_FAILED, 0).
--define(OFPET_BAD_REQUEST, 1).
--define(OFPET_BAD_ACTION, 2).
--define(OFPET_BAD_INSTRUCTION, 3).
--define(OFPET_BAD_MATCH, 4).
--define(OFPET_FLOW_MOD_FAILED, 5).
--define(OFPET_GROUP_MOD_FAILED, 6).
--define(OFPET_PORT_MOD_FAILED, 7).
--define(OFPET_TABLE_MOD_FAILED, 8).
--define(OFPET_QUEUE_OP_FAILED, 9).
--define(OFPET_SWITCH_CONFIG_FAILED, 10).
--define(OFPET_ROLE_REQUEST_FAILED, 11).
--define(OFPET_EXPERIMENTER, 16#ffff).
-
-%% Hello Failed error codes
--define(OFPHFC_INCOMPATIBLE, 0).
--define(OFPHFC_EPERM, 1).
-
-%% Bad Request error codes
--define(OFPBRC_BAD_VERSION, 0).
--define(OFPBRC_BAD_TYPE, 1).
--define(OFPBRC_BAD_STAT, 2).
--define(OFPBRC_BAD_EXPERIMENTER, 3).
--define(OFPBRC_BAD_EXP_TYPE, 4).
--define(OFPBRC_EPERM, 5).
--define(OFPBRC_BAD_LEN, 6).
--define(OFPBRC_BUFFER_EMPTY, 7).
--define(OFPBRC_BUFFER_UNKNOWN, 8).
--define(OFPBRC_BAD_TABLE_ID, 9).
--define(OFPBRC_IS_SLAVE, 10).
--define(OFPBRC_BAD_PORT, 11).
--define(OFPBRC_BAD_PACKET, 12).
-
-%% Bad Action error codes
--define(OFPBAC_BAD_TYPE, 0).
--define(OFPBAC_BAD_LEN, 1).
--define(OFPBAC_BAD_EXPERIMENTER, 2).
--define(OFPBAC_BAD_EXP_TYPE, 3).
--define(OFPBAC_BAD_OUT_PORT, 4).
--define(OFPBAC_BAD_ARGUMENT, 5).
--define(OFPBAC_EPERM, 6).
--define(OFPBAC_TOO_MANY, 7).
--define(OFPBAC_BAD_QUEUE, 8).
--define(OFPBAC_BAD_OUT_GROUP, 9).
--define(OFPBAC_MATCH_INCONSISTENT, 10).
--define(OFPBAC_UNSUPPORTED_ORDER, 11).
--define(OFPBAC_BAD_TAG, 12).
--define(OFPBAC_BAD_SET_TYPE, 13).
--define(OFPBAC_BAD_SET_LEN, 14).
--define(OFPBAC_BAD_SET_ARGUMENT, 15).
-
-%% Bad Instruction error codes
--define(OFPBIC_UNKNOWN_INST, 0).
--define(OFPBIC_UNSUP_INST, 1).
--define(OFPBIC_BAD_TABLE_ID, 2).
--define(OFPBIC_UNSUP_METADATA, 3).
--define(OFPBIC_UNSUP_METADATA_MASK, 4).
--define(OFPBIC_BAD_EXPERIMENTER, 5).
--define(OFPBIC_BAD_EXP_TYPE, 6).
--define(OFPBIC_BAD_LEN, 7).
--define(OFPBIC_EPERM, 8).
-
-%% Bad Match error codes
--define(OFPBMC_BAD_TYPE, 0).
--define(OFPBMC_BAD_LEN, 1).
--define(OFPBMC_BAD_TAG, 2).
--define(OFPBMC_BAD_DL_ADDR_MASK, 3).
--define(OFPBMC_BAD_NW_ADDR_MASK, 4).
--define(OFPBMC_BAD_WILDCARDS, 5).
--define(OFPBMC_BAD_FIELD, 6).
--define(OFPBMC_BAD_VALUE, 7).
--define(OFPBMC_BAD_MASK, 8).
--define(OFPBMC_BAD_PREREQ, 9).
--define(OFPBMC_DUP_FIELD, 10).
--define(OFPBMC_EPERM, 11).
-
-%% Flow Mod Failed error codes
--define(OFPFMFC_UNKNOWN, 0).
--define(OFPFMFC_TABLE_FULL, 1).
--define(OFPFMFC_BAD_TABLE_ID, 2).
--define(OFPFMFC_OVERLAP, 3).
--define(OFPFMFC_EPERM, 4).
--define(OFPFMFC_BAD_TIMEOUT, 5).
--define(OFPFMFC_BAD_COMMAND, 6).
--define(OFPFMFC_BAD_FLAGS, 7).
-
-%% Group Mod Failed error codes
--define(OFPGMFC_GROUP_EXISTS, 0).
--define(OFPGMFC_INVALID_GROUP, 1).
--define(OFPGMFC_WEIGHT_UNSUPPORTED, 2).
--define(OFPGMFC_OUT_OF_GROUPS, 3).
--define(OFPGMFC_OUT_OF_BUCKETS, 4).
--define(OFPGMFC_CHAINING_UNSUPPORTED, 5).
--define(OFPGMFC_WATCH_UNSUPPORTED, 6).
--define(OFPGMFC_LOOP, 7).
--define(OFPGMFC_UNKNOWN_GROUP, 8).
--define(OFPGMFC_CHAINED_GROUP, 9).
--define(OFPGMFC_BAD_TYPE, 10).
--define(OFPGMFC_BAD_COMMAND, 11).
--define(OFPGMFC_BAD_BUCKET, 12).
--define(OFPGMFC_BAD_WATCH, 13).
--define(OFPGMFC_EPERM, 14).
-
-%% Port Mod Failed error codes
--define(OFPPMFC_BAD_PORT, 0).
--define(OFPPMFC_BAD_HW_ADDR, 1).
--define(OFPPMFC_BAD_CONFIG, 2).
--define(OFPPMFC_BAD_ADVERTISE, 3).
--define(OFPPMFC_EPERM, 4).
-
-%% Table Mod Failed error codes
--define(OFPTMFC_BAD_TABLE, 0).
--define(OFPTMFC_BAD_CONFIG, 1).
--define(OFPTMFC_EPERM, 2).
-
-%% Queue Op Failed error codes
--define(OFPQOFC_BAD_PORT, 0).
--define(OFPQOFC_BAD_QUEUE, 1).
--define(OFPQOFC_EPERM, 2).
-
-%% Switch Config Failed error codes
--define(OFPSCFC_BAD_FLAGS, 0).
--define(OFPSCFC_BAD_LEN, 1).
--define(OFPSCFC_EPERM, 2).
-
-%% Role Request Failed error codes
--define(OFPRRFC_STALE, 0).
--define(OFPRRFC_UNSUP, 1).
--define(OFPRRFC_BAD_ROLE, 2).
-
 %% Experimenter error message
--define(ERROR_EXPERIMENTER_MSG_SIZE, 16).
--record(error_experimenter_msg, {
-          header = #ofp_header{} :: #ofp_header{},
+-record(ofp_error_experimenter, {
           exp_type :: integer(),
           experimenter :: integer(),
           data = <<>> :: binary()
          }).
--type error_experimenter_msg() :: #error_experimenter_msg{}.
 
--type error_msg() :: #error_msg{} | error_experimenter_msg().
+-type ofp_error() :: #ofp_error{}
+                   | #ofp_error_experimenter{}.
 
 %%%-----------------------------------------------------------------------------
 %%% Symmetric Messages
 %%%-----------------------------------------------------------------------------
 
 %% Hello message
--define(HELLO_SIZE, 8).
--record(hello, {
-          header = #ofp_header{} :: #ofp_header{}
-         }).
--type hello() :: #hello{}.
+-record(ofp_hello, {}).
+-type ofp_hello() :: #ofp_hello{}.
 
 %% Echo Request
--define(ECHO_REQUEST_SIZE, 8).
--record(echo_request, {
-          header = #ofp_header{} :: #ofp_header{},
+-record(ofp_echo_request, {
           data = <<>> :: binary()
          }).
--type echo_request() :: #echo_request{}.
+-type ofp_echo_request() :: #ofp_echo_request{}.
 
 %% Echo Reply
--define(ECHO_REPLY_SIZE, 8).
--record(echo_reply, {
-          header = #ofp_header{} :: #ofp_header{},
+-record(ofp_echo_reply, {
           data = <<>> :: binary()
          }).
--type echo_reply() :: #echo_reply{}.
+-type ofp_echo_reply() :: #ofp_echo_reply{}.
 
 %% Experimenter
--define(EXPERIMENTER_SIZE, 16).
--record(experimenter, {
-          header = #ofp_header{} :: #ofp_header{},
+-record(ofp_experimenter, {
           experimenter :: integer(),
           exp_type :: integer(),
           data = <<>> :: binary()
          }).
--type experimenter() :: #experimenter{}.
+-type ofp_experimenter() :: #ofp_experimenter{}.
 
--type ofp_message() :: hello() | error_msg() | echo_request() | echo_reply() |
-                       experimenter() | features_request() | features_reply() |
-                       get_config_request() | get_config_reply() |
-                       set_config() | packet_in() | flow_removed() |
-                       port_status() | packet_out() | flow_mod() | group_mod() |
-                       table_mod() | stats_request() | stats_reply() |
-                       barrier_request() | barrier_reply() |
-                       queue_get_config_request() | queue_get_config_reply() |
-                       role_request() | role_reply().
+-type ofp_message_body() :: ofp_hello()
+                          | ofp_error()
+                          | ofp_echo_request()
+                          | ofp_echo_reply()
+                          | ofp_experimenter()
+                          | ofp_features_request()
+                          | ofp_features_reply()
+                          | ofp_get_config_request()
+                          | ofp_get_config_reply()
+                          | ofp_set_config()
+                          | ofp_packet_in()
+                          | ofp_flow_removed()
+                          | ofp_port_status()
+                          | ofp_packet_out()
+                          | ofp_flow_mod()
+                          | ofp_group_mod()
+                          | ofp_port_mod()
+                          | ofp_table_mod()
+                          | ofp_stats_request()
+                          | ofp_stats_reply()
+                          | ofp_barrier_request()
+                          | ofp_barrier_reply()
+                          | ofp_queue_get_config_request()
+                          | ofp_queue_get_config_reply()
+                          | ofp_role_request()
+                          | ofp_role_reply().

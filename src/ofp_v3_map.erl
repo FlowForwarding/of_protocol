@@ -4,29 +4,61 @@
 %%% @doc Module for mapping between atoms and bits.
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(ofp_map).
+-module(ofp_v3_map).
 
 %% Helper functions
--export([tlv_length/1, oxm_field/2]).
+-export([tlv_length/1,
+         oxm_field/2]).
 
 %% Mapping functions
--export([msg_type/1, error_type/1, hello_failed/1, bad_request/1, bad_action/1,
-         bad_instruction/1, bad_match/1, flow_mod_failed/1, group_mod_failed/1,
-         port_mod_failed/1, table_mod_failed/1, queue_op_failed/1,
-         switch_config_failed/1, role_request_failed/1, capability/1,
-         port_config/1, port_state/1, port_feature/1, configuration/1, reason/1,
-         removed_reason/1, port_reason/1, match_type/1, oxm_class/1,
-         oxm_field/1, action_type/1, table_config/1, flow_command/1,
-         flow_flag/1, instruction_type/1, group_type/1, group_command/1,
-         controller_role/1, queue_property/1, stats_type/1,
-         stats_request_flag/1, stats_reply_flag/1, group_capability/1]).
--export([encode_port_number/1, decode_port_number/1,
-         encode_max_length/1, decode_max_length/1,
+-export([msg_type/1,
+         port_config/1,
+         port_state/1,
+         port_feature/1,
+         error_type/1,
+         hello_failed/1,
+         bad_request/1,
+         bad_action/1,
+         bad_instruction/1,
+         bad_match/1,
+         flow_mod_failed/1,
+         group_mod_failed/1,
+         port_mod_failed/1,
+         table_mod_failed/1,
+         queue_op_failed/1,
+         switch_config_failed/1,
+         role_request_failed/1,
+         capability/1,
+         configuration/1,
+         reason/1,
+         removed_reason/1,
+         port_reason/1,
+         match_type/1,
+         oxm_class/1,
+         oxm_field/1,
+         action_type/1,
+         table_config/1,
+         flow_command/1,
+         flow_flag/1,
+         instruction_type/1,
+         group_type/1,
+         group_command/1,
+         controller_role/1,
+         queue_property/1,
+         stats_type/1,
+         stats_request_flag/1,
+         stats_reply_flag/1,
+         group_capability/1]).
+
+-export([encode_port_no/1, decode_port_no/1,
          encode_group_id/1, decode_group_id/1,
          encode_table_id/1, decode_table_id/1,
-         encode_queue_id/1, decode_queue_id/1]).
+         encode_queue_id/1, decode_queue_id/1,
+         encode_buffer_id/1, decode_buffer_id/1,
+         encode_max_length/1, decode_max_length/1]).
 
 -include("of_protocol.hrl").
+-include("ofp_v3.hrl").
 
 %%%-----------------------------------------------------------------------------
 %%% Helper functions
@@ -125,7 +157,7 @@ msg_type(role_request)                   -> ?OFPT_ROLE_REQUEST;
 msg_type(?OFPT_ROLE_REQUEST)             -> role_request;
 msg_type(role_reply)                     -> ?OFPT_ROLE_REPLY;
 msg_type(?OFPT_ROLE_REPLY)               -> role_reply;
-msg_type(Type) when is_integer(Type)     -> throw({bad_value, Type}).
+msg_type(Int) when is_integer(Int)       -> throw({bad_value, Int}).
 
 error_type(hello_failed)                -> ?OFPET_HELLO_FAILED;
 error_type(?OFPET_HELLO_FAILED)         -> hello_failed;
@@ -627,15 +659,6 @@ action_type(?OFPAT_EXPERIMENTER_BIT)    -> experimenter;
 action_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
 action_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
-encode_max_length(max)                      -> ?OFPCML_MAX;
-encode_max_length(no_buffer)                -> ?OFPCML_NO_BUFFER;
-encode_max_length(Type) when is_atom(Type)  -> throw({bad_type, Type});
-encode_max_length(Int) when is_integer(Int) -> Int.
-
-decode_max_length(?OFPCML_MAX)              -> max;
-decode_max_length(?OFPCML_NO_BUFFER)        -> no_buffer;
-decode_max_length(Int) when is_integer(Int) -> Int.
-
 table_config(continue)                   -> ?OFPTC_TABLE_MISS_CONTINUE;
 table_config(?OFPTC_TABLE_MISS_CONTINUE) -> continue;
 table_config(drop)                       -> ?OFPTC_TABLE_MISS_DROP;
@@ -763,56 +786,61 @@ group_capability(?OFPGFC_CHAINING_CHECKS)    -> chaining_checks;
 group_capability(Type) when is_atom(Type)    -> throw({bad_type, Type});
 group_capability(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
-%%% Ids ------------------------------------------------------------------------
+%%% Encoding/decoding IDs ------------------------------------------------------
 
-encode_port_number(max)                      -> ?OFPP_MAX;
-encode_port_number(in_port)                  -> ?OFPP_IN_PORT;
-encode_port_number(table)                    -> ?OFPP_TABLE;
-encode_port_number(normal)                   -> ?OFPP_NORMAL;
-encode_port_number(flood)                    -> ?OFPP_FLOOD;
-encode_port_number(all)                      -> ?OFPP_ALL;
-encode_port_number(controller)               -> ?OFPP_CONTROLLER;
-encode_port_number(local)                    -> ?OFPP_LOCAL;
-encode_port_number(any)                      -> ?OFPP_ANY;
-encode_port_number(Type) when is_atom(Type)  -> throw({bad_type, Type});
-encode_port_number(Int) when is_integer(Int) -> Int.
+encode_port_no(in_port)                  -> ?OFPP_IN_PORT;
+encode_port_no(table)                    -> ?OFPP_TABLE;
+encode_port_no(normal)                   -> ?OFPP_NORMAL;
+encode_port_no(flood)                    -> ?OFPP_FLOOD;
+encode_port_no(all)                      -> ?OFPP_ALL;
+encode_port_no(controller)               -> ?OFPP_CONTROLLER;
+encode_port_no(local)                    -> ?OFPP_LOCAL;
+encode_port_no(any)                      -> ?OFPP_ANY;
+encode_port_no(Type) when is_atom(Type)  -> throw({bad_type, Type});
+encode_port_no(Int) when is_integer(Int) -> Int.
 
-decode_port_number(?OFPP_MAX)                -> max;
-decode_port_number(?OFPP_IN_PORT)            -> in_port;
-decode_port_number(?OFPP_TABLE)              -> table;
-decode_port_number(?OFPP_NORMAL)             -> normal;
-decode_port_number(?OFPP_FLOOD)              -> flood;
-decode_port_number(?OFPP_ALL)                -> all;
-decode_port_number(?OFPP_CONTROLLER)         -> controller;
-decode_port_number(?OFPP_LOCAL)              -> local;
-decode_port_number(?OFPP_ANY)                -> any;
-decode_port_number(Int) when is_integer(Int) -> Int.
+decode_port_no(?OFPP_IN_PORT)            -> in_port;
+decode_port_no(?OFPP_TABLE)              -> table;
+decode_port_no(?OFPP_NORMAL)             -> normal;
+decode_port_no(?OFPP_FLOOD)              -> flood;
+decode_port_no(?OFPP_ALL)                -> all;
+decode_port_no(?OFPP_CONTROLLER)         -> controller;
+decode_port_no(?OFPP_LOCAL)              -> local;
+decode_port_no(?OFPP_ANY)                -> any;
+decode_port_no(Int) when is_integer(Int) -> Int.
 
-encode_group_id(max)                      -> ?OFPG_MAX;
 encode_group_id(any)                      -> ?OFPG_ANY;
 encode_group_id(all)                      -> ?OFPG_ALL;
 encode_group_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
 encode_group_id(Int) when is_integer(Int) -> Int.
 
-decode_group_id(?OFPG_MAX)                -> max;
 decode_group_id(?OFPG_ANY)                -> any;
 decode_group_id(?OFPG_ALL)                -> all;
 decode_group_id(Int) when is_integer(Int) -> Int.
 
-encode_table_id(max)                      -> ?OFPTT_MAX;
 encode_table_id(all)                      -> ?OFPTT_ALL;
 encode_table_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
 encode_table_id(Int) when is_integer(Int) -> Int.
 
-decode_table_id(?OFPTT_MAX)               -> max;
 decode_table_id(?OFPTT_ALL)               -> all;
 decode_table_id(Int) when is_integer(Int) -> Int.
 
-encode_queue_id(max)                      -> ?OFPQ_MAX;
 encode_queue_id(all)                      -> ?OFPQ_ALL;
 encode_queue_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
 encode_queue_id(Int) when is_integer(Int) -> Int.
 
-decode_queue_id(?OFPQ_MAX)               -> max;
 decode_queue_id(?OFPQ_ALL)               -> all;
 decode_queue_id(Int) when is_integer(Int) -> Int.
+
+encode_buffer_id(no_buffer)                -> ?OFPCML_NO_BUFFER;
+encode_buffer_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
+encode_buffer_id(Int) when is_integer(Int) -> Int.
+
+decode_buffer_id(?OFPCML_NO_BUFFER)        -> no_buffer;
+decode_buffer_id(Int) when is_integer(Int) -> Int.
+
+encode_max_length(Value) ->
+    encode_buffer_id(Value).
+
+decode_max_length(Value) ->
+    decode_buffer_id(Value).
