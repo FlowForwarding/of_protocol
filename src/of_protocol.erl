@@ -563,7 +563,7 @@ encode2(#aggregate_stats_request{header = Header, flags = Flags,
     PortInt = ofp_map:encode_port_number(Port),
     GroupInt = ofp_map:encode_group_id(Group),
     MatchBin = encode_struct(Match),
-    Length = ?AGGREGATE_STATS_REQUEST_SIZE + size(MatchBin),
+    Length = (?AGGREGATE_STATS_REQUEST_SIZE - ?MATCH_SIZE) + size(MatchBin),
     HeaderBin = encode_header(Header, stats_request, Length),
     << HeaderBin/binary, TypeInt:16/integer, FlagsBin/binary, 0:32/integer,
        TableInt:8/integer, 0:24/integer, PortInt:32/integer,
@@ -1206,7 +1206,7 @@ decode(stats_request, Length, Header, Binary) ->
                                  cookie_mask = CookieMask, match = Match},
              Rest};
         aggregate ->
-            MatchLength = Length - ?AGGREGATE_STATS_REQUEST_SIZE,
+            MatchLength = Length - (?AGGREGATE_STATS_REQUEST_SIZE - ?MATCH_SIZE),
             << TableInt:8/integer, 0:24/integer, PortInt:32/integer,
                GroupInt:32/integer, 0:32/integer, Cookie:8/binary,
                CookieMask:8/binary, MatchBin:MatchLength/binary,
