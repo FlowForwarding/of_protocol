@@ -92,7 +92,7 @@ do_decode(Binary) ->
     <<ExperimentalInt:1, Version:7, TypeInt:8, _:16,
       XID:32, BodyBin/bytes >> = Binary,
     Experimental = (ExperimentalInt =:= 1),
-    Type = ofp_v3_map:msg_type(TypeInt),
+    Type = ofp_v2_map:msg_type(TypeInt),
     Body = decode_body(Type, BodyBin),
     #ofp_message{experimental = Experimental, version = Version,
                  xid = XID, body = Body}.
@@ -105,7 +105,7 @@ decode_port(Binary) ->
       ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
       AdvertisedBin:4/bytes, SupportedBin:4/bytes, PeerBin:4/bytes,
       CurrSpeed:32, MaxSpeed:32>> = Binary,
-    PortNo = ofp_v3_map:decode_port_no(PortNoInt),
+    PortNo = ofp_v2_map:decode_port_no(PortNoInt),
     Name = ofp_utils:strip_string(NameBin),
     Config = binary_to_flags(port_config, ConfigBin),
     State = binary_to_flags(port_state, StateBin),
@@ -176,88 +176,88 @@ binary_to_flags(_, _, _, Flags) ->
 
 -spec type_int(ofp_message_body()) -> integer().
 type_int(#ofp_hello{}) ->
-    ofp_v3_map:msg_type(hello);
+    ofp_v2_map:msg_type(hello);
 type_int(#ofp_error{}) ->
-    ofp_v3_map:msg_type(error);
+    ofp_v2_map:msg_type(error);
 type_int(#ofp_error_experimenter{}) ->
-    ofp_v3_map:msg_type(error);
+    ofp_v2_map:msg_type(error);
 type_int(#ofp_echo_request{}) ->
-    ofp_v3_map:msg_type(echo_request);
+    ofp_v2_map:msg_type(echo_request);
 type_int(#ofp_echo_reply{}) ->
-    ofp_v3_map:msg_type(echo_reply);
+    ofp_v2_map:msg_type(echo_reply);
 type_int(#ofp_experimenter{}) ->
-    ofp_v3_map:msg_type(experimenter);
+    ofp_v2_map:msg_type(experimenter);
 type_int(#ofp_features_request{}) ->
-    ofp_v3_map:msg_type(features_request);
+    ofp_v2_map:msg_type(features_request);
 type_int(#ofp_features_reply{}) ->
-    ofp_v3_map:msg_type(features_reply);
+    ofp_v2_map:msg_type(features_reply);
 type_int(#ofp_get_config_request{}) ->
-    ofp_v3_map:msg_type(get_config_request);
+    ofp_v2_map:msg_type(get_config_request);
 type_int(#ofp_get_config_reply{}) ->
-    ofp_v3_map:msg_type(get_config_reply);
+    ofp_v2_map:msg_type(get_config_reply);
 type_int(#ofp_set_config{}) ->
-    ofp_v3_map:msg_type(set_config);
+    ofp_v2_map:msg_type(set_config);
 type_int(#ofp_packet_in{}) ->
-    ofp_v3_map:msg_type(packet_in);
+    ofp_v2_map:msg_type(packet_in);
 type_int(#ofp_flow_removed{}) ->
-    ofp_v3_map:msg_type(flow_removed);
+    ofp_v2_map:msg_type(flow_removed);
 type_int(#ofp_port_status{}) ->
-    ofp_v3_map:msg_type(port_status);
+    ofp_v2_map:msg_type(port_status);
 type_int(#ofp_queue_get_config_request{}) ->
-    ofp_v3_map:msg_type(queue_get_config_request);
+    ofp_v2_map:msg_type(queue_get_config_request);
 type_int(#ofp_queue_get_config_reply{}) ->
-    ofp_v3_map:msg_type(queue_get_config_reply);
+    ofp_v2_map:msg_type(queue_get_config_reply);
 type_int(#ofp_packet_out{}) ->
-    ofp_v3_map:msg_type(packet_out);
+    ofp_v2_map:msg_type(packet_out);
 type_int(#ofp_flow_mod{}) ->
-    ofp_v3_map:msg_type(flow_mod);
+    ofp_v2_map:msg_type(flow_mod);
 type_int(#ofp_group_mod{}) ->
-    ofp_v3_map:msg_type(group_mod);
+    ofp_v2_map:msg_type(group_mod);
 type_int(#ofp_port_mod{}) ->
-    ofp_v3_map:msg_type(port_mod);
+    ofp_v2_map:msg_type(port_mod);
 type_int(#ofp_table_mod{}) ->
-    ofp_v3_map:msg_type(table_mod);
+    ofp_v2_map:msg_type(table_mod);
 type_int(#ofp_desc_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v2_map:msg_type(stats_request);
 type_int(#ofp_desc_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v2_map:msg_type(stats_reply);
 type_int(#ofp_flow_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v2_map:msg_type(stats_request);
 type_int(#ofp_flow_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v2_map:msg_type(stats_reply);
 type_int(#ofp_aggregate_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v2_map:msg_type(stats_request);
 type_int(#ofp_aggregate_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v2_map:msg_type(stats_reply);
 type_int(#ofp_table_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v2_map:msg_type(stats_request);
 type_int(#ofp_table_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v2_map:msg_type(stats_reply);
 type_int(#ofp_port_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v2_map:msg_type(stats_request);
 type_int(#ofp_port_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v2_map:msg_type(stats_reply);
 type_int(#ofp_queue_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v2_map:msg_type(stats_request);
 type_int(#ofp_queue_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v2_map:msg_type(stats_reply);
 type_int(#ofp_group_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v2_map:msg_type(stats_request);
 type_int(#ofp_group_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v2_map:msg_type(stats_reply);
 type_int(#ofp_group_desc_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v2_map:msg_type(stats_request);
 type_int(#ofp_group_desc_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v2_map:msg_type(stats_reply);
 type_int(#ofp_group_features_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v2_map:msg_type(stats_request);
 type_int(#ofp_group_features_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v2_map:msg_type(stats_reply);
 type_int(#ofp_experimenter_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v2_map:msg_type(stats_request);
 type_int(#ofp_experimenter_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v2_map:msg_type(stats_reply);
 type_int(#ofp_barrier_request{}) ->
-    ofp_v3_map:msg_type(barrier_request);
+    ofp_v2_map:msg_type(barrier_request);
 type_int(#ofp_barrier_reply{}) ->
-    ofp_v3_map:msg_type(barrier_reply).
+    ofp_v2_map:msg_type(barrier_reply).
