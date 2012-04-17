@@ -1,6 +1,5 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012, Erlang Solutions Ltd.
-%%% @author Krzysztof Rutka <krzysztof.rutka@erlang-solutions.com>
 %%% @doc OpenFlow Protocol parser.
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -21,9 +20,8 @@ new() ->
     {ok, #ofp_parser{}}.
 
 %% @doc Parse binary to OpenFlow Protocol messages.
--spec parse(Parser :: ofp_parser(), Binary :: binary()) ->
-                   {ok, ofp_parser(), [ofp_message()]}.
-parse(Parser = #ofp_parser{stack = Stack}, Binary) ->
+-spec parse(ofp_parser(), binary()) -> {ok, ofp_parser(), [ofp_message()]}.
+parse(#ofp_parser{stack = Stack} = Parser, Binary) ->
     {ok, NewStack, Messages} = parse(Binary, Stack, []),
     {ok, Parser#ofp_parser{stack = NewStack}, lists:reverse(Messages)}.
 
@@ -31,8 +29,8 @@ parse(Parser = #ofp_parser{stack = Stack}, Binary) ->
 %%% Internal functions
 %%%-----------------------------------------------------------------------------
 
--spec parse(Binary :: binary(), Stack :: binary(),
-            Messages :: [ofp_message()]) -> {ok, binary(), [ofp_message()]}.
+-spec parse(binary(), binary(), [ofp_message()]) ->
+                   {ok, binary(), [ofp_message()]}.
 parse(Binary, Stack, Messages) ->
     NewBinary = << Stack/binary, Binary/binary >>,
     case of_protocol:decode(NewBinary) of

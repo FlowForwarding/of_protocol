@@ -1,6 +1,6 @@
 {application, of_protocol,
  [
-  {description, "OpenFlow Protocol 1.2 library"},
+  {description, "OpenFlow Protocol library"},
   {vsn, "1.2.1"},
   {registered, []},
   {applications, [

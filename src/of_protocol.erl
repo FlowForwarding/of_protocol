@@ -17,8 +17,7 @@
 %%%-----------------------------------------------------------------------------
 
 %% @doc Encode Erlang representation to binary.
--spec encode(Message :: ofp_message()) -> {ok, binary()} |
-                                          {error, any()}.
+-spec encode(ofp_message()) -> {ok, binary()} | {error, any()}.
 encode(#ofp_message{version = Version} = Message) ->
     case get_module(Version) of
         undefined ->
@@ -28,8 +27,7 @@ encode(#ofp_message{version = Version} = Message) ->
     end.
 
 %% @doc Decode binary to Erlang representation.
--spec decode(Binary :: binary()) -> {ok, ofp_message(), binary()} |
-                                    {error, any()}.
+-spec decode(binary()) -> {ok, ofp_message(), binary()} | {error, any()}.
 decode(Binary) when byte_size(Binary) >= ?OFP_HEADER_SIZE ->
     <<_:1, Version:7, _:8, Length:16, _/bytes>> = Binary,
     case get_module(Version) of
@@ -53,8 +51,7 @@ decode(_Binary) ->
     {error, binary_too_small}.
 
 %% @doc Parse binary to messages in Erlang representation.
--spec parse(Parser :: ofp_parser(), Binary :: binary()) ->
-                   {ok, ofp_parser(), [ofp_message()]}.
+-spec parse(ofp_parser(), binary()) -> {ok, ofp_parser(), [ofp_message()]}.
 parse(Parser, Binary) ->
     ofp_parser:parse(Parser, Binary).
 
@@ -65,7 +62,9 @@ parse(Parser, Binary) ->
 -spec get_module(integer()) -> atom().
 get_module(3) ->
     ofp_v3;
-get_module(1) ->
-    ofp_v1;
+%% get_module(2) ->
+%%     ofp_v2;
+%% get_module(1) ->
+%%     ofp_v1;
 get_module(_) ->
     undefined.

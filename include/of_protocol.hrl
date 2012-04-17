@@ -33,12 +33,6 @@
 -type ofp_buffer_id() :: integer()
                        | no_buffer.
 
--define(OFP_ETH_ALEN, 6).
--define(OFP_MAX_PORT_NAME_LEN, 16).
--define(OFP_MAX_TABLE_NAME_LEN, 32).
--define(DESC_STR_LEN, 256).
--define(SERIAL_NUM_LEN, 32).
-
 %%%-----------------------------------------------------------------------------
 %%% Common Structures
 %%%-----------------------------------------------------------------------------
@@ -48,7 +42,10 @@
 -type ofp_port_config() :: port_down
                          | no_recv
                          | no_fwd
-                         | no_packet_in.
+                         | no_packet_in
+                         | no_stp       %% OFP 1.0
+                         | no_recv_stp  %% OFP 1.0
+                         | no_flood.    %% OFP 1.0
 
 -type ofp_port_state() :: link_down
                         | blocked
@@ -62,7 +59,7 @@
                      | all
                      | controller
                      | local
-                     | any.
+                     | any.       %% 'none' in OFP 1.0
 
 -type ofp_port_feature() :: '10mb_hd'
                           | '10mb_fd'

@@ -48,7 +48,7 @@ do_encode(#ofp_message{experimental = Experimental,
                        version = Version,
                        xid = Xid,
                        body = Body}) ->
-    ExperimentalInt = experimental_int(Experimental),
+    ExperimentalInt = ofp_utils:int_to_bool(Experimental),
     BodyBin = encode_body(Body),
     TypeInt = type_int(Body),
     Length = ?OFP_HEADER_SIZE + size(BodyBin),
@@ -69,16 +69,17 @@ encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
                         peer = Peer, curr_speed = CurrSpeed,
                         max_speed = MaxSpeed}) ->
     PortNoInt = ofp_v3_map:encode_port_no(PortNo),
+    NameBin = ofp_utils:encode_string(Name, ?OFP_MAX_PORT_NAME_LEN),
     ConfigBin = flags_to_binary(port_config, Config, 4),
     StateBin = flags_to_binary(port_state, State, 4),
     CurrBin = flags_to_binary(port_feature, Curr, 4),
     AdvertisedBin = flags_to_binary(port_feature, Advertised, 4),
     SupportedBin = flags_to_binary(port_feature, Supported, 4),
     PeerBin = flags_to_binary(port_feature, Peer, 4),
-    Padding = (?OFP_MAX_PORT_NAME_LEN - size(Name)) * 8,
-    <<PortNoInt:32, 0:32, HWAddr:6/bytes, 0:16,
-      Name/bytes, 0:Padding, ConfigBin:4/bytes, StateBin:4/bytes,
-      CurrBin:4/bytes, AdvertisedBin:4/bytes, SupportedBin:4/bytes,
+    <<PortNoInt:32, 0:32, HWAddr:?OFP_ETH_ALEN/bytes, 0:16,
+      NameBin:?OFP_MAX_PORT_NAME_LEN/bytes,
+      ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
+      AdvertisedBin:4/bytes, SupportedBin:4/bytes,
       PeerBin:4/bytes, CurrSpeed:32, MaxSpeed:32>>;
 encode_struct(#ofp_match{type = Type, oxm_fields = Fields}) ->
     TypeInt = ofp_v3_map:match_type(Type),
@@ -104,11 +105,11 @@ encode_struct(#ofp_field{class = Class, field = Field, has_mask = HasMask,
             Length = size(Value),
             BitLength = Length * 8
     end,
-    Value2 = cut(Value, BitLength),
+    Value2 = ofp_utils:cut_bits(Value, BitLength),
     case HasMask of
         true ->
             HasMaskInt = 1,
-            Mask2 = cut(Mask, BitLength),
+            Mask2 = ofp_utils:cut_bits(Mask, BitLength),
             Rest = <<Value2:Length/bytes, Mask2:Length/bytes>>,
             Len2 = Length * 2;
         false ->
@@ -608,25 +609,26 @@ do_decode(Binary) ->
     #ofp_message{experimental = Experimental, version = Version,
                  xid = XID, body = Body}.
 
+%%% Structures -----------------------------------------------------------------
+
 %% @doc Decode port structure.
 decode_port(Binary) ->
-    <<PortNoInt:32, 0:32, HWAddr:6/bytes, 0:16,
-      Name:16/bytes, ConfigBin:4/bytes, StateBin:4/bytes,
-      CurrBin:4/bytes, AdvertisedBin:4/bytes, SupportedBin:4/bytes,
-      PeerBin:4/bytes, CurrSpeed:32,
-      MaxSpeed:32>> = Binary,
+    <<PortNoInt:32, 0:32, HWAddr:6/bytes, 0:16, NameBin:16/bytes,
+      ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
+      AdvertisedBin:4/bytes, SupportedBin:4/bytes, PeerBin:4/bytes,
+      CurrSpeed:32, MaxSpeed:32>> = Binary,
     PortNo = ofp_v3_map:decode_port_no(PortNoInt),
+    Name = ofp_utils:strip_string(NameBin),
     Config = binary_to_flags(port_config, ConfigBin),
     State = binary_to_flags(port_state, StateBin),
     Curr = binary_to_flags(port_feature, CurrBin),
     Advertised = binary_to_flags(port_feature, AdvertisedBin),
     Supported = binary_to_flags(port_feature, SupportedBin),
     Peer = binary_to_flags(port_feature, PeerBin),
-    Name2 = rstrip(Name),
-    #ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name2, config = Config,
-              state = State, curr = Curr, advertised = Advertised,
-              supported = Supported, peer = Peer, curr_speed = CurrSpeed,
-              max_speed = MaxSpeed}.
+    #ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
+              config = Config, state = State, curr = Curr,
+              advertised = Advertised, supported = Supported,
+              peer = Peer, curr_speed = CurrSpeed, max_speed = MaxSpeed}.
 
 %% @doc Decode match structure
 decode_match(Binary) ->
@@ -667,13 +669,13 @@ decode_match_field(<<Header:4/bytes, Binary/bytes>>) ->
     case HasMask of
         false ->
             <<Value:Length/bytes, Rest/bytes>> = Binary,
-            TLV = #ofp_field{value = cut(Value, BitLength)};
+            TLV = #ofp_field{value = ofp_utils:cut_bits(Value, BitLength)};
         true ->
             Length2 = (Length div 2),
             <<Value:Length2/bytes, Mask:Length2/bytes,
               Rest/bytes>> = Binary,
-            TLV = #ofp_field{value = cut(Value, BitLength),
-                             mask = cut(Mask, BitLength)}
+            TLV = #ofp_field{value = ofp_utils:cut_bits(Value, BitLength),
+                             mask = ofp_utils:cut_bits(Mask, BitLength)}
     end,
     {TLV#ofp_field{class = Class,
                    field = Field,
@@ -881,7 +883,7 @@ decode_table_stats(Binary) ->
       ConfigInt:32, Max:32, ACount:32, LCount:64,
       MCount:64>> = Binary,
     Table = ofp_v3_map:decode_table_id(TableInt),
-    Name = rstrip(NameBin),
+    Name = ofp_utils:strip_string(NameBin),
     Match = binary_to_flags(oxm_field, MatchBin),
     Wildcards = binary_to_flags(oxm_field, WildcardsBin),
     WriteActions = binary_to_flags(action_type, WriteActionsBin),
@@ -1017,7 +1019,7 @@ decode_body(features_reply, Binary) ->
       PortsBin:PortsLength/bytes>> = Binary,
     Capabilities = binary_to_flags(capability, CapaBin),
     Ports = [decode_port(PortBin)
-             || PortBin <- split_binaries(PortsBin, ?PORT_SIZE)],
+             || PortBin <- ofp_utils:split_binaries(PortsBin, ?PORT_SIZE)],
     #ofp_features_reply{datapath_mac = DataPathMac,
                         datapath_id = DataPathID, n_buffers = NBuffers,
                         n_tables = NTables, capabilities = Capabilities,
@@ -1136,10 +1138,11 @@ decode_body(stats_reply, Binary) ->
               SW:?DESC_STR_LEN/bytes, Serial:?SERIAL_NUM_LEN/bytes,
               DP:?DESC_STR_LEN/bytes>> = Data,
             #ofp_desc_stats_reply{flags = Flags,
-                                  mfr_desc = rstrip(MFR), hw_desc = rstrip(HW),
-                                  sw_desc = rstrip(SW),
-                                  serial_num = rstrip(Serial),
-                                  dp_desc = rstrip(DP)};
+                                  mfr_desc = ofp_utils:strip_string(MFR),
+                                  hw_desc = ofp_utils:strip_string(HW),
+                                  sw_desc = ofp_utils:strip_string(SW),
+                                  serial_num = ofp_utils:strip_string(Serial),
+                                  dp_desc = ofp_utils:strip_string(DP)};
         flow ->
             StatsLength = size(Binary) - ?FLOW_STATS_REPLY_SIZE + ?OFP_HEADER_SIZE,
             <<StatsBin:StatsLength/bytes>> = Data,
@@ -1156,21 +1159,21 @@ decode_body(stats_reply, Binary) ->
             StatsLength = size(Binary) - ?TABLE_STATS_REPLY_SIZE + ?OFP_HEADER_SIZE,
             <<StatsBin:StatsLength/bytes>> = Data,
             Stats = [decode_table_stats(TStats)
-                     || TStats <- split_binaries(StatsBin, ?TABLE_STATS_SIZE)],
+                     || TStats <- ofp_utils:split_binaries(StatsBin, ?TABLE_STATS_SIZE)],
             #ofp_table_stats_reply{flags = Flags,
                                    stats = Stats};
         port ->
             StatsLength = size(Binary) - ?PORT_STATS_REPLY_SIZE + ?OFP_HEADER_SIZE,
             <<StatsBin:StatsLength/bytes>> = Data,
             Stats = [decode_port_stats(PStats)
-                     || PStats <- split_binaries(StatsBin, ?PORT_STATS_SIZE)],
+                     || PStats <- ofp_utils:split_binaries(StatsBin, ?PORT_STATS_SIZE)],
             #ofp_port_stats_reply{flags = Flags,
                                   stats = Stats};
         queue ->
             StatsLength = size(Binary) - ?QUEUE_STATS_REPLY_SIZE + ?OFP_HEADER_SIZE,
             <<StatsBin:StatsLength/bytes>> = Data,
             Stats = [decode_queue_stats(QStats)
-                     || QStats <- split_binaries(StatsBin, ?QUEUE_STATS_SIZE)],
+                     || QStats <- ofp_utils:split_binaries(StatsBin, ?QUEUE_STATS_SIZE)],
             #ofp_queue_stats_reply{flags = Flags,
                                    stats = Stats};
         group ->
@@ -1294,45 +1297,42 @@ decode_body(role_reply, Binary) ->
 %%% Internal functions
 %%%-----------------------------------------------------------------------------
 
+-spec encode_list(list()) -> binary().
 encode_list(List) ->
     encode_list(List, <<>>).
 
+-spec encode_list(list(), binary()) -> binary().
 encode_list([], Binaries) ->
     Binaries;
 encode_list([Struct | Rest], Binaries) ->
     StructBin = encode_struct(Struct),
     encode_list(Rest, <<Binaries/bytes, StructBin/bytes>>).
 
-split_binaries(Binaries, Size) ->
-    split_binaries(Binaries, [], Size).
-
-split_binaries(<<>>, List, _) ->
-    lists:reverse(List);
-split_binaries(Binaries, List, Size) ->
-    {Binary, Rest} = split_binary(Binaries, Size),
-    split_binaries(Rest, [Binary | List], Size).
-
+-spec flags_to_binary(atom(), [atom()], integer()) -> binary().
 flags_to_binary(Type, Flags, Size) ->
     flags_to_binary(Type, Flags, <<0:(Size*8)>>, Size*8).
 
+-spec flags_to_binary(atom(), [atom()], binary(), integer()) -> binary().
 flags_to_binary(_, [], Binary, _) ->
     Binary;
 flags_to_binary(Type, [Flag | Rest], Binary, BitSize) ->
     <<Binary2:BitSize>> = Binary,
     case Flag of
         experimenter ->
-            Bit = get_experimenter_bit(Type);
+            Bit = ofp_v3_map:get_experimenter_bit(Type);
         _ ->
             Bit = ofp_v3_map:Type(Flag)
     end,
     NewBinary = (Binary2 bor (1 bsl Bit)),
     flags_to_binary(Type, Rest, <<NewBinary:BitSize>>, BitSize).
 
+-spec binary_to_flags(atom(), binary()) -> [atom()].
 binary_to_flags(Type, Binary) ->
     BitSize = size(Binary) * 8,
     <<Integer:BitSize>> = Binary,
     binary_to_flags(Type, Integer, BitSize-1, []).
 
+-spec binary_to_flags(atom(), integer(), integer(), [atom()]) -> [atom()].
 binary_to_flags(Type, Integer, Bit, Flags) when Bit >= 0 ->
     case 0 /= (Integer band (1 bsl Bit)) of
         true ->
@@ -1344,39 +1344,7 @@ binary_to_flags(Type, Integer, Bit, Flags) when Bit >= 0 ->
 binary_to_flags(_, _, _, Flags) ->
     lists:reverse(Flags).
 
-rstrip(Binary) ->
-    rstrip(Binary, size(Binary) - 1).
-
-rstrip(Binary, Byte) when Byte >= 0 ->
-    case binary:at(Binary, Byte) of
-        0 ->
-            rstrip(Binary, Byte - 1);
-        _ ->
-            String = binary:part(Binary, 0, Byte + 1),
-            <<String/bytes, 0:8>>
-    end;
-rstrip(_, _) ->
-    <<"\0">>.
-
-cut(Binary, Bits) ->
-    BitSize = size(Binary) * 8,
-    case BitSize /= Bits of
-        true ->
-            <<Int:BitSize>> = Binary,
-            NewInt = Int band round(math:pow(2,Bits) - 1),
-            <<NewInt:BitSize>>;
-        false ->
-            Binary
-    end.
-
-get_experimenter_bit(instruction_type) ->
-    ?OFPIT_EXPERIMENTER_BIT;
-get_experimenter_bit(action_type) ->
-    ?OFPAT_EXPERIMENTER_BIT.
-
-experimental_int(true) -> 1;
-experimental_int(false) -> 0.
-
+-spec type_int(ofp_message_body()) -> integer().
 type_int(#ofp_hello{}) ->
     ofp_v3_map:msg_type(hello);
 type_int(#ofp_error{}) ->

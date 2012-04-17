@@ -1,21 +1,23 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012, Erlang Solutions Ltd.
-%%% @author Krzysztof Rutka <krzysztof.rutka@erlang-solutions.com>
-%%% @doc Module for mapping between atoms and bits.
+%%% @doc Module for mapping between atoms and bits for OFP 1.2.
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ofp_v3_map).
 
 %% Helper functions
 -export([tlv_length/1,
-         oxm_field/2]).
+         oxm_field/2,
+         get_experimenter_bit/1]).
 
 %% Mapping functions
--export([msg_type/1,
-         port_config/1,
+-export([msg_type/1]).
+-export([port_config/1,
          port_state/1,
-         port_feature/1,
-         error_type/1,
+         encode_port_no/1,
+         decode_port_no/1,
+         port_feature/1]).
+-export([error_type/1,
          hello_failed/1,
          bad_request/1,
          bad_action/1,
@@ -50,8 +52,7 @@
          stats_reply_flag/1,
          group_capability/1]).
 
--export([encode_port_no/1, decode_port_no/1,
-         encode_group_id/1, decode_group_id/1,
+-export([encode_group_id/1, decode_group_id/1,
          encode_table_id/1, decode_table_id/1,
          encode_queue_id/1, decode_queue_id/1,
          encode_buffer_id/1, decode_buffer_id/1,
@@ -61,49 +62,10 @@
 -include("ofp_v3.hrl").
 
 %%%-----------------------------------------------------------------------------
-%%% Helper functions
+%%% Common Structure
 %%%-----------------------------------------------------------------------------
 
-tlv_length(in_port)        -> ?IN_PORT_FIELD_LENGTH;
-tlv_length(in_phy_port)    -> ?IN_PHY_PORT_FIELD_LENGTH;
-tlv_length(metadata)       -> ?METADATA_FIELD_LENGTH;
-tlv_length(eth_dst)        -> ?ETH_DST_FIELD_LENGTH;
-tlv_length(eth_src)        -> ?ETH_SRC_FIELD_LENGTH;
-tlv_length(eth_type)       -> ?ETH_TYPE_FIELD_LENGTH;
-tlv_length(vlan_vid)       -> ?VLAN_VID_FIELD_LENGTH;
-tlv_length(vlan_pcp)       -> ?VLAN_PCP_FIELD_LENGTH;
-tlv_length(ip_dscp)        -> ?IP_DSCP_FIELD_LENGTH;
-tlv_length(ip_ecn)         -> ?IP_ECN_FIELD_LENGTH;
-tlv_length(ip_proto)       -> ?IP_PROTO_FIELD_LENGTH;
-tlv_length(ipv4_src)       -> ?IPV4_SRC_FIELD_LENGTH;
-tlv_length(ipv4_dst)       -> ?IPV4_DST_FIELD_LENGTH;
-tlv_length(tcp_src)        -> ?TCP_SRC_FIELD_LENGTH;
-tlv_length(tcp_dst)        -> ?TCP_DST_FIELD_LENGTH;
-tlv_length(udp_src)        -> ?UDP_SRC_FIELD_LENGTH;
-tlv_length(udp_dst)        -> ?UDP_DST_FIELD_LENGTH;
-tlv_length(sctp_src)       -> ?SCTP_SRC_FIELD_LENGTH;
-tlv_length(sctp_dst)       -> ?SCTP_DST_FIELD_LENGTH;
-tlv_length(icmpv4_type)    -> ?ICMPV4_TYPE_FIELD_LENGTH;
-tlv_length(icmpv4_code)    -> ?ICMPV4_CODE_FIELD_LENGTH;
-tlv_length(arp_op)         -> ?ARP_OP_FIELD_LENGTH;
-tlv_length(arp_spa)        -> ?ARP_SPA_FIELD_LENGTH;
-tlv_length(arp_tpa)        -> ?ARP_TPA_FIELD_LENGTH;
-tlv_length(arp_sha)        -> ?ARP_SHA_FIELD_LENGTH;
-tlv_length(arp_tha)        -> ?ARP_THA_FIELD_LENGTH;
-tlv_length(ipv6_src)       -> ?IPV6_SRC_FIELD_LENGTH;
-tlv_length(ipv6_dst)       -> ?IPV6_DST_FIELD_LENGTH;
-tlv_length(ipv6_flabel)    -> ?IPV6_FLABEL_FIELD_LENGTH;
-tlv_length(icmpv6_type)    -> ?ICMPV6_TYPE_FIELD_LENGTH;
-tlv_length(icmpv6_code)    -> ?ICMPV6_CODE_FIELD_LENGTH;
-tlv_length(ipv6_nd_target) -> ?IPV6_ND_TARGET_FIELD_LENGTH;
-tlv_length(ipv6_nd_sll)    -> ?IPV6_ND_SLL_FIELD_LENGTH;
-tlv_length(ipv6_nd_tll)    -> ?IPV6_ND_TLL_FIELD_LENGTH;
-tlv_length(mpls_label)     -> ?MPLS_LABEL_FIELD_LENGTH;
-tlv_length(mpls_tc)        -> ?MPLS_TC_FIELD_LENGTH.
-
-%%%-----------------------------------------------------------------------------
-%%% Mapping functions
-%%%-----------------------------------------------------------------------------
+%%% Header ---------------------------------------------------------------------
 
 msg_type(hello)                          -> ?OFPT_HELLO;
 msg_type(?OFPT_HELLO)                    -> hello;
@@ -158,6 +120,84 @@ msg_type(?OFPT_ROLE_REQUEST)             -> role_request;
 msg_type(role_reply)                     -> ?OFPT_ROLE_REPLY;
 msg_type(?OFPT_ROLE_REPLY)               -> role_reply;
 msg_type(Int) when is_integer(Int)       -> throw({bad_value, Int}).
+
+%%% Port Structures ------------------------------------------------------------
+
+port_config(port_down)                  -> ?OFPPC_PORT_DOWN;
+port_config(?OFPPC_PORT_DOWN)           -> port_down;
+port_config(no_recv)                    -> ?OFPPC_NO_RECV;
+port_config(?OFPPC_NO_RECV)             -> no_recv;
+port_config(no_fwd)                     -> ?OFPPC_NO_FWD;
+port_config(?OFPPC_NO_FWD)              -> no_fwd;
+port_config(no_packet_in)               -> ?OFPPC_NO_PACKET_IN;
+port_config(?OFPPC_NO_PACKET_IN)        -> no_packet_in;
+port_config(Type) when is_atom(Type)    -> throw({bad_type, Type});
+port_config(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+port_state(link_down)                  -> ?OFPPS_LINK_DOWN;
+port_state(?OFPPS_LINK_DOWN)           -> link_down;
+port_state(blocked)                    -> ?OFPPS_BLOCKED;
+port_state(?OFPPS_BLOCKED)             -> blocked;
+port_state(live)                       -> ?OFPPS_LIVE;
+port_state(?OFPPS_LIVE)                -> live;
+port_state(Type) when is_atom(Type)    -> throw({bad_type, Type});
+port_state(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+encode_port_no(in_port)                  -> ?OFPP_IN_PORT;
+encode_port_no(table)                    -> ?OFPP_TABLE;
+encode_port_no(normal)                   -> ?OFPP_NORMAL;
+encode_port_no(flood)                    -> ?OFPP_FLOOD;
+encode_port_no(all)                      -> ?OFPP_ALL;
+encode_port_no(controller)               -> ?OFPP_CONTROLLER;
+encode_port_no(local)                    -> ?OFPP_LOCAL;
+encode_port_no(any)                      -> ?OFPP_ANY;
+encode_port_no(Type) when is_atom(Type)  -> throw({bad_type, Type});
+encode_port_no(Int) when is_integer(Int) -> Int.
+
+decode_port_no(?OFPP_IN_PORT)            -> in_port;
+decode_port_no(?OFPP_TABLE)              -> table;
+decode_port_no(?OFPP_NORMAL)             -> normal;
+decode_port_no(?OFPP_FLOOD)              -> flood;
+decode_port_no(?OFPP_ALL)                -> all;
+decode_port_no(?OFPP_CONTROLLER)         -> controller;
+decode_port_no(?OFPP_LOCAL)              -> local;
+decode_port_no(?OFPP_ANY)                -> any;
+decode_port_no(Int) when is_integer(Int) -> Int.
+
+port_feature('10mb_hd')                  -> ?OFPPF_10MB_HD;
+port_feature(?OFPPF_10MB_HD)             -> '10mb_hd';
+port_feature('10mb_fd')                  -> ?OFPPF_10MB_FD;
+port_feature(?OFPPF_10MB_FD)             -> '10mb_fd';
+port_feature('100mb_hd')                 -> ?OFPPF_100MB_HD;
+port_feature(?OFPPF_100MB_HD)            -> '100mb_hd';
+port_feature('100mb_fd')                 -> ?OFPPF_100MB_FD;
+port_feature(?OFPPF_100MB_FD)            -> '100mb_fd';
+port_feature('1gb_hd')                   -> ?OFPPF_1GB_HD;
+port_feature(?OFPPF_1GB_HD)              -> '1gb_hd';
+port_feature('1gb_fd')                   -> ?OFPPF_1GB_FD;
+port_feature(?OFPPF_1GB_FD)              -> '1gb_fd';
+port_feature('10gb_fd')                  -> ?OFPPF_10GB_FD;
+port_feature(?OFPPF_10GB_FD)             -> '10gb_fd';
+port_feature('40gb_fd')                  -> ?OFPPF_40GB_FD;
+port_feature(?OFPPF_40GB_FD)             -> '40gb_fd';
+port_feature('100gb_fd')                 -> ?OFPPF_100GB_FD;
+port_feature(?OFPPF_100GB_FD)            -> '100gb_fd';
+port_feature('1tb_fd')                   -> ?OFPPF_1TB_FD;
+port_feature(?OFPPF_1TB_FD)              -> '1tb_fd';
+port_feature(other)                      -> ?OFPPF_OTHER;
+port_feature(?OFPPF_OTHER)               -> other;
+port_feature(copper)                     -> ?OFPPF_COPPER;
+port_feature(?OFPPF_COPPER)              -> copper;
+port_feature(fiber)                      -> ?OFPPF_FIBER;
+port_feature(?OFPPF_FIBER)               -> fiber;
+port_feature(autoneg)                    -> ?OFPPF_AUTONEG;
+port_feature(?OFPPF_AUTONEG)             -> autoneg;
+port_feature(pause)                      -> ?OFPPF_PAUSE;
+port_feature(?OFPPF_PAUSE)               -> pause;
+port_feature(pause_asym)                 -> ?OFPPF_PAUSE_ASYM;
+port_feature(?OFPPF_PAUSE_ASYM)          -> pause_asym;
+port_feature(Type) when is_atom(Type)    -> throw({bad_type, Type});
+port_feature(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 error_type(hello_failed)                -> ?OFPET_HELLO_FAILED;
 error_type(?OFPET_HELLO_FAILED)         -> hello_failed;
@@ -424,67 +464,6 @@ capability(port_blocked)               -> ?OFPC_PORT_BLOCKED;
 capability(?OFPC_PORT_BLOCKED)         -> port_blocked;
 capability(Type) when is_atom(Type)    -> throw({bad_type, Type});
 capability(Type) when is_integer(Type) -> throw({bad_value, Type}).
-
-port_config(port_down)                  -> ?OFPPC_PORT_DOWN;
-port_config(?OFPPC_PORT_DOWN)           -> port_down;
-port_config(no_stp)                     -> ?OFPPC_NO_STP;
-port_config(?OFPPC_NO_STP)              -> no_stp;
-port_config(no_recv)                    -> ?OFPPC_NO_RECV;
-port_config(?OFPPC_NO_RECV)             -> no_recv;
-port_config(no_recv_stp)                -> ?OFPPC_NO_RECV_STP;
-port_config(?OFPPC_NO_RECV_STP)         -> no_recv_stp;
-port_config(no_flood)                   -> ?OFPPC_NO_FLOOD;
-port_config(?OFPPC_NO_FLOOD)            -> no_flood;
-port_config(no_fwd)                     -> ?OFPPC_NO_FWD;
-port_config(?OFPPC_NO_FWD)              -> no_fwd;
-port_config(no_packet_in)               -> ?OFPPC_NO_PACKET_IN;
-port_config(?OFPPC_NO_PACKET_IN)        -> no_packet_in;
-port_config(Type) when is_atom(Type)    -> throw({bad_type, Type});
-port_config(Type) when is_integer(Type) -> throw({bad_value, Type}).
-
-port_state(link_down)                  -> ?OFPPS_LINK_DOWN;
-port_state(?OFPPS_LINK_DOWN)           -> link_down;
-port_state(blocked)                    -> ?OFPPS_BLOCKED;
-port_state(?OFPPS_BLOCKED)             -> blocked;
-port_state(live)                       -> ?OFPPS_LIVE;
-port_state(?OFPPS_LIVE)                -> live;
-port_state(Type) when is_atom(Type)    -> throw({bad_type, Type});
-port_state(Type) when is_integer(Type) -> throw({bad_value, Type}).
-
-port_feature('10mb_hd')                  -> ?OFPPF_10MB_HD;
-port_feature(?OFPPF_10MB_HD)             -> '10mb_hd';
-port_feature('10mb_fd')                  -> ?OFPPF_10MB_FD;
-port_feature(?OFPPF_10MB_FD)             -> '10mb_fd';
-port_feature('100mb_hd')                 -> ?OFPPF_100MB_HD;
-port_feature(?OFPPF_100MB_HD)            -> '100mb_hd';
-port_feature('100mb_fd')                 -> ?OFPPF_100MB_FD;
-port_feature(?OFPPF_100MB_FD)            -> '100mb_fd';
-port_feature('1gb_hd')                   -> ?OFPPF_1GB_HD;
-port_feature(?OFPPF_1GB_HD)              -> '1gb_hd';
-port_feature('1gb_fd')                   -> ?OFPPF_1GB_FD;
-port_feature(?OFPPF_1GB_FD)              -> '1gb_fd';
-port_feature('10gb_fd')                  -> ?OFPPF_10GB_FD;
-port_feature(?OFPPF_10GB_FD)             -> '10gb_fd';
-port_feature('40gb_fd')                  -> ?OFPPF_40GB_FD;
-port_feature(?OFPPF_40GB_FD)             -> '40gb_fd';
-port_feature('100gb_fd')                 -> ?OFPPF_100GB_FD;
-port_feature(?OFPPF_100GB_FD)            -> '100gb_fd';
-port_feature('1tb_fd')                   -> ?OFPPF_1TB_FD;
-port_feature(?OFPPF_1TB_FD)              -> '1tb_fd';
-port_feature(other)                      -> ?OFPPF_OTHER;
-port_feature(?OFPPF_OTHER)               -> other;
-port_feature(copper)                     -> ?OFPPF_COPPER;
-port_feature(?OFPPF_COPPER)              -> copper;
-port_feature(fiber)                      -> ?OFPPF_FIBER;
-port_feature(?OFPPF_FIBER)               -> fiber;
-port_feature(autoneg)                    -> ?OFPPF_AUTONEG;
-port_feature(?OFPPF_AUTONEG)             -> autoneg;
-port_feature(pause)                      -> ?OFPPF_PAUSE;
-port_feature(?OFPPF_PAUSE)               -> pause;
-port_feature(pause_asym)                 -> ?OFPPF_PAUSE_ASYM;
-port_feature(?OFPPF_PAUSE_ASYM)          -> pause_asym;
-port_feature(Type) when is_atom(Type)    -> throw({bad_type, Type});
-port_feature(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 configuration(frag_drop)                       -> ?OFPC_FRAG_DROP;
 configuration(?OFPC_FRAG_DROP)                 -> frag_drop;
@@ -788,27 +767,6 @@ group_capability(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 %%% Encoding/decoding IDs ------------------------------------------------------
 
-encode_port_no(in_port)                  -> ?OFPP_IN_PORT;
-encode_port_no(table)                    -> ?OFPP_TABLE;
-encode_port_no(normal)                   -> ?OFPP_NORMAL;
-encode_port_no(flood)                    -> ?OFPP_FLOOD;
-encode_port_no(all)                      -> ?OFPP_ALL;
-encode_port_no(controller)               -> ?OFPP_CONTROLLER;
-encode_port_no(local)                    -> ?OFPP_LOCAL;
-encode_port_no(any)                      -> ?OFPP_ANY;
-encode_port_no(Type) when is_atom(Type)  -> throw({bad_type, Type});
-encode_port_no(Int) when is_integer(Int) -> Int.
-
-decode_port_no(?OFPP_IN_PORT)            -> in_port;
-decode_port_no(?OFPP_TABLE)              -> table;
-decode_port_no(?OFPP_NORMAL)             -> normal;
-decode_port_no(?OFPP_FLOOD)              -> flood;
-decode_port_no(?OFPP_ALL)                -> all;
-decode_port_no(?OFPP_CONTROLLER)         -> controller;
-decode_port_no(?OFPP_LOCAL)              -> local;
-decode_port_no(?OFPP_ANY)                -> any;
-decode_port_no(Int) when is_integer(Int) -> Int.
-
 encode_group_id(any)                      -> ?OFPG_ANY;
 encode_group_id(all)                      -> ?OFPG_ALL;
 encode_group_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
@@ -844,3 +802,50 @@ encode_max_length(Value) ->
 
 decode_max_length(Value) ->
     decode_buffer_id(Value).
+
+%%%-----------------------------------------------------------------------------
+%%% Helper functions
+%%%-----------------------------------------------------------------------------
+
+tlv_length(in_port)        -> ?IN_PORT_FIELD_LENGTH;
+tlv_length(in_phy_port)    -> ?IN_PHY_PORT_FIELD_LENGTH;
+tlv_length(metadata)       -> ?METADATA_FIELD_LENGTH;
+tlv_length(eth_dst)        -> ?ETH_DST_FIELD_LENGTH;
+tlv_length(eth_src)        -> ?ETH_SRC_FIELD_LENGTH;
+tlv_length(eth_type)       -> ?ETH_TYPE_FIELD_LENGTH;
+tlv_length(vlan_vid)       -> ?VLAN_VID_FIELD_LENGTH;
+tlv_length(vlan_pcp)       -> ?VLAN_PCP_FIELD_LENGTH;
+tlv_length(ip_dscp)        -> ?IP_DSCP_FIELD_LENGTH;
+tlv_length(ip_ecn)         -> ?IP_ECN_FIELD_LENGTH;
+tlv_length(ip_proto)       -> ?IP_PROTO_FIELD_LENGTH;
+tlv_length(ipv4_src)       -> ?IPV4_SRC_FIELD_LENGTH;
+tlv_length(ipv4_dst)       -> ?IPV4_DST_FIELD_LENGTH;
+tlv_length(tcp_src)        -> ?TCP_SRC_FIELD_LENGTH;
+tlv_length(tcp_dst)        -> ?TCP_DST_FIELD_LENGTH;
+tlv_length(udp_src)        -> ?UDP_SRC_FIELD_LENGTH;
+tlv_length(udp_dst)        -> ?UDP_DST_FIELD_LENGTH;
+tlv_length(sctp_src)       -> ?SCTP_SRC_FIELD_LENGTH;
+tlv_length(sctp_dst)       -> ?SCTP_DST_FIELD_LENGTH;
+tlv_length(icmpv4_type)    -> ?ICMPV4_TYPE_FIELD_LENGTH;
+tlv_length(icmpv4_code)    -> ?ICMPV4_CODE_FIELD_LENGTH;
+tlv_length(arp_op)         -> ?ARP_OP_FIELD_LENGTH;
+tlv_length(arp_spa)        -> ?ARP_SPA_FIELD_LENGTH;
+tlv_length(arp_tpa)        -> ?ARP_TPA_FIELD_LENGTH;
+tlv_length(arp_sha)        -> ?ARP_SHA_FIELD_LENGTH;
+tlv_length(arp_tha)        -> ?ARP_THA_FIELD_LENGTH;
+tlv_length(ipv6_src)       -> ?IPV6_SRC_FIELD_LENGTH;
+tlv_length(ipv6_dst)       -> ?IPV6_DST_FIELD_LENGTH;
+tlv_length(ipv6_flabel)    -> ?IPV6_FLABEL_FIELD_LENGTH;
+tlv_length(icmpv6_type)    -> ?ICMPV6_TYPE_FIELD_LENGTH;
+tlv_length(icmpv6_code)    -> ?ICMPV6_CODE_FIELD_LENGTH;
+tlv_length(ipv6_nd_target) -> ?IPV6_ND_TARGET_FIELD_LENGTH;
+tlv_length(ipv6_nd_sll)    -> ?IPV6_ND_SLL_FIELD_LENGTH;
+tlv_length(ipv6_nd_tll)    -> ?IPV6_ND_TLL_FIELD_LENGTH;
+tlv_length(mpls_label)     -> ?MPLS_LABEL_FIELD_LENGTH;
+tlv_length(mpls_tc)        -> ?MPLS_TC_FIELD_LENGTH.
+
+-spec get_experimenter_bit(atom()) -> integer().
+get_experimenter_bit(instruction_type) ->
+    ?OFPIT_EXPERIMENTER_BIT;
+get_experimenter_bit(action_type) ->
+    ?OFPAT_EXPERIMENTER_BIT.
