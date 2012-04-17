@@ -17,6 +17,9 @@
          encode_port_no/1,
          decode_port_no/1,
          port_feature/1]).
+-export([encode_queue_id/1,
+         decode_queue_id/1,
+         queue_property/1]).
 -export([error_type/1,
          hello_failed/1,
          bad_request/1,
@@ -46,7 +49,6 @@
          group_type/1,
          group_command/1,
          controller_role/1,
-         queue_property/1,
          stats_type/1,
          stats_request_flag/1,
          stats_reply_flag/1,
@@ -54,7 +56,6 @@
 
 -export([encode_group_id/1, decode_group_id/1,
          encode_table_id/1, decode_table_id/1,
-         encode_queue_id/1, decode_queue_id/1,
          encode_buffer_id/1, decode_buffer_id/1,
          encode_max_length/1, decode_max_length/1]).
 
@@ -198,6 +199,23 @@ port_feature(pause_asym)                 -> ?OFPPF_PAUSE_ASYM;
 port_feature(?OFPPF_PAUSE_ASYM)          -> pause_asym;
 port_feature(Type) when is_atom(Type)    -> throw({bad_type, Type});
 port_feature(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+%%% Queue Structures -----------------------------------------------------------
+
+encode_queue_id(all)                      -> ?OFPQ_ALL;
+encode_queue_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
+encode_queue_id(Int) when is_integer(Int) -> Int.
+
+decode_queue_id(?OFPQ_ALL)               -> all;
+decode_queue_id(Int) when is_integer(Int) -> Int.
+
+queue_property(min_rate)                   -> ?OFPQT_MIN_RATE;
+queue_property(?OFPQT_MIN_RATE)            -> min_rate;
+queue_property(max_rate)                   -> ?OFPQT_MAX_RATE;
+queue_property(?OFPQT_MAX_RATE)            -> max_rate;
+queue_property(experimenter)               -> ?OFPQT_EXPERIMENTER;
+queue_property(?OFPQT_EXPERIMENTER)        -> experimenter;
+queue_property(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 %%% Rest -----------------------------------------------------------------------
 
@@ -718,14 +736,6 @@ controller_role(?OFPCR_ROLE_SLAVE)          -> slave;
 controller_role(Type) when is_atom(Type)    -> throw({bad_type, Type});
 controller_role(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
-queue_property(min_rate)                   -> ?OFPQT_MIN_RATE;
-queue_property(?OFPQT_MIN_RATE)            -> min_rate;
-queue_property(max_rate)                   -> ?OFPQT_MAX_RATE;
-queue_property(?OFPQT_MAX_RATE)            -> max_rate;
-queue_property(experimenter)               -> ?OFPQT_EXPERIMENTER;
-queue_property(?OFPQT_EXPERIMENTER)        -> experimenter;
-queue_property(Type) when is_integer(Type) -> throw({bad_value, Type}).
-
 stats_type(desc)                       -> ?OFPST_DESC;
 stats_type(?OFPST_DESC)                -> desc;
 stats_type(flow)                       -> ?OFPST_FLOW;
@@ -784,13 +794,6 @@ encode_table_id(Int) when is_integer(Int) -> Int.
 
 decode_table_id(?OFPTT_ALL)               -> all;
 decode_table_id(Int) when is_integer(Int) -> Int.
-
-encode_queue_id(all)                      -> ?OFPQ_ALL;
-encode_queue_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
-encode_queue_id(Int) when is_integer(Int) -> Int.
-
-decode_queue_id(?OFPQ_ALL)               -> all;
-decode_queue_id(Int) when is_integer(Int) -> Int.
 
 encode_buffer_id(no_buffer)                -> ?OFPCML_NO_BUFFER;
 encode_buffer_id(Type) when is_atom(Type)  -> throw({bad_type, Type});

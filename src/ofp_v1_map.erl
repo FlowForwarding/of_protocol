@@ -15,6 +15,9 @@
          encode_port_no/1,
          decode_port_no/1,
          port_feature/1]).
+-export([encode_queue_id/1,
+         decode_queue_id/1,
+         queue_property/1]).
 
 -include("of_protocol.hrl").
 -include("ofp_v1.hrl").
@@ -144,6 +147,19 @@ port_feature(pause_asym)                 -> ?OFPPF_PAUSE_ASYM;
 port_feature(?OFPPF_PAUSE_ASYM)          -> pause_asym;
 port_feature(Type) when is_atom(Type)    -> throw({bad_type, Type});
 port_feature(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+%%% Queue Structures -----------------------------------------------------------
+
+encode_queue_id(all)                      -> ?OFPQ_ALL;
+encode_queue_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
+encode_queue_id(Int) when is_integer(Int) -> Int.
+
+decode_queue_id(?OFPQ_ALL)               -> all;
+decode_queue_id(Int) when is_integer(Int) -> Int.
+
+queue_property(min_rate)                   -> ?OFPQT_MIN_RATE;
+queue_property(?OFPQT_MIN_RATE)            -> min_rate;
+queue_property(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 %%%-----------------------------------------------------------------------------
 %%% Helper functions

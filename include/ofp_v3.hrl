@@ -90,6 +90,17 @@
 -define(OFPPF_PAUSE, 14).
 -define(OFPPF_PAUSE_ASYM, 15).
 
+%%% Queue Structures -----------------------------------------------------------
+
+%% Queue ids
+-define(OFPQ_MAX, 16#fffffffe).
+-define(OFPQ_ALL, 16#ffffffff).
+
+%% Queue types; enum ofp_queue_properties
+-define(OFPQT_MIN_RATE, 1).
+-define(OFPQT_MAX_RATE, 2).
+-define(OFPQT_EXPERIMENTER, 16#ffff).
+
 %%% Rest -----------------------------------------------------------------------
 
 %% Capabilities of the switch
@@ -167,10 +178,6 @@
 -define(OFPGFC_SELECT_LIVENESS, 1).
 -define(OFPGFC_CHAINING, 2).
 -define(OFPGFC_CHAINING_CHECKS, 3).
-
-%% Queue ids
--define(OFPQ_MAX, 16#fffffffe).
--define(OFPQ_ALL, 16#ffffffff).
 
 %% Controller roles
 -define(OFPCR_ROLE_NOCHANGE, 0).
@@ -325,11 +332,6 @@
 -define(OFPRRFC_UNSUP, 1).
 -define(OFPRRFC_BAD_ROLE, 2).
 
-%% Queue types
--define(OFPQT_MIN_RATE, 1).
--define(OFPQT_MAX_RATE, 2).
--define(OFPQT_EXPERIMENTER, 16#ffff).
-
 %% OXM classes
 -define(OFPXMC_NXM_0, 0).
 -define(OFPXMC_NXM_1, 1).
@@ -462,10 +464,10 @@
 
 %% Structure sizes
 -define(PORT_SIZE, 64).
+-define(PACKET_QUEUE_SIZE, 16).
 -define(QUEUE_PROP_MIN_RATE_SIZE, 16).
 -define(QUEUE_PROP_MAX_RATE_SIZE, 16).
 -define(QUEUE_PROP_EXPERIMENTER_SIZE, 16).
--define(PACKET_QUEUE_SIZE, 16).
 -define(OXM_FIELD_SIZE, 4).
 -define(MATCH_SIZE, 8).
 -define(INSTRUCTION_GOTO_TABLE_SIZE, 8).

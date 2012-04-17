@@ -75,7 +75,14 @@ encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
       NameBin:?OFP_MAX_PORT_NAME_LEN/bytes,
       ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
       AdvertisedBin:4/bytes, SupportedBin:4/bytes,
-      PeerBin:4/bytes, CurrSpeed:32, MaxSpeed:32>>.
+      PeerBin:4/bytes, CurrSpeed:32, MaxSpeed:32>>;
+encode_struct(#ofp_packet_queue{queue_id = Queue, properties = Props}) ->
+    PropsBin = encode_list(Props),
+    Length = ?PACKET_QUEUE_SIZE + size(PropsBin),
+    <<Queue:32, Length:16, 0:16, PropsBin/bytes>>;
+encode_struct(#ofp_queue_prop_min_rate{rate = Rate}) ->
+    PropertyInt = ofp_v2_map:queue_property(min_rate),
+    <<PropertyInt:16, ?QUEUE_PROP_MIN_RATE_SIZE:16, 0:32, Rate:16, 0:48>>.
 
 %%% Messages -----------------------------------------------------------------
 
@@ -117,6 +124,36 @@ decode_port(Binary) ->
               config = Config, state = State, curr = Curr,
               advertised = Advertised, supported = Supported,
               peer = Peer, curr_speed = CurrSpeed, max_speed = MaxSpeed}.
+
+%% @doc Decode packet queues
+decode_packet_queues(Binary) ->
+    decode_packet_queues(Binary, []).
+
+decode_packet_queues(<<>>, Queues) ->
+    lists:reverse(Queues);
+decode_packet_queues(Binary, Queues) ->
+    <<QueueId:32, Length:16, 0:16, Data/bytes>> = Binary,
+    PropsLength = Length - ?PACKET_QUEUE_SIZE,
+    <<PropsBin:PropsLength/bytes, Rest/bytes>> = Data,
+    Props = decode_queue_properties(PropsBin),
+    Queue = #ofp_packet_queue{queue_id = QueueId, properties = Props},
+    decode_packet_queues(Rest, [Queue | Queues]).
+
+%% @doc Decode queue properties
+decode_queue_properties(Binary) ->
+    decode_queue_properties(Binary, []).
+
+decode_queue_properties(<<>>, Properties) ->
+    lists:reverse(Properties);
+decode_queue_properties(Binary, Properties) ->
+    <<TypeInt:16, _Length:16, 0:32, Data/bytes>> = Binary,
+    Type = ofp_v2_map:queue_property(TypeInt),
+    case Type of
+        min_rate ->
+            <<Rate:16, 0:48, Rest/bytes>> = Data,
+            Property = #ofp_queue_prop_min_rate{rate = Rate}
+    end,
+    decode_queue_properties(Rest, [Property | Properties]).
 
 %%% Messages -----------------------------------------------------------------
 

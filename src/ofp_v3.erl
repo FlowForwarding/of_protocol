@@ -57,11 +57,6 @@ do_encode(#ofp_message{experimental = Experimental,
 
 %%% Structures -----------------------------------------------------------------
 
-%% @doc Encode queue property header.
-encode_queue_header(Property, Length) ->
-    PropertyInt = ofp_v3_map:queue_property(Property),
-    <<PropertyInt:16, Length:16, 0:32>>.
-
 %% @doc Encode other structures
 encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
                         config = Config, state = State, curr = Curr,
@@ -81,6 +76,22 @@ encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
       ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
       AdvertisedBin:4/bytes, SupportedBin:4/bytes,
       PeerBin:4/bytes, CurrSpeed:32, MaxSpeed:32>>;
+encode_struct(#ofp_packet_queue{queue_id = Queue, port = Port,
+                                properties = Props}) ->
+    PropsBin = encode_list(Props),
+    Length = ?PACKET_QUEUE_SIZE + size(PropsBin),
+    <<Queue:32, Port:32, Length:16, 0:48, PropsBin/bytes>>;
+encode_struct(#ofp_queue_prop_min_rate{rate = Rate}) ->
+    PropertyInt = ofp_v3_map:queue_property(min_rate),
+    <<PropertyInt:16, ?QUEUE_PROP_MIN_RATE_SIZE:16, 0:32, Rate:16, 0:48>>;
+encode_struct(#ofp_queue_prop_max_rate{rate = Rate}) ->
+    PropertyInt = ofp_v3_map:queue_property(max_rate),
+    <<PropertyInt:16, ?QUEUE_PROP_MAX_RATE_SIZE:16, 0:32, Rate:16, 0:48>>;
+encode_struct(#ofp_queue_prop_experimenter{experimenter = Experimenter,
+                                           data = Data}) ->
+    Length = ?QUEUE_PROP_EXPERIMENTER_SIZE + byte_size(Data),
+    PropertyInt = ofp_v3_map:queue_property(experimenter),
+    <<PropertyInt:16, Length:16, 0:32, Experimenter:32, 0:32, Data/bytes>>;
 encode_struct(#ofp_match{type = Type, oxm_fields = Fields}) ->
     TypeInt = ofp_v3_map:match_type(Type),
     FieldsBin = encode_list(Fields),
@@ -218,22 +229,6 @@ encode_struct(#ofp_bucket{weight = Weight, watch_port = Port,
     ActionsBin = encode_list(Actions),
     Length = ?BUCKET_SIZE + size(ActionsBin),
     <<Length:16, Weight:16, Port:32, Group:32, 0:32, ActionsBin/bytes>>;
-encode_struct(#ofp_packet_queue{queue_id = Queue, port = Port,
-                                properties = Props}) ->
-    PropsBin = encode_list(Props),
-    Length = ?PACKET_QUEUE_SIZE + size(PropsBin),
-    <<Queue:32, Port:32, Length:16, 0:48, PropsBin/bytes>>;
-encode_struct(#ofp_queue_prop_min_rate{rate = Rate}) ->
-    HeaderBin = encode_queue_header(min_rate, ?QUEUE_PROP_MIN_RATE_SIZE),
-    <<HeaderBin/bytes, Rate:16, 0:48>>;
-encode_struct(#ofp_queue_prop_max_rate{rate = Rate}) ->
-    HeaderBin = encode_queue_header(max_rate, ?QUEUE_PROP_MAX_RATE_SIZE),
-    <<HeaderBin/bytes, Rate:16, 0:48>>;
-encode_struct(#ofp_queue_prop_experimenter{experimenter = Experimenter,
-                                           data = Data}) ->
-    Length = ?QUEUE_PROP_EXPERIMENTER_SIZE + byte_size(Data),
-    HeaderBin = encode_queue_header(experimenter, Length),
-    <<HeaderBin/bytes, Experimenter:32, 0:32, Data/bytes>>;
 encode_struct(#ofp_flow_stats{table_id = Table, duration_sec = Sec,
                               duration_nsec = NSec, priority = Priority,
                               idle_timeout = Idle, hard_timeout = Hard,
@@ -630,6 +625,47 @@ decode_port(Binary) ->
               advertised = Advertised, supported = Supported,
               peer = Peer, curr_speed = CurrSpeed, max_speed = MaxSpeed}.
 
+%% @doc Decode queues
+decode_queues(Binary) ->
+    decode_queues(Binary, []).
+
+decode_queues(<<>>, Queues) ->
+    lists:reverse(Queues);
+decode_queues(Binary, Queues) ->
+    <<QueueId:32, Port:32, Length:16, 0:48, Data/bytes>> = Binary,
+    PropsLength = Length - ?PACKET_QUEUE_SIZE,
+    <<PropsBin:PropsLength/bytes, Rest/bytes>> = Data,
+    Props = decode_properties(PropsBin),
+    Queue = #ofp_packet_queue{queue_id = QueueId, port = Port,
+                              properties = Props},
+    decode_queues(Rest, [Queue | Queues]).
+
+%% @doc Decode queue properties
+decode_properties(Binary) ->
+    decode_properties(Binary, []).
+
+decode_properties(<<>>, Properties) ->
+    lists:reverse(Properties);
+decode_properties(Binary, Properties) ->
+    <<TypeInt:16, Length:16, 0:32,
+      Data/bytes>> = Binary,
+    Type = ofp_v3_map:queue_property(TypeInt),
+    case Type of
+        min_rate ->
+            <<Rate:16, 0:48, Rest/bytes>> = Data,
+            Property = #ofp_queue_prop_min_rate{rate = Rate};
+        max_rate ->
+            <<Rate:16, 0:48, Rest/bytes>> = Data,
+            Property = #ofp_queue_prop_max_rate{rate = Rate};
+        experimenter ->
+            DataLength = Length - ?QUEUE_PROP_EXPERIMENTER_SIZE,
+            <<Experimenter:32, 0:32, ExpData:DataLength/bytes,
+              Rest/bytes>> = Data,
+            Property = #ofp_queue_prop_experimenter{experimenter = Experimenter,
+                                                    data = ExpData}
+    end,
+    decode_properties(Rest, [Property | Properties]).
+
 %% @doc Decode match structure
 decode_match(Binary) ->
     PadFieldsLength = size(Binary) - ?MATCH_SIZE + 4,
@@ -805,48 +841,6 @@ decode_buckets(Binary, Buckets) ->
     Bucket = #ofp_bucket{weight = Weight, watch_port = Port, watch_group = Group,
                          actions = Actions},
     decode_buckets(Rest, [Bucket | Buckets]).
-
-%% @doc Decode queues
-decode_queues(Binary) ->
-    decode_queues(Binary, []).
-
-decode_queues(<<>>, Queues) ->
-    lists:reverse(Queues);
-decode_queues(Binary, Queues) ->
-    <<QueueId:32, Port:32, Length:16, 0:48,
-      Data/bytes>> = Binary,
-    PropsLength = Length - ?PACKET_QUEUE_SIZE,
-    <<PropsBin:PropsLength/bytes, Rest/bytes>> = Data,
-    Props = decode_properties(PropsBin),
-    Queue = #ofp_packet_queue{queue_id = QueueId, port = Port,
-                              properties = Props},
-    decode_queues(Rest, [Queue | Queues]).
-
-%% @doc Decode properties
-decode_properties(Binary) ->
-    decode_properties(Binary, []).
-
-decode_properties(<<>>, Properties) ->
-    lists:reverse(Properties);
-decode_properties(Binary, Properties) ->
-    <<TypeInt:16, Length:16, 0:32,
-      Data/bytes>> = Binary,
-    Type = ofp_v3_map:queue_property(TypeInt),
-    case Type of
-        min_rate ->
-            <<Rate:16, 0:48, Rest/bytes>> = Data,
-            Property = #ofp_queue_prop_min_rate{rate = Rate};
-        max_rate ->
-            <<Rate:16, 0:48, Rest/bytes>> = Data,
-            Property = #ofp_queue_prop_max_rate{rate = Rate};
-        experimenter ->
-            DataLength = Length - ?QUEUE_PROP_EXPERIMENTER_SIZE,
-            <<Experimenter:32, 0:32, ExpData:DataLength/bytes,
-              Rest/bytes>> = Data,
-            Property = #ofp_queue_prop_experimenter{experimenter = Experimenter,
-                                                    data = ExpData}
-    end,
-    decode_properties(Rest, [Property | Properties]).
 
 decode_flow_stats(Binary) ->
     <<_:16, TableInt:8, 0:8, Sec:32,

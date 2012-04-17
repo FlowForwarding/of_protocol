@@ -84,9 +84,20 @@
 -define(OFPPF_PAUSE, 11).
 -define(OFPPF_PAUSE_ASYM, 12).
 
+%%% Queue Structures -----------------------------------------------------------
+
+%% Queue ids
+-define(OFPQ_MAX, 16#fffffffe).
+-define(OFPQ_ALL, 16#ffffffff).
+
+%% Queue properties; enum ofp_queue_properties
+-define(OFPQT_MIN_RATE, 1).
+
 %%%-----------------------------------------------------------------------------
 %%% Sizes
 %%%-----------------------------------------------------------------------------
 
 %% Structure sizes
 -define(PORT_SIZE, 48).
+-define(PACKET_QUEUE_SIZE, 8).
+-define(QUEUE_PROP_MIN_RATE_SIZE, 16).
