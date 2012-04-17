@@ -199,6 +199,8 @@ port_feature(?OFPPF_PAUSE_ASYM)          -> pause_asym;
 port_feature(Type) when is_atom(Type)    -> throw({bad_type, Type});
 port_feature(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
+%%% Rest -----------------------------------------------------------------------
+
 error_type(hello_failed)                -> ?OFPET_HELLO_FAILED;
 error_type(?OFPET_HELLO_FAILED)         -> hello_failed;
 error_type(bad_request)                 -> ?OFPET_BAD_REQUEST;
