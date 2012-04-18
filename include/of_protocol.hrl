@@ -257,6 +257,7 @@
 %% Set queue action
 -record(ofp_action_set_queue, {
           seq = 12,
+          port :: integer(),
           queue_id :: integer()
          }).
 
@@ -363,6 +364,7 @@
           packet_count :: integer(),
           byte_count :: integer(),
           match :: ofp_match(),
+          actions = [] :: [ofp_action()],
           instructions = [] :: [ofp_instruction()]
          }).
 -type ofp_flow_stats() :: #ofp_flow_stats{}.
@@ -459,6 +461,7 @@
           n_buffers :: integer(),
           n_tables :: integer(),
           capabilities = [] :: [ofp_switch_capability()],
+          actions = [] :: [ofp_action()],
           ports = [] :: [ofp_port()]
          }).
 -type ofp_features_reply() :: #ofp_features_reply{}.
@@ -512,6 +515,7 @@
           out_port :: ofp_port_no(),
           out_group :: ofp_group_id(),
           flags = [] :: [ofp_flow_mod_flag()],
+          actions = [] :: [ofp_action()],
           match :: ofp_match(),
           instructions = [] :: [ofp_instruction()]
          }).
@@ -814,6 +818,8 @@
 %% Packet-in
 -record(ofp_packet_in, {
           buffer_id :: ofp_buffer_id(),
+          in_port :: ofp_port_no(),
+          in_phy_port :: ofp_port_no(),
           reason :: ofp_packet_in_reason(),
           table_id :: integer(),
           match :: ofp_match(),
