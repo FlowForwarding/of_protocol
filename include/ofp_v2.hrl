@@ -119,6 +119,17 @@
 -define(OFPVID_PRESENT, 16#fffe).
 -define(OFPVID_NONE, 16#ffff).
 
+%%% Flow Instruction Structures ------------------------------------------------
+
+%% Instruction types; enum ofp_instruction_type
+-define(OFPIT_GOTO_TABLE, 1).
+-define(OFPIT_WRITE_METADATA, 2).
+-define(OFPIT_WRITE_ACTIONS, 3).
+-define(OFPIT_APPLY_ACTIONS, 4).
+-define(OFPIT_CLEAR_ACTIONS, 5).
+-define(OFPIT_EXPERIMENTER, 16#ffff).
+-define(OFPIT_EXPERIMENTER_BIT, 31).
+
 %%%-----------------------------------------------------------------------------
 %%% Sizes
 %%%-----------------------------------------------------------------------------
@@ -128,3 +139,9 @@
 -define(PACKET_QUEUE_SIZE, 8).
 -define(QUEUE_PROP_MIN_RATE_SIZE, 16).
 -define(MATCH_SIZE, 88).
+-define(INSTRUCTION_GOTO_TABLE_SIZE, 8).
+-define(INSTRUCTION_WRITE_METADATA_SIZE, 24).
+-define(INSTRUCTION_WRITE_ACTIONS_SIZE, 8).
+-define(INSTRUCTION_APPLY_ACTIONS_SIZE, 8).
+-define(INSTRUCTION_CLEAR_ACTIONS_SIZE, 8).
+-define(INSTRUCTION_EXPERIMENTER_SIZE, 8).

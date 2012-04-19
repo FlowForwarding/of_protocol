@@ -20,6 +20,7 @@
          queue_property/1]).
 -export([match_type/1,
          flow_wildcard/1]).
+-export([instruction_type/1]).
 
 -include("of_protocol.hrl").
 -include("ofp_v2.hrl").
@@ -200,6 +201,24 @@ flow_wildcard(mpls_tc)                    -> ?OFPFW_MPLS_TC;
 flow_wildcard(?OFPFW_MPLS_TC)             -> mpls_tc;
 flow_wildcard(Type) when is_atom(Type)    -> throw({bad_type, Type});
 flow_wildcard(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+%%% Flow Instruction Structures ------------------------------------------------
+
+instruction_type(goto_table)                 -> ?OFPIT_GOTO_TABLE;
+instruction_type(?OFPIT_GOTO_TABLE)          -> goto_table;
+instruction_type(write_metadata)             -> ?OFPIT_WRITE_METADATA;
+instruction_type(?OFPIT_WRITE_METADATA)      -> write_metadata;
+instruction_type(write_actions)              -> ?OFPIT_WRITE_ACTIONS;
+instruction_type(?OFPIT_WRITE_ACTIONS)       -> write_actions;
+instruction_type(apply_actions)              -> ?OFPIT_APPLY_ACTIONS;
+instruction_type(?OFPIT_APPLY_ACTIONS)       -> apply_actions;
+instruction_type(clear_actions)              -> ?OFPIT_CLEAR_ACTIONS;
+instruction_type(?OFPIT_CLEAR_ACTIONS)       -> clear_actions;
+instruction_type(experimenter)               -> ?OFPIT_EXPERIMENTER;
+instruction_type(?OFPIT_EXPERIMENTER)        -> experimenter;
+instruction_type(?OFPIT_EXPERIMENTER_BIT)    -> experimenter;
+instruction_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
+instruction_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 %%%-----------------------------------------------------------------------------
 %%% Helper functions

@@ -127,7 +127,36 @@ encode_struct(#ofp_match{type = Type, oxm_fields = Fields}) ->
       VlanVid:2/bytes, VlanPcp:1/bytes, 0:8, EthType:2/bytes, IPDscp:1/bytes,
       IPProto:1/bytes, IPv4Src:4/bytes, SrcMask:4/bytes, IPv4Dst:4/bytes,
       DstMask:4/bytes, TPSrc:2/bytes, TPDst:2/bytes, MPLSLabel:4/bytes,
-      MPLSTc:1/bytes, 0:24, Metadata:8/bytes, MetadataMask:8/bytes>>.
+      MPLSTc:1/bytes, 0:24, Metadata:8/bytes, MetadataMask:8/bytes>>;
+
+encode_struct(#ofp_instruction_goto_table{table_id = Table}) ->
+    Type = ofp_v2_map:instruction_type(goto_table),
+    Length = ?INSTRUCTION_GOTO_TABLE_SIZE,
+    TableInt = ofp_v2_map:encode_table_id(Table),
+    <<Type:16, Length:16, TableInt:8, 0:24>>;
+encode_struct(#ofp_instruction_write_metadata{metadata = Metadata,
+                                              metadata_mask = MetaMask}) ->
+    Type = ofp_v2_map:instruction_type(write_metadata),
+    Length = ?INSTRUCTION_WRITE_METADATA_SIZE,
+    <<Type:16, Length:16, 0:32, Metadata:8/bytes, MetaMask:8/bytes>>;
+encode_struct(#ofp_instruction_write_actions{actions = Actions}) ->
+    Type = ofp_v2_map:instruction_type(write_actions),
+    ActionsBin = encode_list(Actions),
+    Length = ?INSTRUCTION_WRITE_ACTIONS_SIZE + size(ActionsBin),
+    <<Type:16, Length:16, 0:32, ActionsBin/bytes>>;
+encode_struct(#ofp_instruction_apply_actions{actions = Actions}) ->
+    Type = ofp_v2_map:instruction_type(apply_actions),
+    ActionsBin = encode_list(Actions),
+    Length = ?INSTRUCTION_APPLY_ACTIONS_SIZE + size(ActionsBin),
+    <<Type:16, Length:16, 0:32, ActionsBin/bytes>>;
+encode_struct(#ofp_instruction_clear_actions{}) ->
+    Type = ofp_v2_map:instruction_type(clear_actions),
+    Length = ?INSTRUCTION_CLEAR_ACTIONS_SIZE,
+    <<Type:16, Length:16, 0:32>>;
+encode_struct(#ofp_instruction_experimenter{experimenter = Experimenter}) ->
+    Type = ofp_v2_map:instruction_type(experimenter),
+    Length = ?INSTRUCTION_EXPERIMENTER_SIZE,
+    <<Type:16, Length:16, Experimenter:32>>.
 
 encode_field_value(FieldList, Type, Size) ->
     case lists:keyfind(Type, 1, FieldList) of
@@ -310,6 +339,56 @@ decode_match(Binary) ->
               end || FType <- Wildcards2 ++ [ipv4_src, ipv4_dst,
                                             eth_src, eth_dst]],
     #ofp_match{type = Type, oxm_fields = Fields}.
+
+%% @doc Decode instructions
+-spec decode_instructions(binary()) -> [ofp_instruction()].
+decode_instructions(Binary) ->
+    decode_instructions(Binary, []).
+
+-spec decode_instructions(binary(), [ofp_instruction()]) ->
+                                 [ofp_instruction()].
+decode_instructions(<<>>, Instructions) ->
+    lists:reverse(Instructions);
+decode_instructions(Binary, Instructions) ->
+    <<TypeInt:16, Length:16, Data/bytes>> = Binary,
+    Type = ofp_v3_map:instruction_type(TypeInt),
+    case Type of
+        goto_table ->
+            <<TableInt:8, 0:24, Rest/bytes>> = Data,
+            Table = ofp_v3_map:decode_table_id(TableInt),
+            Instruction = #ofp_instruction_goto_table{table_id = Table};
+        write_metadata ->
+            <<0:32, Metadata:8/bytes, MetaMask:8/bytes,
+              Rest/bytes>> = Data,
+            Instruction = #ofp_instruction_write_metadata{
+              metadata = Metadata,
+              metadata_mask = MetaMask};
+        write_actions ->
+            ActionsLength = Length - ?INSTRUCTION_WRITE_ACTIONS_SIZE,
+            <<0:32, ActionsBin:ActionsLength/bytes,
+              Rest/bytes>> = Data,
+            Actions = decode_actions(ActionsBin),
+            Instruction = #ofp_instruction_write_actions{actions = Actions};
+        apply_actions ->
+            ActionsLength = Length - ?INSTRUCTION_APPLY_ACTIONS_SIZE,
+            <<0:32, ActionsBin:ActionsLength/bytes,
+              Rest/bytes>> = Data,
+            Actions = decode_actions(ActionsBin),
+            Instruction = #ofp_instruction_apply_actions{actions = Actions};
+        clear_actions ->
+            <<0:32, Rest/bytes>> = Data,
+            Instruction = #ofp_instruction_clear_actions{};
+        experimenter ->
+            <<Experimenter:32, Rest/bytes>> = Data,
+            Instruction = #ofp_instruction_experimenter{
+              experimenter = Experimenter}
+    end,
+    decode_instructions(Rest, [Instruction | Instructions]).
+
+%% @doc Decode actions
+-spec decode_actions(binary()) -> [ofp_action()].
+decode_actions(_Binary) ->
+    [].
 
 %%% Messages -----------------------------------------------------------------
 

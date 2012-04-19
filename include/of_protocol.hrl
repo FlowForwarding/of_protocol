@@ -191,6 +191,44 @@
 
 -type ofp_match() :: #ofp_match{}.
 
+%%% Flow Instruction Structures ------------------------------------------------
+
+%% Instruction structure for goto table
+-record(ofp_instruction_goto_table, {
+          table_id :: integer()
+         }).
+
+%% Instruction structure for write metadata
+-record(ofp_instruction_write_metadata, {
+          metadata :: binary(),
+          metadata_mask :: binary()
+         }).
+
+%% Instruction structure for write actions
+-record(ofp_instruction_write_actions, {
+          actions :: [ofp_action()]
+         }).
+
+%% Instruction structure for apply actions
+-record(ofp_instruction_apply_actions, {
+          actions :: [ofp_action()]
+         }).
+
+%% Instruction structure for clear actions
+-record(ofp_instruction_clear_actions, {}).
+
+%% Instruction structure for experimenter
+-record(ofp_instruction_experimenter, {
+          experimenter :: integer()
+         }).
+
+-type ofp_instruction() :: #ofp_instruction_goto_table{}
+                         | #ofp_instruction_write_metadata{}
+                         | #ofp_instruction_write_actions{}
+                         | #ofp_instruction_apply_actions{}
+                         | #ofp_instruction_clear_actions{}
+                         | #ofp_instruction_experimenter{}.
+
 %%% Action Structures ----------------------------------------------------------
 
 %% Copy TTL inwards action
@@ -295,44 +333,6 @@
                     | #ofp_action_pop_mpls{}
                     | #ofp_action_set_field{}
                     | #ofp_action_experimenter{}.
-
-%%% Flow Instruction Structures ------------------------------------------------
-
-%% Instruction structure for goto table
--record(ofp_instruction_goto_table, {
-          table_id :: integer()
-         }).
-
-%% Instruction structure for write metadata
--record(ofp_instruction_write_metadata, {
-          metadata :: binary(),
-          metadata_mask :: binary()
-         }).
-
-%% Instruction structure for write actions
--record(ofp_instruction_write_actions, {
-          actions :: [ofp_action()]
-         }).
-
-%% Instruction structure for apply actions
--record(ofp_instruction_apply_actions, {
-          actions :: [ofp_action()]
-         }).
-
-%% Instruction structure for clear actions
--record(ofp_instruction_clear_actions, {}).
-
-%% Instruction structure for experimenter
--record(ofp_instruction_experimenter, {
-          experimenter :: integer()
-         }).
-
--type ofp_instruction() :: #ofp_instruction_goto_table{}
-                         | #ofp_instruction_write_metadata{}
-                         | #ofp_instruction_write_actions{}
-                         | #ofp_instruction_apply_actions{}
-                         | #ofp_instruction_clear_actions{}
-                         | #ofp_instruction_experimenter{}.
 
 %%% Other Structures -----------------------------------------------------------
 

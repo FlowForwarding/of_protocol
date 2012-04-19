@@ -155,6 +155,17 @@
 -define(OFPVID_PRESENT, 16#1000).
 -define(OFPVID_NONE, 16#0000).
 
+%%% Flow Instruction Structures ------------------------------------------------
+
+%% Instruction types; enum ofp_instruction_type
+-define(OFPIT_GOTO_TABLE, 1).
+-define(OFPIT_WRITE_METADATA, 2).
+-define(OFPIT_WRITE_ACTIONS, 3).
+-define(OFPIT_APPLY_ACTIONS, 4).
+-define(OFPIT_CLEAR_ACTIONS, 5).
+-define(OFPIT_EXPERIMENTER, 16#ffff).
+-define(OFPIT_EXPERIMENTER_BIT, 31).
+
 %%% Rest -----------------------------------------------------------------------
 
 %% Capabilities of the switch
@@ -385,15 +396,6 @@
 -define(OFPRRFC_STALE, 0).
 -define(OFPRRFC_UNSUP, 1).
 -define(OFPRRFC_BAD_ROLE, 2).
-
-%% Instruction types
--define(OFPIT_GOTO_TABLE, 1).
--define(OFPIT_WRITE_METADATA, 2).
--define(OFPIT_WRITE_ACTIONS, 3).
--define(OFPIT_APPLY_ACTIONS, 4).
--define(OFPIT_CLEAR_ACTIONS, 5).
--define(OFPIT_EXPERIMENTER, 16#ffff).
--define(OFPIT_EXPERIMENTER_BIT, 31).
 
 %% Controller max length; Buffer ids
 -define(OFPCML_MAX, 16#ffe5).

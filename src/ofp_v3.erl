@@ -132,6 +132,35 @@ encode_struct(#ofp_field{class = Class, field = Field, has_mask = HasMask,
     end,
     <<ClassInt:16, FieldInt:7, HasMaskInt:1, Len2:8, Rest/bytes>>;
 
+encode_struct(#ofp_instruction_goto_table{table_id = Table}) ->
+    Type = ofp_v3_map:instruction_type(goto_table),
+    Length = ?INSTRUCTION_GOTO_TABLE_SIZE,
+    TableInt = ofp_v3_map:encode_table_id(Table),
+    <<Type:16, Length:16, TableInt:8, 0:24>>;
+encode_struct(#ofp_instruction_write_metadata{metadata = Metadata,
+                                              metadata_mask = MetaMask}) ->
+    Type = ofp_v3_map:instruction_type(write_metadata),
+    Length = ?INSTRUCTION_WRITE_METADATA_SIZE,
+    <<Type:16, Length:16, 0:32, Metadata:8/bytes, MetaMask:8/bytes>>;
+encode_struct(#ofp_instruction_write_actions{actions = Actions}) ->
+    Type = ofp_v3_map:instruction_type(write_actions),
+    ActionsBin = encode_list(Actions),
+    Length = ?INSTRUCTION_WRITE_ACTIONS_SIZE + size(ActionsBin),
+    <<Type:16, Length:16, 0:32, ActionsBin/bytes>>;
+encode_struct(#ofp_instruction_apply_actions{actions = Actions}) ->
+    Type = ofp_v3_map:instruction_type(apply_actions),
+    ActionsBin = encode_list(Actions),
+    Length = ?INSTRUCTION_APPLY_ACTIONS_SIZE + size(ActionsBin),
+    <<Type:16, Length:16, 0:32, ActionsBin/bytes>>;
+encode_struct(#ofp_instruction_clear_actions{}) ->
+    Type = ofp_v3_map:instruction_type(clear_actions),
+    Length = ?INSTRUCTION_CLEAR_ACTIONS_SIZE,
+    <<Type:16, Length:16, 0:32>>;
+encode_struct(#ofp_instruction_experimenter{experimenter = Experimenter}) ->
+    Type = ofp_v3_map:instruction_type(experimenter),
+    Length = ?INSTRUCTION_EXPERIMENTER_SIZE,
+    <<Type:16, Length:16, Experimenter:32>>;
+
 encode_struct(#ofp_action_output{port = Port, max_len = MaxLen}) ->
     Type = ofp_v3_map:action_type(output),
     Length = ?ACTION_OUTPUT_SIZE,
@@ -198,34 +227,6 @@ encode_struct(#ofp_action_set_field{field = Field}) ->
 encode_struct(#ofp_action_experimenter{experimenter = Experimenter}) ->
     Type = ofp_v3_map:action_type(experimenter),
     Length = ?ACTION_EXPERIMENTER_SIZE,
-    <<Type:16, Length:16, Experimenter:32>>;
-encode_struct(#ofp_instruction_goto_table{table_id = Table}) ->
-    Type = ofp_v3_map:instruction_type(goto_table),
-    Length = ?INSTRUCTION_GOTO_TABLE_SIZE,
-    TableInt = ofp_v3_map:encode_table_id(Table),
-    <<Type:16, Length:16, TableInt:8, 0:24>>;
-encode_struct(#ofp_instruction_write_metadata{metadata = Metadata,
-                                              metadata_mask = MetaMask}) ->
-    Type = ofp_v3_map:instruction_type(write_metadata),
-    Length = ?INSTRUCTION_WRITE_METADATA_SIZE,
-    <<Type:16, Length:16, 0:32, Metadata:8/bytes, MetaMask:8/bytes>>;
-encode_struct(#ofp_instruction_write_actions{actions = Actions}) ->
-    Type = ofp_v3_map:instruction_type(write_actions),
-    ActionsBin = encode_list(Actions),
-    Length = ?INSTRUCTION_WRITE_ACTIONS_SIZE + size(ActionsBin),
-    <<Type:16, Length:16, 0:32, ActionsBin/bytes>>;
-encode_struct(#ofp_instruction_apply_actions{actions = Actions}) ->
-    Type = ofp_v3_map:instruction_type(apply_actions),
-    ActionsBin = encode_list(Actions),
-    Length = ?INSTRUCTION_APPLY_ACTIONS_SIZE + size(ActionsBin),
-    <<Type:16, Length:16, 0:32, ActionsBin/bytes>>;
-encode_struct(#ofp_instruction_clear_actions{}) ->
-    Type = ofp_v3_map:instruction_type(clear_actions),
-    Length = ?INSTRUCTION_CLEAR_ACTIONS_SIZE,
-    <<Type:16, Length:16, 0:32>>;
-encode_struct(#ofp_instruction_experimenter{experimenter = Experimenter}) ->
-    Type = ofp_v3_map:instruction_type(experimenter),
-    Length = ?INSTRUCTION_EXPERIMENTER_SIZE,
     <<Type:16, Length:16, Experimenter:32>>;
 encode_struct(#ofp_bucket{weight = Weight, watch_port = Port,
                           watch_group = Group, actions = Actions}) ->
@@ -792,7 +793,8 @@ decode_actions(Binary, Actions) ->
 decode_instructions(Binary) ->
     decode_instructions(Binary, []).
 
--spec decode_instructions(binary(), [ofp_instruction()]) -> [ofp_instruction()].
+-spec decode_instructions(binary(), [ofp_instruction()]) ->
+                                 [ofp_instruction()].
 decode_instructions(<<>>, Instructions) ->
     lists:reverse(Instructions);
 decode_instructions(Binary, Instructions) ->
@@ -806,8 +808,9 @@ decode_instructions(Binary, Instructions) ->
         write_metadata ->
             <<0:32, Metadata:8/bytes, MetaMask:8/bytes,
               Rest/bytes>> = Data,
-            Instruction = #ofp_instruction_write_metadata{metadata = Metadata,
-                                                          metadata_mask = MetaMask};
+            Instruction = #ofp_instruction_write_metadata{
+              metadata = Metadata,
+              metadata_mask = MetaMask};
         write_actions ->
             ActionsLength = Length - ?INSTRUCTION_WRITE_ACTIONS_SIZE,
             <<0:32, ActionsBin:ActionsLength/bytes,
@@ -825,7 +828,8 @@ decode_instructions(Binary, Instructions) ->
             Instruction = #ofp_instruction_clear_actions{};
         experimenter ->
             <<Experimenter:32, Rest/bytes>> = Data,
-            Instruction = #ofp_instruction_experimenter{experimenter = Experimenter}
+            Instruction = #ofp_instruction_experimenter{
+              experimenter = Experimenter}
     end,
     decode_instructions(Rest, [Instruction | Instructions]).
 
