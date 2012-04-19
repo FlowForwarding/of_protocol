@@ -97,6 +97,28 @@
 %% Queue properties; enum ofp_queue_properties
 -define(OFPQT_MIN_RATE, 1).
 
+%%% Flow Match Structures ------------------------------------------------------
+
+%% Match types; enum ofp_match_type
+-define(OFPMT_STANDARD, 0).
+
+%% Flow wildcards; enum ofp_flow_wildcards
+-define(OFPFW_IN_PORT, 0).
+-define(OFPFW_DL_VLAN, 1).
+-define(OFPFW_DL_VLAN_PCP, 2).
+-define(OFPFW_DL_TYPE, 3).
+-define(OFPFW_NW_TOS, 4).
+-define(OFPFW_NW_PROTO, 5).
+-define(OFPFW_TP_SRC, 6).      %% TCP/UDP/SCTP
+-define(OFPFW_TP_DST, 7).      %% TCP/UDP/SCTP
+-define(OFPFW_MPLS_LABEL, 8).
+-define(OFPFW_MPLS_TC, 9).
+-define(OFPFW_ALL, 1023).
+
+%% VLAN ids; enum ofp_vlan_id
+-define(OFPVID_PRESENT, 16#fffe).
+-define(OFPVID_NONE, 16#ffff).
+
 %%%-----------------------------------------------------------------------------
 %%% Sizes
 %%%-----------------------------------------------------------------------------
@@ -105,3 +127,4 @@
 -define(PORT_SIZE, 64).
 -define(PACKET_QUEUE_SIZE, 8).
 -define(QUEUE_PROP_MIN_RATE_SIZE, 16).
+-define(MATCH_SIZE, 88).

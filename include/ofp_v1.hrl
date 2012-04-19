@@ -117,3 +117,4 @@
 -define(PORT_SIZE, 48).
 -define(PACKET_QUEUE_SIZE, 8).
 -define(QUEUE_PROP_MIN_RATE_SIZE, 16).
+-define(MATCH_SIZE, 40).

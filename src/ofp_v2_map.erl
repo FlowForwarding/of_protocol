@@ -18,6 +18,8 @@
 -export([encode_queue_id/1,
          decode_queue_id/1,
          queue_property/1]).
+-export([match_type/1,
+         flow_wildcard/1]).
 
 -include("of_protocol.hrl").
 -include("ofp_v2.hrl").
@@ -168,6 +170,36 @@ decode_queue_id(Int) when is_integer(Int) -> Int.
 queue_property(min_rate)                   -> ?OFPQT_MIN_RATE;
 queue_property(?OFPQT_MIN_RATE)            -> min_rate;
 queue_property(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+%%% Flow Match Structures ------------------------------------------------------
+
+match_type(standard)                   -> ?OFPMT_STANDARD;
+match_type(?OFPMT_STANDARD)            -> standard;
+match_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
+match_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+flow_wildcard(in_port)                    -> ?OFPFW_IN_PORT;
+flow_wildcard(?OFPFW_IN_PORT)             -> in_port;
+flow_wildcard(vlan_vid)                   -> ?OFPFW_DL_VLAN;
+flow_wildcard(?OFPFW_DL_VLAN)             -> vlan_vid;
+flow_wildcard(vlan_pcp)                   -> ?OFPFW_DL_VLAN_PCP;
+flow_wildcard(?OFPFW_DL_VLAN_PCP)         -> vlan_pcp;
+flow_wildcard(eth_type)                   -> ?OFPFW_DL_TYPE;
+flow_wildcard(?OFPFW_DL_TYPE)             -> eth_type;
+flow_wildcard(ip_dscp)                    -> ?OFPFW_NW_TOS;
+flow_wildcard(?OFPFW_NW_TOS)              -> ip_dscp;
+flow_wildcard(ip_proto)                   -> ?OFPFW_NW_PROTO;
+flow_wildcard(?OFPFW_NW_PROTO)            -> ip_proto;
+flow_wildcard(tcp_src)                    -> ?OFPFW_TP_SRC;
+flow_wildcard(tcp_dst)                    -> ?OFPFW_TP_DST;
+flow_wildcard(udp_src)                    -> ?OFPFW_TP_SRC;
+flow_wildcard(udp_dst)                    -> ?OFPFW_TP_DST;
+flow_wildcard(mpls_label)                 -> ?OFPFW_MPLS_LABEL;
+flow_wildcard(?OFPFW_MPLS_LABEL)          -> mpls_label;
+flow_wildcard(mpls_tc)                    -> ?OFPFW_MPLS_TC;
+flow_wildcard(?OFPFW_MPLS_TC)             -> mpls_tc;
+flow_wildcard(Type) when is_atom(Type)    -> throw({bad_type, Type});
+flow_wildcard(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 %%%-----------------------------------------------------------------------------
 %%% Helper functions

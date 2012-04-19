@@ -76,13 +76,82 @@ encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
       ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
       AdvertisedBin:4/bytes, SupportedBin:4/bytes,
       PeerBin:4/bytes, CurrSpeed:32, MaxSpeed:32>>;
+
 encode_struct(#ofp_packet_queue{queue_id = Queue, properties = Props}) ->
     PropsBin = encode_list(Props),
     Length = ?PACKET_QUEUE_SIZE + size(PropsBin),
     <<Queue:32, Length:16, 0:16, PropsBin/bytes>>;
 encode_struct(#ofp_queue_prop_min_rate{rate = Rate}) ->
     PropertyInt = ofp_v2_map:queue_property(min_rate),
-    <<PropertyInt:16, ?QUEUE_PROP_MIN_RATE_SIZE:16, 0:32, Rate:16, 0:48>>.
+    <<PropertyInt:16, ?QUEUE_PROP_MIN_RATE_SIZE:16, 0:32, Rate:16, 0:48>>;
+
+encode_struct(#ofp_match{type = Type, oxm_fields = Fields}) ->
+    TypeInt = ofp_v2_map:match_type(Type),
+    FieldList = encode_fields(Fields),
+    InPort = encode_field_value(FieldList, in_port, 32),
+    EthSrc = encode_field_value(FieldList, eth_src, 48),
+    EthDst = encode_field_value(FieldList, eth_dst, 48),
+    VlanVid = encode_field_value(FieldList, vlan_vid, 16),
+    VlanPcp = encode_field_value(FieldList, vlan_pcp, 8),
+    EthType = encode_field_value(FieldList, eth_type, 16),
+    IPDscp = encode_field_value(FieldList, ip_dscp, 8),
+    IPProto = encode_field_value(FieldList, ip_proto, 8),
+    IPv4Src = encode_field_value(FieldList, ipv4_src, 32),
+    IPv4Dst = encode_field_value(FieldList, ipv4_dst, 32),
+    MPLSLabel = encode_field_value(FieldList, mpls_label, 32),
+    MPLSTc = encode_field_value(FieldList, mpls_tc, 8),
+    case IPProto of
+        <<6>> ->
+            TPSrc = encode_field_value(FieldList, tcp_src, 16),
+            TPDst = encode_field_value(FieldList, tcp_dst, 16);
+        <<17>> ->
+            TPSrc = encode_field_value(FieldList, udp_src, 16),
+            TPDst = encode_field_value(FieldList, udp_dst, 16);
+        _ ->
+            TPSrc = <<0:16>>,
+            TPDst = <<0:16>>
+    end,
+    EthSrcMask = encode_field_mask(Fields, eth_src, 48),
+    EthDstMask = encode_field_mask(Fields, eth_dst, 48),
+    SrcMask = encode_field_mask(Fields, ipv4_src, 32),
+    DstMask = encode_field_mask(Fields, ipv4_dst, 32),
+    {Wildcards, _} = lists:unzip(FieldList),
+    WildcardsBin = flags_to_binary(flow_wildcard,
+                                   Wildcards -- [ipv4_src, ipv4_dst,
+                                                 eth_src, eth_dst], 4),
+    %% FIXME: Encode real metadata
+    Metadata = <<(16#0):64>>,
+    MetadataMask = <<(16#ffffffffffffffff):64>>,
+    <<TypeInt:16, ?MATCH_SIZE:16, InPort:4/bytes, WildcardsBin:4/bytes,
+      EthSrc:6/bytes, EthSrcMask:6/bytes, EthDst:6/bytes, EthDstMask:6/bytes,
+      VlanVid:2/bytes, VlanPcp:1/bytes, 0:8, EthType:2/bytes, IPDscp:1/bytes,
+      IPProto:1/bytes, IPv4Src:4/bytes, SrcMask:4/bytes, IPv4Dst:4/bytes,
+      DstMask:4/bytes, TPSrc:2/bytes, TPDst:2/bytes, MPLSLabel:4/bytes,
+      MPLSTc:1/bytes, 0:24, Metadata:8/bytes, MetadataMask:8/bytes>>.
+
+encode_field_value(FieldList, Type, Size) ->
+    case lists:keyfind(Type, 1, FieldList) of
+        false ->
+            <<0:Size>>;
+        {_, Value} ->
+            <<Value:Size/bits>>
+    end.
+
+encode_field_mask(Fields, Type, Size) ->
+    case lists:keyfind(Type, #ofp_field.field, Fields) of
+        #ofp_field{has_mask = true, mask = SMask} ->
+            <<SMask:Size/bits>>;
+        _ ->
+            <<0:Size>>
+    end.
+
+encode_fields(Fields) ->
+    encode_fields(Fields, []).
+
+encode_fields([], FieldList) ->
+    FieldList;
+encode_fields([#ofp_field{field = Type, value = Value} | Rest], FieldList) ->
+    encode_fields(Rest, [{Type, Value} | FieldList]).
 
 %%% Messages -----------------------------------------------------------------
 
@@ -154,6 +223,93 @@ decode_queue_properties(Binary, Properties) ->
             Property = #ofp_queue_prop_min_rate{rate = Rate}
     end,
     decode_queue_properties(Rest, [Property | Properties]).
+
+decode_match(Binary) ->
+    <<TypeInt:16, ?MATCH_SIZE:16, InPort:4/bytes, WildcardsInt:32,
+      EthSrc:6/bytes, EthSrcMask:6/bytes, EthDst:6/bytes, EthDstMask:6/bytes,
+      VlanVid:2/bytes, VlanPcp:1/bytes, 0:8, EthType:2/bytes, IPDscp:1/bytes,
+      IPProto:1/bytes, IPv4Src:4/bytes, SrcMask:4/bytes, IPv4Dst:4/bytes,
+      DstMask:4/bytes, TPSrc:2/bytes, TPDst:2/bytes, MPLSLabel:4/bytes,
+      MPLSTc:1/bytes, 0:24, _Metadata:8/bytes, _MetadataMask:8/bytes>> = Binary,
+    %% FIXME: Put decoded metadata in the right place
+    Type = ofp_v2_map:match_type(TypeInt),
+    Wildcards = binary_to_flags(flow_wildcard,
+                                <<(WildcardsInt band 16#ffffff3f):32>>),
+    case lists:member(ip_proto, Wildcards) of
+        false ->
+            Wildcards2 = Wildcards;
+        true ->
+            <<TPDstBit:1, TPSrcBit:1, _:6>> = <<WildcardsInt:8>>,
+            case TPSrcBit of
+                0 ->
+                    WildcardsTmp = Wildcards;
+                1 ->
+                    AddTmp = case IPProto of
+                                 <<6>> -> [tcp_src];
+                                 <<17>> -> [udp_src];
+                                 _ -> []
+                             end,
+                    WildcardsTmp = Wildcards ++ AddTmp
+            end,
+            case TPDstBit of
+                0 ->
+                    Wildcards2 = WildcardsTmp;
+                1 ->
+                    Add2 = case IPProto of
+                               <<6>> -> [tcp_dst];
+                               <<17>> -> [udp_dst];
+                               _ -> []
+                           end,
+                    Wildcards2 = WildcardsTmp ++ Add2
+            end
+    end,
+    Fields = [begin
+                  F = #ofp_field{field = FType},
+                  case FType of
+                      in_port ->
+                          F#ofp_field{value = InPort};
+                      eth_src ->
+                          F#ofp_field{value = EthSrc,
+                                      has_mask = true,
+                                      mask = EthSrcMask};
+                      eth_dst ->
+                          F#ofp_field{value = EthDst,
+                                      has_mask = true,
+                                      mask = EthDstMask};
+                      vlan_vid ->
+                          F#ofp_field{value = VlanVid};
+                      vlan_pcp ->
+                          F#ofp_field{value = VlanPcp};
+                      eth_type ->
+                          F#ofp_field{value = EthType};
+                      ip_dscp ->
+                          F#ofp_field{value = IPDscp};
+                      ip_proto ->
+                          F#ofp_field{value = IPProto};
+                      ipv4_src ->
+                          F#ofp_field{value = IPv4Src,
+                                      has_mask = true,
+                                      mask = SrcMask};
+                      ipv4_dst ->
+                          F#ofp_field{value = IPv4Dst,
+                                      has_mask = true,
+                                      mask = DstMask};
+                      tcp_src ->
+                          F#ofp_field{value = TPSrc};
+                      tcp_dst ->
+                          F#ofp_field{value = TPDst};
+                      udp_src ->
+                          F#ofp_field{value = TPSrc};
+                      udp_dst ->
+                          F#ofp_field{value = TPDst};
+                      mpls_label ->
+                          F#ofp_field{value = MPLSLabel};
+                      mpls_tc ->
+                          F#ofp_field{value = MPLSTc}
+                  end
+              end || FType <- Wildcards2 ++ [ipv4_src, ipv4_dst,
+                                            eth_src, eth_dst]],
+    #ofp_match{type = Type, oxm_fields = Fields}.
 
 %%% Messages -----------------------------------------------------------------
 
