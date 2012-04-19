@@ -74,13 +74,76 @@ encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
       NameBin:?OFP_MAX_PORT_NAME_LEN/bytes,
       ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
       AdvertisedBin:4/bytes, SupportedBin:4/bytes, PeerBin:4/bytes>>;
+
 encode_struct(#ofp_packet_queue{queue_id = Queue, properties = Props}) ->
     PropsBin = encode_list(Props),
     Length = ?PACKET_QUEUE_SIZE + size(PropsBin),
     <<Queue:32, Length:16, 0:16, PropsBin/bytes>>;
 encode_struct(#ofp_queue_prop_min_rate{rate = Rate}) ->
     PropertyInt = ofp_v1_map:queue_property(min_rate),
-    <<PropertyInt:16, ?QUEUE_PROP_MIN_RATE_SIZE:16, 0:32, Rate:16, 0:48>>.
+    <<PropertyInt:16, ?QUEUE_PROP_MIN_RATE_SIZE:16, 0:32, Rate:16, 0:48>>;
+
+encode_struct(#ofp_match{oxm_fields = Fields}) ->
+    FieldList = encode_fields(Fields),
+    InPort = encode_field_value(FieldList, in_port, 16),
+    EthSrc = encode_field_value(FieldList, eth_src, 48),
+    EthDst = encode_field_value(FieldList, eth_dst, 48),
+    VlanVid = encode_field_value(FieldList, vlan_vid, 16),
+    VlanPcp = encode_field_value(FieldList, vlan_pcp, 8),
+    EthType = encode_field_value(FieldList, eth_type, 16),
+    IPDscp = encode_field_value(FieldList, ip_dscp, 8),
+    IPProto = encode_field_value(FieldList, ip_proto, 8),
+    IPv4Src = encode_field_value(FieldList, ipv4_src, 32),
+    IPv4Dst = encode_field_value(FieldList, ipv4_dst, 32),
+    case IPProto of
+        <<6>> ->
+            TPSrc = encode_field_value(FieldList, tcp_src, 16),
+            TPDst = encode_field_value(FieldList, tcp_dst, 16);
+        <<17>> ->
+            TPSrc = encode_field_value(FieldList, udp_src, 16),
+            TPDst = encode_field_value(FieldList, udp_dst, 16);
+        _ ->
+            TPSrc = <<0:16>>,
+            TPDst = <<0:16>>
+    end,
+    SrcMask = case lists:keyfind(ipv4_src, #ofp_field.field, Fields) of
+                  #ofp_field{has_mask = true, mask = SMask} ->
+                      count_zeros4(SMask);
+                  _ ->
+                      0
+              end,
+    DstMask = case lists:keyfind(ipv4_dst, #ofp_field.field, Fields) of
+                  #ofp_field{has_mask = true, mask = DMask} ->
+                      count_zeros4(DMask);
+                  _ ->
+                      0
+              end,
+    {Wildcards, _} = lists:unzip(FieldList),
+    <<WildcardsInt:32>> = flags_to_binary(flow_wildcard,
+                                          Wildcards -- [ipv4_src, ipv4_dst], 4),
+    WildcardsBin = <<(WildcardsInt bor (SrcMask bsl 8)
+                          bor (DstMask bsl 14)):32>>,
+    <<WildcardsBin:4/bytes, InPort:2/bytes, EthSrc:6/bytes, EthDst:6/bytes,
+      VlanVid:2/bytes, VlanPcp:1/bytes, 0:8, EthType:2/bytes, IPDscp:1/bytes,
+      IPProto:1/bytes, 0:16, IPv4Src:4/bytes, IPv4Dst:4/bytes, TPSrc:2/bytes,
+      TPDst:2/bytes>>.
+
+%% FIXME: Add a separate case when encoding port_no
+encode_field_value(FieldList, Type, Size) ->
+    case lists:keyfind(Type, 1, FieldList) of
+        false ->
+            <<0:Size>>;
+        {_, Value} ->
+            <<Value:Size/bits>>
+    end.
+
+encode_fields(Fields) ->
+    encode_fields(Fields, []).
+
+encode_fields([], FieldList) ->
+    FieldList;
+encode_fields([#ofp_field{field = Type, value = Value} | Rest], FieldList) ->
+    encode_fields(Rest, [{Type, Value} | FieldList]).
 
 %%% Messages -----------------------------------------------------------------
 
@@ -153,6 +216,82 @@ decode_queue_properties(Binary, Properties) ->
     end,
     decode_queue_properties(Rest, [Property | Properties]).
 
+decode_match(Binary) ->
+    <<WildcardsInt:32, InPort:2/bytes, EthSrc:6/bytes, EthDst:6/bytes,
+      VlanVid:2/bytes, VlanPcp:1/bytes, 0:8, EthType:2/bytes, IPDscp:1/bytes,
+      IPProto:1/bytes, 0:16, IPv4Src:4/bytes, IPv4Dst:4/bytes,
+      TPSrc:2/bytes, TPDst:2/bytes>> = Binary,
+    Wildcards = binary_to_flags(flow_wildcard,
+                                <<(WildcardsInt band 16#fff0003f):32>>),
+    case lists:member(ip_proto, Wildcards) of
+        false ->
+            Wildcards2 = Wildcards;
+        true ->
+            <<TPDstBit:1, TPSrcBit:1, _:6>> = <<WildcardsInt:8>>,
+            case TPSrcBit of
+                0 ->
+                    WildcardsTmp = Wildcards;
+                1 ->
+                    AddTmp = case IPProto of
+                                 <<6>> -> [tcp_src];
+                                 <<17>> -> [udp_src];
+                                 _ -> []
+                             end,
+                    WildcardsTmp = Wildcards ++ AddTmp
+            end,
+            case TPDstBit of
+                0 ->
+                    Wildcards2 = WildcardsTmp;
+                1 ->
+                    Add2 = case IPProto of
+                               <<6>> -> [tcp_dst];
+                               <<17>> -> [udp_dst];
+                               _ -> []
+                           end,
+                    Wildcards2 = WildcardsTmp ++ Add2
+            end
+    end,
+    Fields = [begin
+                  F = #ofp_field{field = Type},
+                  case Type of
+                      in_port ->
+                          F#ofp_field{value = InPort};
+                      eth_src ->
+                          F#ofp_field{value = EthSrc};
+                      eth_dst ->
+                          F#ofp_field{value = EthDst};
+                      vlan_vid ->
+                          F#ofp_field{value = VlanVid};
+                      vlan_pcp ->
+                          F#ofp_field{value = VlanPcp};
+                      eth_type ->
+                          F#ofp_field{value = EthType};
+                      ip_dscp ->
+                          F#ofp_field{value = IPDscp};
+                      ip_proto ->
+                          F#ofp_field{value = IPProto};
+                      ipv4_src ->
+                          <<_:18, SrcMask:6, _:8>> = <<WildcardsInt:32>>,
+                          F#ofp_field{value = IPv4Src,
+                                      has_mask = true,
+                                      mask = convert_to_mask(SrcMask)};
+                      ipv4_dst ->
+                          <<_:12, DstMask:6, _:14>> = <<WildcardsInt:32>>,
+                          F#ofp_field{value = IPv4Dst,
+                                      has_mask = true,
+                                      mask = convert_to_mask(DstMask)};
+                      tcp_src ->
+                          F#ofp_field{value = TPSrc};
+                      tcp_dst ->
+                          F#ofp_field{value = TPDst};
+                      udp_src ->
+                          F#ofp_field{value = TPSrc};
+                      udp_dst ->
+                          F#ofp_field{value = TPDst}
+                  end
+              end || Type <- Wildcards2 ++ [ipv4_src, ipv4_dst]],
+    #ofp_match{type = standard, oxm_fields = Fields}.
+
 %%% Messages -----------------------------------------------------------------
 
 decode_body(_, _) ->
@@ -208,6 +347,29 @@ binary_to_flags(Type, Integer, Bit, Flags) when Bit >= 0 ->
     end;
 binary_to_flags(_, _, _, Flags) ->
     lists:reverse(Flags).
+
+-spec convert_to_mask(integer()) -> binary().
+convert_to_mask(N) when N < 32 ->
+    <<(16#ffffffff - ((1 bsl N) -1)):32>>;
+convert_to_mask(_) ->
+    <<(16#0):32>>.
+
+-spec count_zeros4(binary()) -> integer().
+count_zeros4(<<X,0,0,0>>) -> 24 + count_zeros1(X);
+count_zeros4(<<_,X,0,0>>) -> 16 + count_zeros1(X);
+count_zeros4(<<_,_,X,0>>) -> 8 + count_zeros1(X);
+count_zeros4(<<_,_,_,X>>) -> count_zeros1(X).
+
+-spec count_zeros1(binary()) -> integer().
+count_zeros1(X) when X band 2#11111111 == 0 -> 8;
+count_zeros1(X) when X band 2#01111111 == 0 -> 7;
+count_zeros1(X) when X band 2#00111111 == 0 -> 6;
+count_zeros1(X) when X band 2#00011111 == 0 -> 5;
+count_zeros1(X) when X band 2#00001111 == 0 -> 4;
+count_zeros1(X) when X band 2#00000111 == 0 -> 3;
+count_zeros1(X) when X band 2#00000011 == 0 -> 2;
+count_zeros1(X) when X band 2#00000001 == 0 -> 1;
+count_zeros1(_) -> 0.
 
 -spec type_int(ofp_message_body()) -> integer().
 type_int(#ofp_hello{}) ->

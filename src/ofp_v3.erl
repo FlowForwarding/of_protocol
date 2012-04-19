@@ -76,6 +76,7 @@ encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
       ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
       AdvertisedBin:4/bytes, SupportedBin:4/bytes,
       PeerBin:4/bytes, CurrSpeed:32, MaxSpeed:32>>;
+
 encode_struct(#ofp_packet_queue{queue_id = Queue, port = Port,
                                 properties = Props}) ->
     PropsBin = encode_list(Props),
@@ -92,6 +93,7 @@ encode_struct(#ofp_queue_prop_experimenter{experimenter = Experimenter,
     Length = ?QUEUE_PROP_EXPERIMENTER_SIZE + byte_size(Data),
     PropertyInt = ofp_v3_map:queue_property(experimenter),
     <<PropertyInt:16, Length:16, 0:32, Experimenter:32, 0:32, Data/bytes>>;
+
 encode_struct(#ofp_match{type = Type, oxm_fields = Fields}) ->
     TypeInt = ofp_v3_map:match_type(Type),
     FieldsBin = encode_list(Fields),
@@ -106,8 +108,8 @@ encode_struct(#ofp_match{type = Type, oxm_fields = Fields}) ->
     <<TypeInt:16, Length:16, FieldsBin/bytes, 0:Padding>>;
 encode_struct(#ofp_field{class = Class, field = Field, has_mask = HasMask,
                          value = Value, mask = Mask}) ->
-    ClassInt = ofp_v3_map:oxm_class(Class),
-    FieldInt = ofp_v3_map:oxm_field(Class, Field),
+    ClassInt = ofp_v3_map:field_class(Class),
+    FieldInt = ofp_v3_map:field_type(Class, Field),
     case Class of
         openflow_basic ->
             BitLength = ofp_v3_map:tlv_length(Field),
@@ -129,6 +131,7 @@ encode_struct(#ofp_field{class = Class, field = Field, has_mask = HasMask,
             Len2 = Length
     end,
     <<ClassInt:16, FieldInt:7, HasMaskInt:1, Len2:8, Rest/bytes>>;
+
 encode_struct(#ofp_action_output{port = Port, max_len = MaxLen}) ->
     Type = ofp_v3_map:action_type(output),
     Length = ?ACTION_OUTPUT_SIZE,
@@ -257,12 +260,12 @@ encode_struct(#ofp_table_stats{table_id = Table, name = Name,
                                matched_count = MCount}) ->
     TableInt = ofp_v3_map:encode_table_id(Table),
     Padding = (?OFP_MAX_TABLE_NAME_LEN - size(Name)) * 8,
-    MatchBin = flags_to_binary(oxm_field, Match, 8),
-    WildcardsBin = flags_to_binary(oxm_field, Wildcards, 8),
+    MatchBin = flags_to_binary(field_type, Match, 8),
+    WildcardsBin = flags_to_binary(field_type, Wildcards, 8),
     WriteActionsBin = flags_to_binary(action_type, WriteActions, 4),
     ApplyActionsBin = flags_to_binary(action_type, ApplyActions, 4),
-    WriteSetBin = flags_to_binary(oxm_field, WriteSet, 8),
-    ApplySetBin = flags_to_binary(oxm_field, ApplySet, 8),
+    WriteSetBin = flags_to_binary(field_type, WriteSet, 8),
+    ApplySetBin = flags_to_binary(field_type, ApplySet, 8),
     InstructionsBin = flags_to_binary(instruction_type, Instructions, 4),
     ConfigInt = ofp_v3_map:table_config(Config),
     <<TableInt:8, 0:56, Name/bytes, 0:Padding,
@@ -693,8 +696,8 @@ decode_match_fields(Binary, Fields) ->
 decode_match_field(<<Header:4/bytes, Binary/bytes>>) ->
     <<ClassInt:16, FieldInt:7, HasMaskInt:1,
       Length:8>> = Header,
-    Class = ofp_v3_map:oxm_class(ClassInt),
-    Field = ofp_v3_map:oxm_field(Class, FieldInt),
+    Class = ofp_v3_map:field_class(ClassInt),
+    Field = ofp_v3_map:field_type(Class, FieldInt),
     HasMask = (HasMaskInt =:= 1),
     case Class of
         openflow_basic ->
@@ -878,12 +881,12 @@ decode_table_stats(Binary) ->
       MCount:64>> = Binary,
     Table = ofp_v3_map:decode_table_id(TableInt),
     Name = ofp_utils:strip_string(NameBin),
-    Match = binary_to_flags(oxm_field, MatchBin),
-    Wildcards = binary_to_flags(oxm_field, WildcardsBin),
+    Match = binary_to_flags(field_type, MatchBin),
+    Wildcards = binary_to_flags(field_type, WildcardsBin),
     WriteActions = binary_to_flags(action_type, WriteActionsBin),
     ApplyActions = binary_to_flags(action_type, ApplyActionsBin),
-    WriteSet = binary_to_flags(oxm_field, WriteSetBin),
-    ApplySet = binary_to_flags(oxm_field, ApplySetBin),
+    WriteSet = binary_to_flags(field_type, WriteSetBin),
+    ApplySet = binary_to_flags(field_type, ApplySetBin),
     Instructions = binary_to_flags(instruction_type, InstructionsBin),
     Config = ofp_v3_map:table_config(ConfigInt),
     #ofp_table_stats{table_id = Table, name = Name, match = Match,

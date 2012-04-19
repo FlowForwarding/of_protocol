@@ -174,14 +174,14 @@
 -record(ofp_field, {
           class :: ofp_field_class(),
           field :: ofp_field_type(),
-          has_mask :: boolean(),
+          has_mask = false :: boolean(),
           value :: binary(),
           mask :: binary()
          }).
 -type ofp_field() :: #ofp_field{}.
 
 -type ofp_match_type() :: standard %% Deprecated
-                        | oxm.     %% OpenFlow Extensible Match
+                        | oxm.
 
 %% Match
 -record(ofp_match, {

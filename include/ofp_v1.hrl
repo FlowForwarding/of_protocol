@@ -93,6 +93,22 @@
 %% Queue properties; enum ofp_queue_properties
 -define(OFPQT_MIN_RATE, 1).
 
+%%% Flow Match Structures ------------------------------------------------------
+
+%% Flow wildcards; enum ofp_flow_wildcards
+-define(OFPFW_IN_PORT, 0).
+-define(OFPFW_DL_VLAN, 1).
+-define(OFPFW_DL_SRC, 2).
+-define(OFPFW_DL_DST, 3).
+-define(OFPFW_DL_TYPE, 4).
+-define(OFPFW_NW_PROTO, 5).
+-define(OFPFW_TP_SRC, 6).      %% TCP/UDP
+-define(OFPFW_TP_DST, 7).      %% TCP/UDP
+%% Masks for IP src and dst.
+-define(OFPFW_DL_VLAN_PCP, 20).
+-define(OFPFW_NW_TOS, 21).
+-define(OFPFW_ALL, 4194303).
+
 %%%-----------------------------------------------------------------------------
 %%% Sizes
 %%%-----------------------------------------------------------------------------

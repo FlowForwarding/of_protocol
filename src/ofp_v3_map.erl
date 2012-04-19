@@ -7,7 +7,6 @@
 
 %% Helper functions
 -export([tlv_length/1,
-         oxm_field/2,
          get_experimenter_bit/1]).
 
 %% Mapping functions
@@ -20,6 +19,10 @@
 -export([encode_queue_id/1,
          decode_queue_id/1,
          queue_property/1]).
+-export([match_type/1,
+         field_class/1,
+         field_type/1,
+         field_type/2]).
 -export([error_type/1,
          hello_failed/1,
          bad_request/1,
@@ -38,9 +41,6 @@
          reason/1,
          removed_reason/1,
          port_reason/1,
-         match_type/1,
-         oxm_class/1,
-         oxm_field/1,
          action_type/1,
          table_config/1,
          flow_command/1,
@@ -216,6 +216,107 @@ queue_property(?OFPQT_MAX_RATE)            -> max_rate;
 queue_property(experimenter)               -> ?OFPQT_EXPERIMENTER;
 queue_property(?OFPQT_EXPERIMENTER)        -> experimenter;
 queue_property(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+%%% Flow Match Structures ------------------------------------------------------
+
+match_type(standard)                   -> ?OFPMT_STANDARD;
+match_type(?OFPMT_STANDARD)            -> standard;
+match_type(oxm)                        -> ?OFPMT_OXM;
+match_type(?OFPMT_OXM)                 -> oxm;
+match_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
+match_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+field_class(nxm_0)                      -> ?OFPXMC_NXM_0;
+field_class(?OFPXMC_NXM_0)              -> nxm_0;
+field_class(nxm_1)                      -> ?OFPXMC_NXM_1;
+field_class(?OFPXMC_NXM_1)              -> nxm_1;
+field_class(openflow_basic)             -> ?OFPXMC_OPENFLOW_BASIC;
+field_class(?OFPXMC_OPENFLOW_BASIC)     -> openflow_basic;
+field_class(experimenter)               -> ?OFPXMC_EXPERIMENTER;
+field_class(?OFPXMC_EXPERIMENTER)       -> experimenter;
+field_class(Type) when is_atom(Type)    -> throw({bad_type, Type});
+field_class(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+field_type(openflow_basic, Field)           -> field_type(Field);
+field_type(_, not_used)                     -> 0;
+field_type(_, 0)                            -> not_used;
+field_type(_, Field) when is_atom(Field)    -> throw({bad_type, Field});
+field_type(_, Field) when is_integer(Field) -> throw({bad_value, Field}).
+
+field_type(in_port)                    -> ?OFPXMT_OFB_IN_PORT;
+field_type(?OFPXMT_OFB_IN_PORT)        -> in_port;
+field_type(in_phy_port)                -> ?OFPXMT_OFB_IN_PHY_PORT;
+field_type(?OFPXMT_OFB_IN_PHY_PORT)    -> in_phy_port;
+field_type(metadata)                   -> ?OFPXMT_OFB_METADATA;
+field_type(?OFPXMT_OFB_METADATA)       -> metadata;
+field_type(eth_dst)                    -> ?OFPXMT_OFB_ETH_DST;
+field_type(?OFPXMT_OFB_ETH_DST)        -> eth_dst;
+field_type(eth_src)                    -> ?OFPXMT_OFB_ETH_SRC;
+field_type(?OFPXMT_OFB_ETH_SRC)        -> eth_src;
+field_type(eth_type)                   -> ?OFPXMT_OFB_ETH_TYPE;
+field_type(?OFPXMT_OFB_ETH_TYPE)       -> eth_type;
+field_type(vlan_vid)                   -> ?OFPXMT_OFB_VLAN_VID;
+field_type(?OFPXMT_OFB_VLAN_VID)       -> vlan_vid;
+field_type(vlan_pcp)                   -> ?OFPXMT_OFB_VLAN_PCP;
+field_type(?OFPXMT_OFB_VLAN_PCP)       -> vlan_pcp;
+field_type(ip_dscp)                    -> ?OFPXMT_OFB_IP_DSCP;
+field_type(?OFPXMT_OFB_IP_DSCP)        -> ip_dscp;
+field_type(ip_ecn)                     -> ?OFPXMT_OFB_IP_ECN;
+field_type(?OFPXMT_OFB_IP_ECN)         -> ip_ecn;
+field_type(ip_proto)                   -> ?OFPXMT_OFB_IP_PROTO;
+field_type(?OFPXMT_OFB_IP_PROTO)       -> ip_proto;
+field_type(ipv4_src)                   -> ?OFPXMT_OFB_IPV4_SRC;
+field_type(?OFPXMT_OFB_IPV4_SRC)       -> ipv4_src;
+field_type(ipv4_dst)                   -> ?OFPXMT_OFB_IPV4_DST;
+field_type(?OFPXMT_OFB_IPV4_DST)       -> ipv4_dst;
+field_type(tcp_src)                    -> ?OFPXMT_OFB_TCP_SRC;
+field_type(?OFPXMT_OFB_TCP_SRC)        -> tcp_src;
+field_type(tcp_dst)                    -> ?OFPXMT_OFB_TCP_DST;
+field_type(?OFPXMT_OFB_TCP_DST)        -> tcp_dst;
+field_type(udp_src)                    -> ?OFPXMT_OFB_UDP_SRC;
+field_type(?OFPXMT_OFB_UDP_SRC)        -> udp_src;
+field_type(udp_dst)                    -> ?OFPXMT_OFB_UDP_DST;
+field_type(?OFPXMT_OFB_UDP_DST)        -> udp_dst;
+field_type(sctp_src)                   -> ?OFPXMT_OFB_SCTP_SRC;
+field_type(?OFPXMT_OFB_SCTP_SRC)       -> sctp_src;
+field_type(sctp_dst)                   -> ?OFPXMT_OFB_SCTP_DST;
+field_type(?OFPXMT_OFB_SCTP_DST)       -> sctp_dst;
+field_type(icmpv4_type)                -> ?OFPXMT_OFB_ICMPV4_TYPE;
+field_type(?OFPXMT_OFB_ICMPV4_TYPE)    -> icmpv4_type;
+field_type(icmpv4_code)                -> ?OFPXMT_OFB_ICMPV4_CODE;
+field_type(?OFPXMT_OFB_ICMPV4_CODE)    -> icmpv4_code;
+field_type(arp_op)                     -> ?OFPXMT_OFB_ARP_OP;
+field_type(?OFPXMT_OFB_ARP_OP)         -> arp_op;
+field_type(arp_spa)                    -> ?OFPXMT_OFB_ARP_SPA;
+field_type(?OFPXMT_OFB_ARP_SPA)        -> arp_spa;
+field_type(arp_tpa)                    -> ?OFPXMT_OFB_ARP_TPA;
+field_type(?OFPXMT_OFB_ARP_TPA)        -> arp_tpa;
+field_type(arp_sha)                    -> ?OFPXMT_OFB_ARP_SHA;
+field_type(?OFPXMT_OFB_ARP_SHA)        -> arp_sha;
+field_type(arp_tha)                    -> ?OFPXMT_OFB_ARP_THA;
+field_type(?OFPXMT_OFB_ARP_THA)        -> arp_tha;
+field_type(ipv6_src)                   -> ?OFPXMT_OFB_IPV6_SRC;
+field_type(?OFPXMT_OFB_IPV6_SRC)       -> ipv6_src;
+field_type(ipv6_dst)                   -> ?OFPXMT_OFB_IPV6_DST;
+field_type(?OFPXMT_OFB_IPV6_DST)       -> ipv6_dst;
+field_type(ipv6_flabel)                -> ?OFPXMT_OFB_IPV6_FLABEL;
+field_type(?OFPXMT_OFB_IPV6_FLABEL)    -> ipv6_flabel;
+field_type(icmpv6_type)                -> ?OFPXMT_OFB_ICMPV6_TYPE;
+field_type(?OFPXMT_OFB_ICMPV6_TYPE)    -> icmpv6_type;
+field_type(icmpv6_code)                -> ?OFPXMT_OFB_ICMPV6_CODE;
+field_type(?OFPXMT_OFB_ICMPV6_CODE)    -> icmpv6_code;
+field_type(ipv6_nd_target)             -> ?OFPXMT_OFB_IPV6_ND_TARGET;
+field_type(?OFPXMT_OFB_IPV6_ND_TARGET) -> ipv6_nd_target;
+field_type(ipv6_nd_sll)                -> ?OFPXMT_OFB_IPV6_ND_SLL;
+field_type(?OFPXMT_OFB_IPV6_ND_SLL)    -> ipv6_nd_sll;
+field_type(ipv6_nd_tll)                -> ?OFPXMT_OFB_IPV6_ND_TLL;
+field_type(?OFPXMT_OFB_IPV6_ND_TLL)    -> ipv6_nd_tll;
+field_type(mpls_label)                 -> ?OFPXMT_OFB_MPLS_LABEL;
+field_type(?OFPXMT_OFB_MPLS_LABEL)     -> mpls_label;
+field_type(mpls_tc)                    -> ?OFPXMT_OFB_MPLS_TC;
+field_type(?OFPXMT_OFB_MPLS_TC)        -> mpls_tc;
+field_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
+field_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 %%% Rest -----------------------------------------------------------------------
 
@@ -524,105 +625,6 @@ port_reason(modify)                     -> ?OFPPR_MODIFY;
 port_reason(?OFPPR_MODIFY)              -> modify;
 port_reason(Type) when is_atom(Type)    -> throw({bad_type, Type});
 port_reason(Type) when is_integer(Type) -> throw({bad_value, Type}).
-
-match_type(standard)                   -> ?OFPMT_STANDARD;
-match_type(?OFPMT_STANDARD)            -> standard;
-match_type(oxm)                        -> ?OFPMT_OXM;
-match_type(?OFPMT_OXM)                 -> oxm;
-match_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
-match_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
-
-oxm_class(nxm_0)                      -> ?OFPXMC_NXM_0;
-oxm_class(?OFPXMC_NXM_0)              -> nxm_0;
-oxm_class(nxm_1)                      -> ?OFPXMC_NXM_1;
-oxm_class(?OFPXMC_NXM_1)              -> nxm_1;
-oxm_class(openflow_basic)             -> ?OFPXMC_OPENFLOW_BASIC;
-oxm_class(?OFPXMC_OPENFLOW_BASIC)     -> openflow_basic;
-oxm_class(experimenter)               -> ?OFPXMC_EXPERIMENTER;
-oxm_class(?OFPXMC_EXPERIMENTER)       -> experimenter;
-oxm_class(Type) when is_atom(Type)    -> throw({bad_type, Type});
-oxm_class(Type) when is_integer(Type) -> throw({bad_value, Type}).
-
-oxm_field(openflow_basic, Field)           -> oxm_field(Field);
-oxm_field(_, not_used)                     -> 0;
-oxm_field(_, 0)                            -> not_used;
-oxm_field(_, Field) when is_atom(Field)    -> throw({bad_type, Field});
-oxm_field(_, Field) when is_integer(Field) -> throw({bad_value, Field}).
-
-oxm_field(in_port)                    -> ?OFPXMT_OFB_IN_PORT;
-oxm_field(?OFPXMT_OFB_IN_PORT)        -> in_port;
-oxm_field(in_phy_port)                -> ?OFPXMT_OFB_IN_PHY_PORT;
-oxm_field(?OFPXMT_OFB_IN_PHY_PORT)    -> in_phy_port;
-oxm_field(metadata)                   -> ?OFPXMT_OFB_METADATA;
-oxm_field(?OFPXMT_OFB_METADATA)       -> metadata;
-oxm_field(eth_dst)                    -> ?OFPXMT_OFB_ETH_DST;
-oxm_field(?OFPXMT_OFB_ETH_DST)        -> eth_dst;
-oxm_field(eth_src)                    -> ?OFPXMT_OFB_ETH_SRC;
-oxm_field(?OFPXMT_OFB_ETH_SRC)        -> eth_src;
-oxm_field(eth_type)                   -> ?OFPXMT_OFB_ETH_TYPE;
-oxm_field(?OFPXMT_OFB_ETH_TYPE)       -> eth_type;
-oxm_field(vlan_vid)                   -> ?OFPXMT_OFB_VLAN_VID;
-oxm_field(?OFPXMT_OFB_VLAN_VID)       -> vlan_vid;
-oxm_field(vlan_pcp)                   -> ?OFPXMT_OFB_VLAN_PCP;
-oxm_field(?OFPXMT_OFB_VLAN_PCP)       -> vlan_pcp;
-oxm_field(ip_dscp)                    -> ?OFPXMT_OFB_IP_DSCP;
-oxm_field(?OFPXMT_OFB_IP_DSCP)        -> ip_dscp;
-oxm_field(ip_ecn)                     -> ?OFPXMT_OFB_IP_ECN;
-oxm_field(?OFPXMT_OFB_IP_ECN)         -> ip_ecn;
-oxm_field(ip_proto)                   -> ?OFPXMT_OFB_IP_PROTO;
-oxm_field(?OFPXMT_OFB_IP_PROTO)       -> ip_proto;
-oxm_field(ipv4_src)                   -> ?OFPXMT_OFB_IPV4_SRC;
-oxm_field(?OFPXMT_OFB_IPV4_SRC)       -> ipv4_src;
-oxm_field(ipv4_dst)                   -> ?OFPXMT_OFB_IPV4_DST;
-oxm_field(?OFPXMT_OFB_IPV4_DST)       -> ipv4_dst;
-oxm_field(tcp_src)                    -> ?OFPXMT_OFB_TCP_SRC;
-oxm_field(?OFPXMT_OFB_TCP_SRC)        -> tcp_src;
-oxm_field(tcp_dst)                    -> ?OFPXMT_OFB_TCP_DST;
-oxm_field(?OFPXMT_OFB_TCP_DST)        -> tcp_dst;
-oxm_field(udp_src)                    -> ?OFPXMT_OFB_UDP_SRC;
-oxm_field(?OFPXMT_OFB_UDP_SRC)        -> udp_src;
-oxm_field(udp_dst)                    -> ?OFPXMT_OFB_UDP_DST;
-oxm_field(?OFPXMT_OFB_UDP_DST)        -> udp_dst;
-oxm_field(sctp_src)                   -> ?OFPXMT_OFB_SCTP_SRC;
-oxm_field(?OFPXMT_OFB_SCTP_SRC)       -> sctp_src;
-oxm_field(sctp_dst)                   -> ?OFPXMT_OFB_SCTP_DST;
-oxm_field(?OFPXMT_OFB_SCTP_DST)       -> sctp_dst;
-oxm_field(icmpv4_type)                -> ?OFPXMT_OFB_ICMPV4_TYPE;
-oxm_field(?OFPXMT_OFB_ICMPV4_TYPE)    -> icmpv4_type;
-oxm_field(icmpv4_code)                -> ?OFPXMT_OFB_ICMPV4_CODE;
-oxm_field(?OFPXMT_OFB_ICMPV4_CODE)    -> icmpv4_code;
-oxm_field(arp_op)                     -> ?OFPXMT_OFB_ARP_OP;
-oxm_field(?OFPXMT_OFB_ARP_OP)         -> arp_op;
-oxm_field(arp_spa)                    -> ?OFPXMT_OFB_ARP_SPA;
-oxm_field(?OFPXMT_OFB_ARP_SPA)        -> arp_spa;
-oxm_field(arp_tpa)                    -> ?OFPXMT_OFB_ARP_TPA;
-oxm_field(?OFPXMT_OFB_ARP_TPA)        -> arp_tpa;
-oxm_field(arp_sha)                    -> ?OFPXMT_OFB_ARP_SHA;
-oxm_field(?OFPXMT_OFB_ARP_SHA)        -> arp_sha;
-oxm_field(arp_tha)                    -> ?OFPXMT_OFB_ARP_THA;
-oxm_field(?OFPXMT_OFB_ARP_THA)        -> arp_tha;
-oxm_field(ipv6_src)                   -> ?OFPXMT_OFB_IPV6_SRC;
-oxm_field(?OFPXMT_OFB_IPV6_SRC)       -> ipv6_src;
-oxm_field(ipv6_dst)                   -> ?OFPXMT_OFB_IPV6_DST;
-oxm_field(?OFPXMT_OFB_IPV6_DST)       -> ipv6_dst;
-oxm_field(ipv6_flabel)                -> ?OFPXMT_OFB_IPV6_FLABEL;
-oxm_field(?OFPXMT_OFB_IPV6_FLABEL)    -> ipv6_flabel;
-oxm_field(icmpv6_type)                -> ?OFPXMT_OFB_ICMPV6_TYPE;
-oxm_field(?OFPXMT_OFB_ICMPV6_TYPE)    -> icmpv6_type;
-oxm_field(icmpv6_code)                -> ?OFPXMT_OFB_ICMPV6_CODE;
-oxm_field(?OFPXMT_OFB_ICMPV6_CODE)    -> icmpv6_code;
-oxm_field(ipv6_nd_target)             -> ?OFPXMT_OFB_IPV6_ND_TARGET;
-oxm_field(?OFPXMT_OFB_IPV6_ND_TARGET) -> ipv6_nd_target;
-oxm_field(ipv6_nd_sll)                -> ?OFPXMT_OFB_IPV6_ND_SLL;
-oxm_field(?OFPXMT_OFB_IPV6_ND_SLL)    -> ipv6_nd_sll;
-oxm_field(ipv6_nd_tll)                -> ?OFPXMT_OFB_IPV6_ND_TLL;
-oxm_field(?OFPXMT_OFB_IPV6_ND_TLL)    -> ipv6_nd_tll;
-oxm_field(mpls_label)                 -> ?OFPXMT_OFB_MPLS_LABEL;
-oxm_field(?OFPXMT_OFB_MPLS_LABEL)     -> mpls_label;
-oxm_field(mpls_tc)                    -> ?OFPXMT_OFB_MPLS_TC;
-oxm_field(?OFPXMT_OFB_MPLS_TC)        -> mpls_tc;
-oxm_field(Type) when is_atom(Type)    -> throw({bad_type, Type});
-oxm_field(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 action_type(output)                     -> ?OFPAT_OUTPUT;
 action_type(?OFPAT_OUTPUT)              -> output;
