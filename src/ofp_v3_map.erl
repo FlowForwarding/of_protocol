@@ -682,8 +682,6 @@ table_config(continue)                   -> ?OFPTC_TABLE_MISS_CONTINUE;
 table_config(?OFPTC_TABLE_MISS_CONTINUE) -> continue;
 table_config(drop)                       -> ?OFPTC_TABLE_MISS_DROP;
 table_config(?OFPTC_TABLE_MISS_DROP)     -> drop;
-table_config(mask)                       -> ?OFPTC_TABLE_MISS_MASK;
-table_config(?OFPTC_TABLE_MISS_MASK)     -> mask;
 table_config(Type) when is_atom(Type)    -> throw({bad_type, Type});
 table_config(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
