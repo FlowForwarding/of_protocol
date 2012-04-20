@@ -18,7 +18,8 @@
 -export([encode_queue_id/1,
          decode_queue_id/1,
          queue_property/1]).
--export([flow_wildcard/1]).
+-export([flow_wildcard/1,
+         stats_type/1]).
 
 -include("of_protocol.hrl").
 -include("ofp_v1.hrl").
@@ -190,6 +191,10 @@ flow_wildcard(Type) when is_integer(Type) -> throw({bad_value, Type}).
 %%%-----------------------------------------------------------------------------
 %%% Helper functions
 %%%-----------------------------------------------------------------------------
+
+stats_type(desc)                       -> ?OFPST_DESC;
+stats_type(?OFPST_DESC)                -> desc;
+stats_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 %% -spec get_experimenter_bit(atom()) -> integer().
 %% get_experimenter_bit(instruction_type) ->

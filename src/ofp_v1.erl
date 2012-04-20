@@ -147,6 +147,20 @@ encode_fields([#ofp_field{field = Type, value = Value} | Rest], FieldList) ->
 
 %%% Messages -----------------------------------------------------------------
 
+encode_body(#ofp_desc_stats_reply{flags = Flags, mfr_desc = MFR,
+                                  hw_desc = HW, sw_desc = SW,
+                                  serial_num = Serial, dp_desc = DP}) ->
+    TypeInt = ofp_v3_map:stats_type(desc),
+    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    MFRPad = (?DESC_STR_LEN - size(MFR)) * 8,
+    HWPad = (?DESC_STR_LEN - size(HW)) * 8,
+    SWPad = (?DESC_STR_LEN - size(SW)) * 8,
+    SerialPad = (?SERIAL_NUM_LEN - size(Serial)) * 8,
+    DPPad = (?DESC_STR_LEN - size(DP)) * 8,
+    <<TypeInt:16, FlagsBin/bytes,
+      MFR/bytes, 0:MFRPad, HW/bytes, 0:HWPad,
+      SW/bytes, 0:SWPad, Serial/bytes, 0:SerialPad,
+      DP/bytes, 0:DPPad>>;
 encode_body(_) ->
     <<>>.
 
@@ -294,6 +308,17 @@ decode_match(Binary) ->
 
 %%% Messages -----------------------------------------------------------------
 
+decode_body(stats_request, Binary) ->
+    <<TypeInt:16, FlagsBin:2/bytes,
+      Data/bytes>> = Binary,
+    Type = ofp_v1_map:stats_type(TypeInt),
+    Flags = binary_to_flags(stats_request_flag, FlagsBin),
+    case Type of
+        desc ->
+            #ofp_desc_stats_request{flags = Flags};
+        _ ->
+            undefined
+    end;
 decode_body(_, _) ->
     undefined.
 
