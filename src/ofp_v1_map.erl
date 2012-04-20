@@ -18,8 +18,10 @@
 -export([encode_queue_id/1,
          decode_queue_id/1,
          queue_property/1]).
--export([flow_wildcard/1,
-         stats_type/1]).
+-export([flow_wildcard/1]).
+-export([action_type/1]).
+
+-export([stats_type/1]).
 
 -include("of_protocol.hrl").
 -include("ofp_v1.hrl").
@@ -187,6 +189,51 @@ flow_wildcard(ip_dscp)                    -> ?OFPFW_NW_TOS;
 flow_wildcard(?OFPFW_NW_TOS)              -> ip_dscp;
 flow_wildcard(Type) when is_atom(Type)    -> throw({bad_type, Type});
 flow_wildcard(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+%%% Action Structures ----------------------------------------------------------
+
+action_type(output)                     -> ?OFPAT_OUTPUT;
+action_type(?OFPAT_OUTPUT)              -> output;
+action_type(pop_vlan)                   -> ?OFPAT_STRIP_VLAN;
+action_type(?OFPAT_STRIP_VLAN)          -> pop_vlan;
+action_type(set_queue)                  -> ?OFPAT_ENQUEUE;
+action_type(?OFPAT_ENQUEUE)             -> set_queue;
+action_type(?OFPAT_SET_VLAN_VID)        -> set_field;
+action_type(?OFPAT_SET_VLAN_PCP)        -> set_field;
+action_type(?OFPAT_SET_DL_SRC)          -> set_field;
+action_type(?OFPAT_SET_DL_DST)          -> set_field;
+action_type(?OFPAT_SET_NW_SRC)          -> set_field;
+action_type(?OFPAT_SET_NW_DST)          -> set_field;
+action_type(?OFPAT_SET_NW_TOS)          -> set_field;
+action_type(?OFPAT_SET_TP_SRC)          -> set_field;
+action_type(?OFPAT_SET_TP_DST)          -> set_field;
+action_type(experimenter)               -> ?OFPAT_VENDOR;
+action_type(?OFPAT_VENDOR)              -> experimenter;
+action_type(?OFPAT_VENDOR_BIT)          -> experimenter;
+action_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
+action_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+action_set_type(vlan_vid) -> ?OFPAT_SET_VLAN_VID;
+action_set_type(?OFPAT_SET_VLAN_VID) -> vlan_vid;
+action_set_type(vlan_pcp) -> ?OFPAT_SET_VLAN_PCP;
+action_set_type(?OFPAT_SET_VLAN_PCP) -> vlan_pcp;
+action_set_type(eth_src) -> ?OFPAT_SET_DL_SRC;
+action_set_type(?OFPAT_SET_DL_SRC) -> eth_src;
+action_set_type(eth_dst) -> ?OFPAT_SET_DL_DST;
+action_set_type(?OFPAT_SET_DL_DST) -> eth_dst;
+action_set_type(ipv4_src) -> ?OFPAT_SET_NW_SRC;
+action_set_type(?OFPAT_SET_NW_SRC) -> ipv4_src;
+action_set_type(ipv4_dst) -> ?OFPAT_SET_NW_DST;
+action_set_type(?OFPAT_SET_NW_DST) -> ipv4_dst;
+action_set_type(ip_dscp) -> ?OFPAT_SET_NW_TOS;
+action_set_type(?OFPAT_SET_NW_TOS) -> ip_dscp;
+action_set_type(tcp_src) -> ?OFPAT_SET_TP_SRC;
+action_set_type(tcp_dst) -> ?OFPAT_SET_TP_DST;
+action_set_type(udp_src) -> ?OFPAT_SET_TP_SRC;
+action_set_type(udp_dst) -> ?OFPAT_SET_TP_DST;
+action_set_type(?OFPAT_SET_TP_SRC) -> tp_src;
+action_set_type(?OFPAT_SET_TP_DST) -> tp_dst;
+action_set_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 %%%-----------------------------------------------------------------------------
 %%% Helper functions

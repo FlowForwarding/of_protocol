@@ -228,6 +228,7 @@ encode_struct(#ofp_action_experimenter{experimenter = Experimenter}) ->
     Type = ofp_v3_map:action_type(experimenter),
     Length = ?ACTION_EXPERIMENTER_SIZE,
     <<Type:16, Length:16, Experimenter:32>>;
+
 encode_struct(#ofp_bucket{weight = Weight, watch_port = Port,
                           watch_group = Group, actions = Actions}) ->
     ActionsBin = encode_list(Actions),

@@ -166,6 +166,26 @@
 -define(OFPIT_EXPERIMENTER, 16#ffff).
 -define(OFPIT_EXPERIMENTER_BIT, 31).
 
+%%% Action Structures ----------------------------------------------------------
+
+%% Action types; enum ofp_action_type
+-define(OFPAT_OUTPUT, 0).
+-define(OFPAT_COPY_TTL_OUT, 11).
+-define(OFPAT_COPY_TTL_IN, 12).
+-define(OFPAT_SET_MPLS_TTL, 15).
+-define(OFPAT_DEC_MPLS_TTL, 16).
+-define(OFPAT_PUSH_VLAN, 17).
+-define(OFPAT_POP_VLAN, 18).
+-define(OFPAT_PUSH_MPLS, 19).
+-define(OFPAT_POP_MPLS, 20).
+-define(OFPAT_SET_QUEUE, 21).
+-define(OFPAT_GROUP, 22).
+-define(OFPAT_SET_NW_TTL, 23).
+-define(OFPAT_DEC_NW_TTL, 24).
+-define(OFPAT_SET_FIELD, 25).
+-define(OFPAT_EXPERIMENTER, 16#ffff).
+-define(OFPAT_EXPERIMENTER_BIT, 31).
+
 %%% Rest -----------------------------------------------------------------------
 
 %% Capabilities of the switch
@@ -400,24 +420,6 @@
 %% Controller max length; Buffer ids
 -define(OFPCML_MAX, 16#ffe5).
 -define(OFPCML_NO_BUFFER, 16#ffff).
-
-%% Action types
--define(OFPAT_OUTPUT, 0).
--define(OFPAT_COPY_TTL_OUT, 11).
--define(OFPAT_COPY_TTL_IN, 12).
--define(OFPAT_SET_MPLS_TTL, 15).
--define(OFPAT_DEC_MPLS_TTL, 16).
--define(OFPAT_PUSH_VLAN, 17).
--define(OFPAT_POP_VLAN, 18).
--define(OFPAT_PUSH_MPLS, 19).
--define(OFPAT_POP_MPLS, 20).
--define(OFPAT_SET_QUEUE, 21).
--define(OFPAT_GROUP, 22).
--define(OFPAT_SET_NW_TTL, 23).
--define(OFPAT_DEC_NW_TTL, 24).
--define(OFPAT_SET_FIELD, 25).
--define(OFPAT_EXPERIMENTER, 16#ffff).
--define(OFPAT_EXPERIMENTER_BIT, 31).
 
 %%%-----------------------------------------------------------------------------
 %%% Sizes

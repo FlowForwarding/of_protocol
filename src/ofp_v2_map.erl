@@ -21,6 +21,10 @@
 -export([match_type/1,
          flow_wildcard/1]).
 -export([instruction_type/1]).
+-export([action_type/1,
+         action_set_type/1]).
+-export([encode_buffer_id/1,
+         decode_buffer_id/1]).
 
 -include("of_protocol.hrl").
 -include("ofp_v2.hrl").
@@ -219,6 +223,91 @@ instruction_type(?OFPIT_EXPERIMENTER)        -> experimenter;
 instruction_type(?OFPIT_EXPERIMENTER_BIT)    -> experimenter;
 instruction_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
 instruction_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+%%% Action Structures ----------------------------------------------------------
+
+action_type(output)                     -> ?OFPAT_OUTPUT;
+action_type(?OFPAT_OUTPUT)              -> output;
+action_type(?OFPAT_SET_VLAN_VID)        -> set_field;
+action_type(?OFPAT_SET_VLAN_PCP)        -> set_field;
+action_type(?OFPAT_SET_DL_SRC)          -> set_field;
+action_type(?OFPAT_SET_DL_DST)          -> set_field;
+action_type(?OFPAT_SET_NW_SRC)          -> set_field;
+action_type(?OFPAT_SET_NW_DST)          -> set_field;
+action_type(?OFPAT_SET_NW_TOS)          -> set_field;
+action_type(?OFPAT_SET_NW_ECN)          -> set_field;
+action_type(?OFPAT_SET_TP_SRC)          -> set_field;
+action_type(?OFPAT_SET_TP_DST)          -> set_field;
+action_type(copy_ttl_out)               -> ?OFPAT_COPY_TTL_OUT;
+action_type(?OFPAT_COPY_TTL_OUT)        -> copy_ttl_out;
+action_type(copy_ttl_in)                -> ?OFPAT_COPY_TTL_IN;
+action_type(?OFPAT_COPY_TTL_IN)         -> copy_ttl_in;
+action_type(?OFPAT_SET_MPLS_LABEL)      -> set_field;
+action_type(?OFPAT_SET_MPLS_TC)         -> set_field;
+action_type(set_mpls_ttl)               -> ?OFPAT_SET_MPLS_TTL;
+action_type(?OFPAT_SET_MPLS_TTL)        -> set_mpls_ttl;
+action_type(dec_mpls_ttl)               -> ?OFPAT_DEC_MPLS_TTL;
+action_type(?OFPAT_DEC_MPLS_TTL)        -> dec_mpls_ttl;
+action_type(push_vlan)                  -> ?OFPAT_PUSH_VLAN;
+action_type(?OFPAT_PUSH_VLAN)           -> push_vlan;
+action_type(pop_vlan)                   -> ?OFPAT_POP_VLAN;
+action_type(?OFPAT_POP_VLAN)            -> pop_vlan;
+action_type(push_mpls)                  -> ?OFPAT_PUSH_MPLS;
+action_type(?OFPAT_PUSH_MPLS)           -> push_mpls;
+action_type(pop_mpls)                   -> ?OFPAT_POP_MPLS;
+action_type(?OFPAT_POP_MPLS)            -> pop_mpls;
+action_type(set_queue)                  -> ?OFPAT_SET_QUEUE;
+action_type(?OFPAT_SET_QUEUE)           -> set_queue;
+action_type(group)                      -> ?OFPAT_GROUP;
+action_type(?OFPAT_GROUP)               -> group;
+action_type(set_nw_ttl)                 -> ?OFPAT_SET_NW_TTL;
+action_type(?OFPAT_SET_NW_TTL)          -> set_nw_ttl;
+action_type(dec_nw_ttl)                 -> ?OFPAT_DEC_NW_TTL;
+action_type(?OFPAT_DEC_NW_TTL)          -> dec_nw_ttl;
+action_type(experimenter)               -> ?OFPAT_EXPERIMENTER;
+action_type(?OFPAT_EXPERIMENTER)        -> experimenter;
+action_type(?OFPAT_EXPERIMENTER_BIT)    -> experimenter;
+action_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
+action_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+action_set_type(vlan_vid) -> ?OFPAT_SET_VLAN_VID;
+action_set_type(?OFPAT_SET_VLAN_VID) -> vlan_vid;
+action_set_type(vlan_pcp) -> ?OFPAT_SET_VLAN_PCP;
+action_set_type(?OFPAT_SET_VLAN_PCP) -> vlan_pcp;
+action_set_type(eth_src) -> ?OFPAT_SET_DL_SRC;
+action_set_type(?OFPAT_SET_DL_SRC) -> eth_src;
+action_set_type(eth_dst) -> ?OFPAT_SET_DL_DST;
+action_set_type(?OFPAT_SET_DL_DST) -> eth_dst;
+action_set_type(ipv4_src) -> ?OFPAT_SET_NW_SRC;
+action_set_type(?OFPAT_SET_NW_SRC) -> ipv4_src;
+action_set_type(ipv4_dst) -> ?OFPAT_SET_NW_DST;
+action_set_type(?OFPAT_SET_NW_DST) -> ipv4_dst;
+action_set_type(ip_dscp) -> ?OFPAT_SET_NW_TOS;
+action_set_type(?OFPAT_SET_NW_TOS) -> ip_dscp;
+action_set_type(ip_ecn) -> ?OFPAT_SET_NW_ECN;
+action_set_type(?OFPAT_SET_NW_ECN) -> ip_ecn;
+action_set_type(tcp_src) -> ?OFPAT_SET_TP_SRC;
+action_set_type(tcp_dst) -> ?OFPAT_SET_TP_DST;
+action_set_type(udp_src) -> ?OFPAT_SET_TP_SRC;
+action_set_type(udp_dst) -> ?OFPAT_SET_TP_DST;
+action_set_type(sctp_src) -> ?OFPAT_SET_TP_SRC;
+action_set_type(sctp_dst) -> ?OFPAT_SET_TP_DST;
+action_set_type(mpls_label) -> ?OFPAT_SET_MPLS_LABEL;
+action_set_type(?OFPAT_SET_MPLS_LABEL) -> mpls_label;
+action_set_type(mpls_tc) -> ?OFPAT_SET_MPLS_TC;
+action_set_type(?OFPAT_SET_MPLS_TC) -> mpls_tc;
+action_set_type(?OFPAT_SET_TP_SRC) -> tp_src;
+action_set_type(?OFPAT_SET_TP_DST) -> tp_dst;
+action_set_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+%%% Rest -----------------------------------------------------------------------
+
+encode_buffer_id(no_buffer)                -> ?OFPCML_NO_BUFFER;
+encode_buffer_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
+encode_buffer_id(Int) when is_integer(Int) -> Int.
+
+decode_buffer_id(?OFPCML_NO_BUFFER)        -> no_buffer;
+decode_buffer_id(Int) when is_integer(Int) -> Int.
 
 %%%-----------------------------------------------------------------------------
 %%% Helper functions

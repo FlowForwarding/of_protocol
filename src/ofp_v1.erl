@@ -126,7 +126,61 @@ encode_struct(#ofp_match{oxm_fields = Fields}) ->
     <<WildcardsBin:4/bytes, InPort:2/bytes, EthSrc:6/bytes, EthDst:6/bytes,
       VlanVid:2/bytes, VlanPcp:1/bytes, 0:8, EthType:2/bytes, IPDscp:1/bytes,
       IPProto:1/bytes, 0:16, IPv4Src:4/bytes, IPv4Dst:4/bytes, TPSrc:2/bytes,
-      TPDst:2/bytes>>.
+      TPDst:2/bytes>>;
+
+encode_struct(#ofp_action_output{port = Port, max_len = MaxLen}) ->
+    Type = ofp_v1_map:action_type(output),
+    Length = ?ACTION_OUTPUT_SIZE,
+    PortInt = ofp_v1_map:encode_port_no(Port),
+    MaxLenInt = ofp_v1_map:encode_buffer_id(MaxLen),
+    <<Type:16, Length:16, PortInt:16, MaxLenInt:16>>;
+encode_struct(#ofp_action_set_queue{queue_id = Queue}) ->
+    Type = ofp_v1_map:action_type(set_queue),
+    QueueInt = ofp_v1_map:encode_queue_id(Queue),
+    Length = ?ACTION_SET_QUEUE_SIZE,
+    %% FIXME: Fill in valid port value
+    Port = 0,
+    <<Type:16, Length:16, Port:16, 0:48, QueueInt:32>>;
+encode_struct(#ofp_action_pop_vlan{}) ->
+    Type = ofp_v1_map:action_type(pop_vlan),
+    Length = ?ACTION_POP_VLAN_SIZE,
+    <<Type:16, Length:16, 0:32>>;
+encode_struct(#ofp_action_experimenter{experimenter = Experimenter}) ->
+    Type = ofp_v1_map:action_type(experimenter),
+    Length = ?ACTION_EXPERIMENTER_SIZE,
+    <<Type:16, Length:16, Experimenter:32>>;
+
+encode_struct(#ofp_action_set_field{field = #ofp_field{field = Type,
+                                                       value = Value}}) ->
+    SetType = ofp_v1_map:action_set_type(Type),
+    case Type of
+        vlan_vid ->
+            <<SetType:16, ?ACTION_SET_VLAN_VID_SIZE:16, Value:16/bits, 0:16>>;
+        vlan_pcp ->
+            <<SetType:16, ?ACTION_SET_VLAN_PCP_SIZE:16, Value:8/bits, 0:24>>;
+        eth_src ->
+            <<SetType:16, ?ACTION_SET_ETH_SIZE:16, Value:48/bits, 0:48>>;
+        eth_dst ->
+            <<SetType:16, ?ACTION_SET_ETH_SIZE:16, Value:48/bits, 0:48>>;
+        ipv4_src ->
+            <<SetType:16, ?ACTION_SET_IPV4_SIZE:16, Value:32/bits>>;
+        ipv4_dst ->
+            <<SetType:16, ?ACTION_SET_IPV4_SIZE:16, Value:32/bits>>;
+        ip_dscp ->
+            <<SetType:16, ?ACTION_SET_IP_DSCP_SIZE:16, Value:8/bits, 0:24>>;
+        tcp_src ->
+            <<SetType:16, ?ACTION_SET_TP_SIZE:16, Value:16/bits, 0:16>>;
+        tcp_dst ->
+            <<SetType:16, ?ACTION_SET_TP_SIZE:16, Value:16/bits, 0:16>>;
+        udp_src ->
+            <<SetType:16, ?ACTION_SET_TP_SIZE:16, Value:16/bits, 0:16>>;
+        udp_dst ->
+            <<SetType:16, ?ACTION_SET_TP_SIZE:16, Value:16/bits, 0:16>>;
+        sctp_src ->
+            <<SetType:16, ?ACTION_SET_TP_SIZE:16, Value:16/bits, 0:16>>;
+        sctp_dst ->
+            <<SetType:16, ?ACTION_SET_TP_SIZE:16, Value:16/bits, 0:16>>
+    end.
 
 %% FIXME: Add a separate case when encoding port_no
 encode_field_value(FieldList, Type, Size) ->
@@ -144,6 +198,14 @@ encode_fields([], FieldList) ->
     FieldList;
 encode_fields([#ofp_field{field = Type, value = Value} | Rest], FieldList) ->
     encode_fields(Rest, [{Type, Value} | FieldList]).
+
+encode_actions(Actions) ->
+    encode_actions(Actions, <<>>).
+
+encode_actions([], Actions) ->
+    Actions;
+encode_actions([_Action | Rest], Actions) ->
+    encode_actions(Rest, Actions).
 
 %%% Messages -----------------------------------------------------------------
 
@@ -222,7 +284,7 @@ decode_queue_properties(<<>>, Properties) ->
     lists:reverse(Properties);
 decode_queue_properties(Binary, Properties) ->
     <<TypeInt:16, _Length:16, 0:32, Data/bytes>> = Binary,
-    Type = ofp_v2_map:queue_property(TypeInt),
+    Type = ofp_v1_map:queue_property(TypeInt),
     case Type of
         min_rate ->
             <<Rate:16, 0:48, Rest/bytes>> = Data,
@@ -305,6 +367,80 @@ decode_match(Binary) ->
                   end
               end || Type <- Wildcards2 ++ [ipv4_src, ipv4_dst]],
     #ofp_match{type = standard, oxm_fields = Fields}.
+
+%% @doc Decode actions
+-spec decode_actions(binary()) -> [ofp_action()].
+decode_actions(Binary) ->
+    decode_actions(Binary, []).
+
+-spec decode_actions(binary(), [ofp_action()]) -> [ofp_action()].
+decode_actions(<<>>, Actions) ->
+    lists:reverse(Actions);
+decode_actions(Binary, Actions) ->
+    <<TypeInt:16, _Length:16, Data/bytes>> = Binary,
+    Type = ofp_v1_map:action_type(TypeInt),
+    case Type of
+        output ->
+            <<PortInt:16, MaxLenInt:16, Rest/bytes>> = Data,
+            Port = ofp_v1_map:decode_port_no(PortInt),
+            MaxLen = ofp_v1_map:decode_buffer_id(MaxLenInt),
+            Action = [#ofp_action_output{port = Port, max_len = MaxLen}];
+        set_queue ->
+            <<_Port:16, _:48, QueueInt:32, Rest/bytes>> = Data,
+            Action = [#ofp_action_set_queue{queue_id = QueueInt}];
+        pop_vlan ->
+            <<_:32, Rest/bytes>> = Data,
+            Action = [#ofp_action_pop_vlan{}];
+        experimenter ->
+            <<Experimenter:32, Rest/bytes>> = Data,
+            Action = [#ofp_action_experimenter{experimenter = Experimenter}];
+        set_field ->
+            case SetType = ofp_v1_map:action_set_type(TypeInt) of
+                tp_src ->
+                    <<Value:16, _:16, Rest/bytes>> = Data,
+                    Action = [#ofp_field{class = openflow_basic,
+                                         field = tcp_src, value = Value}
+                              %% #ofp_field{class = openflow_basic,
+                              %%            field = udp_src, value = Value}
+                             ];
+                tp_dst ->
+                    <<Value:16, _:16, Rest/bytes>> = Data,
+                    Action = [#ofp_field{class = openflow_basic,
+                                         field = tcp_src, value = Value}
+                              %% #ofp_field{class = openflow_basic,
+                              %%            field = udp_src, value = Value}
+                             ];
+                vlan_pcp ->
+                    <<Value:8, _:24, Rest/bytes>> = Data,
+                    Action = [#ofp_field{class = openflow_basic,
+                                         field = SetType, value = Value}];
+                ip_dscp ->
+                    <<Value:8, _:24, Rest/bytes>> = Data,
+                    Action = [#ofp_field{class = openflow_basic,
+                                         field = SetType, value = Value}];
+                vlan_vid ->
+                    <<Value:16, _:16, Rest/bytes>> = Data,
+                    Action = [#ofp_field{class = openflow_basic,
+                                         field = SetType, value = Value}];
+                ipv4_src ->
+                    <<Value:32, Rest/bytes>> = Data,
+                    Action = [#ofp_field{class = openflow_basic,
+                                         field = SetType, value = Value}];
+                ipv4_dst ->
+                    <<Value:32, Rest/bytes>> = Data,
+                    Action = [#ofp_field{class = openflow_basic,
+                                         field = SetType, value = Value}];
+                eth_src ->
+                    <<Value:48, _:48, Rest/bytes>> = Data,
+                    Action = [#ofp_field{class = openflow_basic,
+                                         field = SetType, value = Value}];
+                eth_dst ->
+                    <<Value:48, _:48, Rest/bytes>> = Data,
+                    Action = [#ofp_field{class = openflow_basic,
+                                         field = SetType, value = Value}]
+            end
+    end,
+    decode_actions(Rest, Action ++ Actions).
 
 %%% Messages -----------------------------------------------------------------
 

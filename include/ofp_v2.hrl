@@ -130,6 +130,43 @@
 -define(OFPIT_EXPERIMENTER, 16#ffff).
 -define(OFPIT_EXPERIMENTER_BIT, 31).
 
+%%% Action Structures ----------------------------------------------------------
+
+%% Action types; enum ofp_action_type
+-define(OFPAT_OUTPUT, 0).
+-define(OFPAT_SET_VLAN_VID, 1).
+-define(OFPAT_SET_VLAN_PCP, 2).
+-define(OFPAT_SET_DL_SRC, 3).
+-define(OFPAT_SET_DL_DST, 4).
+-define(OFPAT_SET_NW_SRC, 5).
+-define(OFPAT_SET_NW_DST, 6).
+-define(OFPAT_SET_NW_TOS, 7).
+-define(OFPAT_SET_NW_ECN, 8).
+-define(OFPAT_SET_TP_SRC, 9).
+-define(OFPAT_SET_TP_DST, 10).
+-define(OFPAT_COPY_TTL_OUT, 11).
+-define(OFPAT_COPY_TTL_IN, 12).
+-define(OFPAT_SET_MPLS_LABEL, 13).
+-define(OFPAT_SET_MPLS_TC, 14).
+-define(OFPAT_SET_MPLS_TTL, 15).
+-define(OFPAT_DEC_MPLS_TTL, 16).
+-define(OFPAT_PUSH_VLAN, 17).
+-define(OFPAT_POP_VLAN, 18).
+-define(OFPAT_PUSH_MPLS, 19).
+-define(OFPAT_POP_MPLS, 20).
+-define(OFPAT_SET_QUEUE, 21).
+-define(OFPAT_GROUP, 22).
+-define(OFPAT_SET_NW_TTL, 23).
+-define(OFPAT_DEC_NW_TTL, 24).
+-define(OFPAT_EXPERIMENTER, 16#ffff).
+-define(OFPAT_EXPERIMENTER_BIT, 31).
+
+%%% Rest -----------------------------------------------------------------------
+
+%% Controller max length; Buffer ids
+-define(OFPCML_MAX, 16#ffe5).
+-define(OFPCML_NO_BUFFER, 16#ffff).
+
 %%%-----------------------------------------------------------------------------
 %%% Sizes
 %%%-----------------------------------------------------------------------------
@@ -145,3 +182,26 @@
 -define(INSTRUCTION_APPLY_ACTIONS_SIZE, 8).
 -define(INSTRUCTION_CLEAR_ACTIONS_SIZE, 8).
 -define(INSTRUCTION_EXPERIMENTER_SIZE, 8).
+-define(ACTION_OUTPUT_SIZE, 16).
+-define(ACTION_POP_MPLS_SIZE, 8).
+-define(ACTION_POP_VLAN_SIZE, 8).
+-define(ACTION_PUSH_MPLS_SIZE, 8).
+-define(ACTION_PUSH_VLAN_SIZE, 8).
+-define(ACTION_COPY_TTL_IN_SIZE, 8).
+-define(ACTION_COPY_TTL_OUT_SIZE, 8).
+-define(ACTION_DEC_MPLS_TTL_SIZE, 8).
+-define(ACTION_DEC_NW_TTL_SIZE, 8).
+-define(ACTION_SET_MPLS_TTL_SIZE, 8).
+-define(ACTION_SET_NW_TTL_SIZE, 8).
+-define(ACTION_SET_VLAN_VID_SIZE, 8).
+-define(ACTION_SET_VLAN_PCP_SIZE, 8).
+-define(ACTION_SET_MPLS_LABEL_SIZE, 8).
+-define(ACTION_SET_MPLS_TC_SIZE, 8).
+-define(ACTION_SET_ETH_SIZE, 16).
+-define(ACTION_SET_IPV4_SIZE, 8).
+-define(ACTION_SET_IP_DSCP_SIZE, 8).
+-define(ACTION_SET_IP_ECN_SIZE, 8).
+-define(ACTION_SET_TP_SIZE, 8).
+-define(ACTION_SET_QUEUE_SIZE, 8).
+-define(ACTION_GROUP_SIZE, 8).
+-define(ACTION_EXPERIMENTER_SIZE, 8).

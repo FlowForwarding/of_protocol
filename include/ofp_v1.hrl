@@ -109,6 +109,27 @@
 -define(OFPFW_NW_TOS, 21).
 -define(OFPFW_ALL, 4194303).
 
+%%% Action Structures ----------------------------------------------------------
+
+%% Action types; enum ofp_action_type
+-define(OFPAT_OUTPUT, 0).
+-define(OFPAT_SET_VLAN_VID, 1).
+-define(OFPAT_SET_VLAN_PCP, 2).
+-define(OFPAT_STRIP_VLAN, 3).
+-define(OFPAT_SET_DL_SRC, 4).
+-define(OFPAT_SET_DL_DST, 5).
+-define(OFPAT_SET_NW_SRC, 6).
+-define(OFPAT_SET_NW_DST, 7).
+-define(OFPAT_SET_NW_TOS, 8).
+-define(OFPAT_SET_TP_SRC, 9).
+-define(OFPAT_SET_TP_DST, 10).
+-define(OFPAT_ENQUEUE, 11).
+-define(OFPAT_VENDOR, 16#ffff).
+-define(OFPAT_VENDOR_BIT, 31).
+
+%%% Rest -----------------------------------------------------------------------
+
+%% Stats types
 -define(OFPST_DESC, 0).
 
 %%%-----------------------------------------------------------------------------
@@ -120,3 +141,13 @@
 -define(PACKET_QUEUE_SIZE, 8).
 -define(QUEUE_PROP_MIN_RATE_SIZE, 16).
 -define(MATCH_SIZE, 40).
+-define(ACTION_POP_VLAN_SIZE, 8).
+-define(ACTION_SET_VLAN_VID_SIZE, 8).
+-define(ACTION_SET_VLAN_PCP_SIZE, 8).
+-define(ACTION_SET_ETH_SIZE, 16).
+-define(ACTION_SET_IPV4_SIZE, 8).
+-define(ACTION_SET_IP_DSCP_SIZE, 8).
+-define(ACTION_SET_TP_SIZE, 8).
+-define(ACTION_SET_QUEUE_SIZE, 8).
+-define(ACTION_OUTPUT_SIZE, 8).
+-define(ACTION_EXPERIMENTER_SIZE, 8).

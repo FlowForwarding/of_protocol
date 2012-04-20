@@ -24,6 +24,7 @@
          field_type/1,
          field_type/2]).
 -export([instruction_type/1]).
+-export([action_type/1]).
 -export([error_type/1,
          hello_failed/1,
          bad_request/1,
@@ -42,7 +43,6 @@
          reason/1,
          removed_reason/1,
          port_reason/1,
-         action_type/1,
          table_config/1,
          flow_command/1,
          flow_flag/1,
@@ -335,6 +335,42 @@ instruction_type(?OFPIT_EXPERIMENTER)        -> experimenter;
 instruction_type(?OFPIT_EXPERIMENTER_BIT)    -> experimenter;
 instruction_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
 instruction_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+%%% Action Structures ----------------------------------------------------------
+
+action_type(output)                     -> ?OFPAT_OUTPUT;
+action_type(?OFPAT_OUTPUT)              -> output;
+action_type(copy_ttl_out)               -> ?OFPAT_COPY_TTL_OUT;
+action_type(?OFPAT_COPY_TTL_OUT)        -> copy_ttl_out;
+action_type(copy_ttl_in)                -> ?OFPAT_COPY_TTL_IN;
+action_type(?OFPAT_COPY_TTL_IN)         -> copy_ttl_in;
+action_type(set_mpls_ttl)               -> ?OFPAT_SET_MPLS_TTL;
+action_type(?OFPAT_SET_MPLS_TTL)        -> set_mpls_ttl;
+action_type(dec_mpls_ttl)               -> ?OFPAT_DEC_MPLS_TTL;
+action_type(?OFPAT_DEC_MPLS_TTL)        -> dec_mpls_ttl;
+action_type(push_vlan)                  -> ?OFPAT_PUSH_VLAN;
+action_type(?OFPAT_PUSH_VLAN)           -> push_vlan;
+action_type(pop_vlan)                   -> ?OFPAT_POP_VLAN;
+action_type(?OFPAT_POP_VLAN)            -> pop_vlan;
+action_type(push_mpls)                  -> ?OFPAT_PUSH_MPLS;
+action_type(?OFPAT_PUSH_MPLS)           -> push_mpls;
+action_type(pop_mpls)                   -> ?OFPAT_POP_MPLS;
+action_type(?OFPAT_POP_MPLS)            -> pop_mpls;
+action_type(set_queue)                  -> ?OFPAT_SET_QUEUE;
+action_type(?OFPAT_SET_QUEUE)           -> set_queue;
+action_type(group)                      -> ?OFPAT_GROUP;
+action_type(?OFPAT_GROUP)               -> group;
+action_type(set_nw_ttl)                 -> ?OFPAT_SET_NW_TTL;
+action_type(?OFPAT_SET_NW_TTL)          -> set_nw_ttl;
+action_type(dec_nw_ttl)                 -> ?OFPAT_DEC_NW_TTL;
+action_type(?OFPAT_DEC_NW_TTL)          -> dec_nw_ttl;
+action_type(set_field)                  -> ?OFPAT_SET_FIELD;
+action_type(?OFPAT_SET_FIELD)           -> set_field;
+action_type(experimenter)               -> ?OFPAT_EXPERIMENTER;
+action_type(?OFPAT_EXPERIMENTER)        -> experimenter;
+action_type(?OFPAT_EXPERIMENTER_BIT)    -> experimenter;
+action_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
+action_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 %%% Rest -----------------------------------------------------------------------
 
@@ -643,40 +679,6 @@ port_reason(modify)                     -> ?OFPPR_MODIFY;
 port_reason(?OFPPR_MODIFY)              -> modify;
 port_reason(Type) when is_atom(Type)    -> throw({bad_type, Type});
 port_reason(Type) when is_integer(Type) -> throw({bad_value, Type}).
-
-action_type(output)                     -> ?OFPAT_OUTPUT;
-action_type(?OFPAT_OUTPUT)              -> output;
-action_type(copy_ttl_out)               -> ?OFPAT_COPY_TTL_OUT;
-action_type(?OFPAT_COPY_TTL_OUT)        -> copy_ttl_out;
-action_type(copy_ttl_in)                -> ?OFPAT_COPY_TTL_IN;
-action_type(?OFPAT_COPY_TTL_IN)         -> copy_ttl_in;
-action_type(set_mpls_ttl)               -> ?OFPAT_SET_MPLS_TTL;
-action_type(?OFPAT_SET_MPLS_TTL)        -> set_mpls_ttl;
-action_type(dec_mpls_ttl)               -> ?OFPAT_DEC_MPLS_TTL;
-action_type(?OFPAT_DEC_MPLS_TTL)        -> dec_mpls_ttl;
-action_type(push_vlan)                  -> ?OFPAT_PUSH_VLAN;
-action_type(?OFPAT_PUSH_VLAN)           -> push_vlan;
-action_type(pop_vlan)                   -> ?OFPAT_POP_VLAN;
-action_type(?OFPAT_POP_VLAN)            -> pop_vlan;
-action_type(push_mpls)                  -> ?OFPAT_PUSH_MPLS;
-action_type(?OFPAT_PUSH_MPLS)           -> push_mpls;
-action_type(pop_mpls)                   -> ?OFPAT_POP_MPLS;
-action_type(?OFPAT_POP_MPLS)            -> pop_mpls;
-action_type(set_queue)                  -> ?OFPAT_SET_QUEUE;
-action_type(?OFPAT_SET_QUEUE)           -> set_queue;
-action_type(group)                      -> ?OFPAT_GROUP;
-action_type(?OFPAT_GROUP)               -> group;
-action_type(set_nw_ttl)                 -> ?OFPAT_SET_NW_TTL;
-action_type(?OFPAT_SET_NW_TTL)          -> set_nw_ttl;
-action_type(dec_nw_ttl)                 -> ?OFPAT_DEC_NW_TTL;
-action_type(?OFPAT_DEC_NW_TTL)          -> dec_nw_ttl;
-action_type(set_field)                  -> ?OFPAT_SET_FIELD;
-action_type(?OFPAT_SET_FIELD)           -> set_field;
-action_type(experimenter)               -> ?OFPAT_EXPERIMENTER;
-action_type(?OFPAT_EXPERIMENTER)        -> experimenter;
-action_type(?OFPAT_EXPERIMENTER_BIT)    -> experimenter;
-action_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
-action_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 table_config(continue)                   -> ?OFPTC_TABLE_MISS_CONTINUE;
 table_config(?OFPTC_TABLE_MISS_CONTINUE) -> continue;
