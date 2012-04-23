@@ -201,13 +201,14 @@
 -define(OFPC_QUEUE_STATS, 6).
 -define(OFPC_PORT_BLOCKED, 8).
 
-%%% Rest -----------------------------------------------------------------------
+%%% Switch Configuration -------------------------------------------------------
 
-%% Configuration flags
+%% Configuration flags; enum ofp_config_flags
 -define(OFPC_FRAG_DROP, 0).
 -define(OFPC_FRAG_REASM, 1).
 -define(OFPC_INVALID_TTL_TO_CONTROLLER, 2).
--define(OFPC_FRAG_MASK, 3).
+
+%%% Rest -----------------------------------------------------------------------
 
 %% Table ids
 -define(OFPTT_MAX, 16#fe).

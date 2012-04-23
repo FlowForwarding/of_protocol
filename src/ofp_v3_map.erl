@@ -395,6 +395,17 @@ capability(?OFPC_PORT_BLOCKED)         -> port_blocked;
 capability(Type) when is_atom(Type)    -> throw({bad_type, Type});
 capability(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
+%%% Switch Configuration -------------------------------------------------------
+
+configuration(frag_drop)                       -> ?OFPC_FRAG_DROP;
+configuration(?OFPC_FRAG_DROP)                 -> frag_drop;
+configuration(frag_reasm)                      -> ?OFPC_FRAG_REASM;
+configuration(?OFPC_FRAG_REASM)                -> frag_reasm;
+configuration(invalid_ttl_to_controller)       -> ?OFPC_INVALID_TTL_TO_CONTROLLER;
+configuration(?OFPC_INVALID_TTL_TO_CONTROLLER) -> invalid_ttl_to_controller;
+configuration(Type) when is_atom(Type)         -> throw({bad_type, Type});
+configuration(Type) when is_integer(Type)      -> throw({bad_value, Type}).
+
 %%% Rest -----------------------------------------------------------------------
 
 error_type(hello_failed)                -> ?OFPET_HELLO_FAILED;
@@ -645,17 +656,6 @@ role_request_failed(bad_role)                   -> ?OFPRRFC_BAD_ROLE;
 role_request_failed(?OFPRRFC_BAD_ROLE)          -> bad_role;
 role_request_failed(Type) when is_atom(Type)    -> throw({bad_type, Type});
 role_request_failed(Type) when is_integer(Type) -> throw({bad_value, Type}).
-
-configuration(frag_drop)                       -> ?OFPC_FRAG_DROP;
-configuration(?OFPC_FRAG_DROP)                 -> frag_drop;
-configuration(frag_reasm)                      -> ?OFPC_FRAG_REASM;
-configuration(?OFPC_FRAG_REASM)                -> frag_reasm;
-configuration(invalid_ttl_to_controller)       -> ?OFPC_INVALID_TTL_TO_CONTROLLER;
-configuration(?OFPC_INVALID_TTL_TO_CONTROLLER) -> invalid_ttl_to_controller;
-configuration(frag_mask)                       -> ?OFPC_FRAG_MASK;
-configuration(?OFPC_FRAG_MASK)                 -> frag_mask;
-configuration(Type) when is_atom(Type)         -> throw({bad_type, Type});
-configuration(Type) when is_integer(Type)      -> throw({bad_value, Type}).
 
 reason(no_match)                   -> ?OFPR_NO_MATCH;
 reason(?OFPR_NO_MATCH)             -> no_match;

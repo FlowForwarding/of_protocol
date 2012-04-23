@@ -301,8 +301,14 @@ encode_body(#ofp_features_reply{datapath_mac = DataPathMac,
     CapaBin = flags_to_binary(capability, Capabilities, 4),
     <<DataPathMac:6/bytes, DataPathID:16, NBuffers:32, NTables:8,
       0:24, CapaBin:4/bytes, 0:32, PortsBin/bytes>>;
-encode_body(_) ->
-    <<>>.
+encode_body(#ofp_get_config_request{}) ->
+    <<>>;
+encode_body(#ofp_get_config_reply{flags = Flags, miss_send_len = Miss}) ->
+    FlagsBin = flags_to_binary(configuration, Flags, 2),
+    <<FlagsBin:2/bytes, Miss:16>>;
+encode_body(#ofp_set_config{flags = Flags, miss_send_len = Miss}) ->
+    FlagsBin = flags_to_binary(configuration, Flags, 2),
+    <<FlagsBin:2/bytes, Miss:16>>.
 
 %%%-----------------------------------------------------------------------------
 %%% Decode functions
@@ -640,7 +646,18 @@ decode_body(features_reply, Binary) ->
     #ofp_features_reply{datapath_mac = DataPathMac,
                         datapath_id = DataPathID, n_buffers = NBuffers,
                         n_tables = NTables, capabilities = Capabilities,
-                        ports = Ports}.
+                        ports = Ports};
+decode_body(get_config_request, _) ->
+    #ofp_get_config_request{};
+decode_body(get_config_reply, Binary) ->
+    <<FlagsBin:2/bytes, Miss:16>> = Binary,
+    Flags = binary_to_flags(configuration, FlagsBin),
+    #ofp_get_config_reply{flags = Flags,
+                          miss_send_len = Miss};
+decode_body(set_config, Binary) ->
+    <<FlagsBin:2/bytes, Miss:16>> = Binary,
+    Flags = binary_to_flags(configuration, FlagsBin),
+    #ofp_set_config{flags = Flags, miss_send_len = Miss}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions

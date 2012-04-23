@@ -238,8 +238,14 @@ encode_body(#ofp_desc_stats_reply{flags = Flags, mfr_desc = MFR,
       MFR/bytes, 0:MFRPad, HW/bytes, 0:HWPad,
       SW/bytes, 0:SWPad, Serial/bytes, 0:SerialPad,
       DP/bytes, 0:DPPad>>;
-encode_body(_) ->
-    <<>>.
+encode_body(#ofp_get_config_request{}) ->
+    <<>>;
+encode_body(#ofp_get_config_reply{flags = Flags, miss_send_len = Miss}) ->
+    FlagsBin = flags_to_binary(configuration, Flags, 2),
+    <<FlagsBin:2/bytes, Miss:16>>;
+encode_body(#ofp_set_config{flags = Flags, miss_send_len = Miss}) ->
+    FlagsBin = flags_to_binary(configuration, Flags, 2),
+    <<FlagsBin:2/bytes, Miss:16>>.
 
 %%%-----------------------------------------------------------------------------
 %%% Decode functions
@@ -477,6 +483,17 @@ decode_body(features_reply, Binary) ->
                         datapath_id = DataPathID, n_buffers = NBuffers,
                         n_tables = NTables, capabilities = Capabilities,
                         actions = Actions, ports = Ports};
+decode_body(get_config_request, _) ->
+    #ofp_get_config_request{};
+decode_body(get_config_reply, Binary) ->
+    <<FlagsBin:2/bytes, Miss:16>> = Binary,
+    Flags = binary_to_flags(configuration, FlagsBin),
+    #ofp_get_config_reply{flags = Flags,
+                          miss_send_len = Miss};
+decode_body(set_config, Binary) ->
+    <<FlagsBin:2/bytes, Miss:16>> = Binary,
+    Flags = binary_to_flags(configuration, FlagsBin),
+    #ofp_set_config{flags = Flags, miss_send_len = Miss};
 decode_body(stats_request, Binary) ->
     <<TypeInt:16, FlagsBin:2/bytes,
       _Data/bytes>> = Binary,

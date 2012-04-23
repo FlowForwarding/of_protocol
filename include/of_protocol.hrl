@@ -468,7 +468,9 @@
                                | group_stats
                                | ip_reasm
                                | queue_stats
-                               | port_blocked.
+                               | port_blocked
+                               | stp           %% OFP 1.0
+                               | arp_match_ip. %% OFP 1.0/1.1
 
 %% Switch features (Features reply)
 -record(ofp_features_reply, {
@@ -490,8 +492,7 @@
 
 -type ofp_switch_configuration() :: frag_drop
                                   | frag_reasm
-                                  | invalid_ttl_to_controller
-                                  | frag_mask.
+                                  | invalid_ttl_to_controller.
 
 %% Configuration reply
 -record(ofp_get_config_reply, {

@@ -22,7 +22,7 @@
 -export([action_type/1,
          action_set_type/1]).
 -export([capability/1]).
-
+-export([configuration/1]).
 -export([stats_type/1]).
 
 -include("of_protocol.hrl").
@@ -259,6 +259,15 @@ capability(arp_match_ip)               -> ?OFPC_ARP_MATCH_IP;
 capability(?OFPC_ARP_MATCH_IP)         -> arp_match_ip;
 capability(Type) when is_atom(Type)    -> throw({bad_type, Type});
 capability(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+%%% Switch Configuration -------------------------------------------------------
+
+configuration(frag_drop)                       -> ?OFPC_FRAG_DROP;
+configuration(?OFPC_FRAG_DROP)                 -> frag_drop;
+configuration(frag_reasm)                      -> ?OFPC_FRAG_REASM;
+configuration(?OFPC_FRAG_REASM)                -> frag_reasm;
+configuration(Type) when is_atom(Type)         -> throw({bad_type, Type});
+configuration(Type) when is_integer(Type)      -> throw({bad_value, Type}).
 
 %%%-----------------------------------------------------------------------------
 %%% Helper functions

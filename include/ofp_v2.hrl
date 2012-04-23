@@ -176,6 +176,13 @@
 -define(OFPC_QUEUE_STATS, 6).
 -define(OFPC_ARP_MATCH_IP, 7).
 
+%%% Switch Configuration -------------------------------------------------------
+
+%% Configuration flags; enum ofp_config_flags
+-define(OFPC_FRAG_DROP, 0).
+-define(OFPC_FRAG_REASM, 1).
+-define(OFPC_INVALID_TTL_TO_CONTROLLER, 2).
+
 %%% Rest -----------------------------------------------------------------------
 
 %% Controller max length; Buffer ids
@@ -190,6 +197,11 @@
 -define(HELLO_SIZE, 8).
 -define(FEATURES_REQUEST_SIZE, 8).
 -define(FEATURES_REPLY_SIZE, 32).
+-define(GET_CONFIG_REQUEST_SIZE, 8).
+-define(GET_CONFIG_REPLY_SIZE, 12).
+-define(SET_CONFIG_SIZE, 12).
+-define(DESC_STATS_REQUEST_SIZE, 16).
+-define(DESC_STATS_REPLY_SIZE, 1072).
 
 %% Structure sizes
 -define(PORT_SIZE, 64).
