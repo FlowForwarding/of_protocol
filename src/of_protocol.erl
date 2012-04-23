@@ -62,8 +62,8 @@ parse(Parser, Binary) ->
 -spec get_module(integer()) -> atom().
 get_module(3) ->
     ofp_v3;
-%% get_module(2) ->
-%%     ofp_v2;
+get_module(2) ->
+    ofp_v2;
 get_module(1) ->
     ofp_v1;
 get_module(_) ->

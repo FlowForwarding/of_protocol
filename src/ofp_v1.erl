@@ -207,8 +207,11 @@ encode_actions([], Actions) ->
 encode_actions([_Action | Rest], Actions) ->
     encode_actions(Rest, Actions).
 
-%%% Messages -----------------------------------------------------------------
+%%% Messages -------------------------------------------------------------------
 
+-spec encode_body(ofp_message()) -> binary().
+encode_body(#ofp_hello{}) ->
+    <<>>;
 encode_body(#ofp_desc_stats_reply{flags = Flags, mfr_desc = MFR,
                                   hw_desc = HW, sw_desc = SW,
                                   serial_num = Serial, dp_desc = DP}) ->
@@ -444,6 +447,9 @@ decode_actions(Binary, Actions) ->
 
 %%% Messages -----------------------------------------------------------------
 
+-spec decode_body(atom(), binary()) -> ofp_message().
+decode_body(hello, _) ->
+    #ofp_hello{};
 decode_body(stats_request, Binary) ->
     <<TypeInt:16, FlagsBin:2/bytes,
       Data/bytes>> = Binary,

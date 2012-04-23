@@ -288,7 +288,8 @@ encode_actions(_) ->
 
 %%% Messages -----------------------------------------------------------------
 
-encode_body(_) ->
+-spec encode_body(ofp_message()) -> binary().
+encode_body(#ofp_hello{}) ->
     <<>>.
 
 %%%-----------------------------------------------------------------------------
@@ -611,8 +612,9 @@ decode_actions(Binary, Actions) ->
 
 %%% Messages -----------------------------------------------------------------
 
-decode_body(_, _) ->
-    undefined.
+-spec decode_body(atom(), binary()) -> ofp_message().
+decode_body(hello, _) ->
+    #ofp_hello{}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions
