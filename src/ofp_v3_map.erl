@@ -372,6 +372,29 @@ action_type(?OFPAT_EXPERIMENTER_BIT)    -> experimenter;
 action_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
 action_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
+%%%-----------------------------------------------------------------------------
+%%% Controller-to-Switch Messages
+%%%-----------------------------------------------------------------------------
+
+%%% Features (Handshake) -------------------------------------------------------
+
+capability(flow_stats)                 -> ?OFPC_FLOW_STATS;
+capability(?OFPC_FLOW_STATS)           -> flow_stats;
+capability(table_stats)                -> ?OFPC_TABLE_STATS;
+capability(?OFPC_TABLE_STATS)          -> table_stats;
+capability(port_stats)                 -> ?OFPC_PORT_STATS;
+capability(?OFPC_PORT_STATS)           -> port_stats;
+capability(group_stats)                -> ?OFPC_GROUP_STATS;
+capability(?OFPC_GROUP_STATS)          -> group_stats;
+capability(ip_reasm)                   -> ?OFPC_IP_REASM;
+capability(?OFPC_IP_REASM)             -> ip_reasm;
+capability(queue_stats)                -> ?OFPC_QUEUE_STATS;
+capability(?OFPC_QUEUE_STATS)          -> queue_stats;
+capability(port_blocked)               -> ?OFPC_PORT_BLOCKED;
+capability(?OFPC_PORT_BLOCKED)         -> port_blocked;
+capability(Type) when is_atom(Type)    -> throw({bad_type, Type});
+capability(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
 %%% Rest -----------------------------------------------------------------------
 
 error_type(hello_failed)                -> ?OFPET_HELLO_FAILED;
@@ -622,23 +645,6 @@ role_request_failed(bad_role)                   -> ?OFPRRFC_BAD_ROLE;
 role_request_failed(?OFPRRFC_BAD_ROLE)          -> bad_role;
 role_request_failed(Type) when is_atom(Type)    -> throw({bad_type, Type});
 role_request_failed(Type) when is_integer(Type) -> throw({bad_value, Type}).
-
-capability(flow_stats)                 -> ?OFPC_FLOW_STATS;
-capability(?OFPC_FLOW_STATS)           -> flow_stats;
-capability(table_stats)                -> ?OFPC_TABLE_STATS;
-capability(?OFPC_TABLE_STATS)          -> table_stats;
-capability(port_stats)                 -> ?OFPC_PORT_STATS;
-capability(?OFPC_PORT_STATS)           -> port_stats;
-capability(group_stats)                -> ?OFPC_GROUP_STATS;
-capability(?OFPC_GROUP_STATS)          -> group_stats;
-capability(ip_reasm)                   -> ?OFPC_IP_REASM;
-capability(?OFPC_IP_REASM)             -> ip_reasm;
-capability(queue_stats)                -> ?OFPC_QUEUE_STATS;
-capability(?OFPC_QUEUE_STATS)          -> queue_stats;
-capability(port_blocked)               -> ?OFPC_PORT_BLOCKED;
-capability(?OFPC_PORT_BLOCKED)         -> port_blocked;
-capability(Type) when is_atom(Type)    -> throw({bad_type, Type});
-capability(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 configuration(frag_drop)                       -> ?OFPC_FRAG_DROP;
 configuration(?OFPC_FRAG_DROP)                 -> frag_drop;

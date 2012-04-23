@@ -19,7 +19,9 @@
          decode_queue_id/1,
          queue_property/1]).
 -export([flow_wildcard/1]).
--export([action_type/1]).
+-export([action_type/1,
+         action_set_type/1]).
+-export([capability/1]).
 
 -export([stats_type/1]).
 
@@ -234,6 +236,29 @@ action_set_type(udp_dst) -> ?OFPAT_SET_TP_DST;
 action_set_type(?OFPAT_SET_TP_SRC) -> tp_src;
 action_set_type(?OFPAT_SET_TP_DST) -> tp_dst;
 action_set_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+%%%-----------------------------------------------------------------------------
+%%% Controller-to-Switch Messages
+%%%-----------------------------------------------------------------------------
+
+%%% Features (Handshake) -------------------------------------------------------
+
+capability(flow_stats)                 -> ?OFPC_FLOW_STATS;
+capability(?OFPC_FLOW_STATS)           -> flow_stats;
+capability(table_stats)                -> ?OFPC_TABLE_STATS;
+capability(?OFPC_TABLE_STATS)          -> table_stats;
+capability(port_stats)                 -> ?OFPC_PORT_STATS;
+capability(?OFPC_PORT_STATS)           -> port_stats;
+capability(stp)                        -> ?OFPC_STP;
+capability(?OFPC_STP)                  -> stp;
+capability(ip_reasm)                   -> ?OFPC_IP_REASM;
+capability(?OFPC_IP_REASM)             -> ip_reasm;
+capability(queue_stats)                -> ?OFPC_QUEUE_STATS;
+capability(?OFPC_QUEUE_STATS)          -> queue_stats;
+capability(arp_match_ip)               -> ?OFPC_ARP_MATCH_IP;
+capability(?OFPC_ARP_MATCH_IP)         -> arp_match_ip;
+capability(Type) when is_atom(Type)    -> throw({bad_type, Type});
+capability(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 %%%-----------------------------------------------------------------------------
 %%% Helper functions

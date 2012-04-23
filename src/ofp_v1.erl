@@ -212,6 +212,18 @@ encode_actions([_Action | Rest], Actions) ->
 -spec encode_body(ofp_message()) -> binary().
 encode_body(#ofp_hello{}) ->
     <<>>;
+encode_body(#ofp_features_request{}) ->
+    <<>>;
+encode_body(#ofp_features_reply{datapath_mac = DataPathMac,
+                                datapath_id = DataPathID, n_buffers = NBuffers,
+                                n_tables = NTables, capabilities = Capabilities,
+                                actions = Actions, ports = Ports}) ->
+    PortsBin = encode_list(Ports),
+    CapaBin = flags_to_binary(capability, Capabilities, 4),
+    %% FIXME: Encode actions
+    ActionsBin = <<0:32>>,
+    <<DataPathMac:6/bytes, DataPathID:16, NBuffers:32, NTables:8,
+      0:24, CapaBin:4/bytes, ActionsBin:4/bytes, PortsBin/bytes>>;
 encode_body(#ofp_desc_stats_reply{flags = Flags, mfr_desc = MFR,
                                   hw_desc = HW, sw_desc = SW,
                                   serial_num = Serial, dp_desc = DP}) ->
@@ -248,10 +260,9 @@ do_decode(Binary) ->
 
 %% @doc Decode port structure.
 decode_port(Binary) ->
-    <<PortNoInt:32, 0:32, HWAddr:6/bytes, 0:16, NameBin:16/bytes,
+    <<PortNoInt:16, HWAddr:6/bytes, NameBin:?OFP_MAX_PORT_NAME_LEN/bytes,
       ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
-      AdvertisedBin:4/bytes, SupportedBin:4/bytes, PeerBin:4/bytes,
-      CurrSpeed:32, MaxSpeed:32>> = Binary,
+      AdvertisedBin:4/bytes, SupportedBin:4/bytes, PeerBin:4/bytes>> = Binary,
     PortNo = ofp_v1_map:decode_port_no(PortNoInt),
     Name = ofp_utils:strip_string(NameBin),
     Config = binary_to_flags(port_config, ConfigBin),
@@ -263,7 +274,7 @@ decode_port(Binary) ->
     #ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
               config = Config, state = State, curr = Curr,
               advertised = Advertised, supported = Supported,
-              peer = Peer, curr_speed = CurrSpeed, max_speed = MaxSpeed}.
+              peer = Peer}.
 
 %% @doc Decode packet queues
 decode_packet_queues(Binary) ->
@@ -450,9 +461,25 @@ decode_actions(Binary, Actions) ->
 -spec decode_body(atom(), binary()) -> ofp_message().
 decode_body(hello, _) ->
     #ofp_hello{};
+decode_body(features_request, _) ->
+    #ofp_features_request{};
+decode_body(features_reply, Binary) ->
+    PortsLength = size(Binary) - ?FEATURES_REPLY_SIZE + ?OFP_HEADER_SIZE,
+    <<DataPathMac:6/bytes, DataPathID:16, NBuffers:32,
+      NTables:8, 0:24, CapaBin:4/bytes, _ActionsBin:4/bytes,
+      PortsBin:PortsLength/bytes>> = Binary,
+    Capabilities = binary_to_flags(capability, CapaBin),
+    %% FIXME: Decode actions
+    Actions = [],
+    Ports = [decode_port(PortBin)
+             || PortBin <- ofp_utils:split_binaries(PortsBin, ?PORT_SIZE)],
+    #ofp_features_reply{datapath_mac = DataPathMac,
+                        datapath_id = DataPathID, n_buffers = NBuffers,
+                        n_tables = NTables, capabilities = Capabilities,
+                        actions = Actions, ports = Ports};
 decode_body(stats_request, Binary) ->
     <<TypeInt:16, FlagsBin:2/bytes,
-      Data/bytes>> = Binary,
+      _Data/bytes>> = Binary,
     Type = ofp_v1_map:stats_type(TypeInt),
     Flags = binary_to_flags(stats_request_flag, FlagsBin),
     case Type of
@@ -460,9 +487,7 @@ decode_body(stats_request, Binary) ->
             #ofp_desc_stats_request{flags = Flags};
         _ ->
             undefined
-    end;
-decode_body(_, _) ->
-    undefined.
+    end.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions

@@ -186,9 +186,13 @@
 -define(OFPAT_EXPERIMENTER, 16#ffff).
 -define(OFPAT_EXPERIMENTER_BIT, 31).
 
-%%% Rest -----------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
+%%% Controller-to-Switch Messages
+%%%-----------------------------------------------------------------------------
 
-%% Capabilities of the switch
+%%% Features (Handshake) -------------------------------------------------------
+
+%% Capabilities of the switch; enum ofp_capabilities
 -define(OFPC_FLOW_STATS, 0).
 -define(OFPC_TABLE_STATS, 1).
 -define(OFPC_PORT_STATS, 2).
@@ -196,6 +200,8 @@
 -define(OFPC_IP_REASM, 5).
 -define(OFPC_QUEUE_STATS, 6).
 -define(OFPC_PORT_BLOCKED, 8).
+
+%%% Rest -----------------------------------------------------------------------
 
 %% Configuration flags
 -define(OFPC_FRAG_DROP, 0).

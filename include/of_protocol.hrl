@@ -318,6 +318,22 @@
           experimenter :: integer()
          }).
 
+-type ofp_action_type() :: output
+                         | group
+                         | set_queue
+                         | set_mpls_ttl
+                         | dec_mpls_ttl
+                         | set_nw_ttl
+                         | dec_nw_ttl
+                         | copy_ttl_out
+                         | copy_ttl_in
+                         | push_vlan
+                         | pop_vlan
+                         | push_mpls
+                         | pop_mpls
+                         | set_field
+                         | experimenter.
+
 -type ofp_action() :: #ofp_action_output{}
                     | #ofp_action_group{}
                     | #ofp_action_set_queue{}
@@ -461,7 +477,7 @@
           n_buffers :: integer(),
           n_tables :: integer(),
           capabilities = [] :: [ofp_switch_capability()],
-          actions = [] :: [ofp_action()],
+          actions = [] :: [ofp_action_type()],
           ports = [] :: [ofp_port()]
          }).
 -type ofp_features_reply() :: #ofp_features_reply{}.

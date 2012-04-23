@@ -127,6 +127,21 @@
 -define(OFPAT_VENDOR, 16#ffff).
 -define(OFPAT_VENDOR_BIT, 31).
 
+%%%-----------------------------------------------------------------------------
+%%% Controller-to-Switch Messages
+%%%-----------------------------------------------------------------------------
+
+%%% Features (Handshake) -------------------------------------------------------
+
+%% Capabilities of the switch; enum ofp_capabilities
+-define(OFPC_FLOW_STATS, 0).
+-define(OFPC_TABLE_STATS, 1).
+-define(OFPC_PORT_STATS, 2).
+-define(OFPC_STP, 3).
+-define(OFPC_IP_REASM, 5).
+-define(OFPC_QUEUE_STATS, 6).
+-define(OFPC_ARP_MATCH_IP, 7).
+
 %%% Rest -----------------------------------------------------------------------
 
 %% Stats types
@@ -135,6 +150,11 @@
 %%%-----------------------------------------------------------------------------
 %%% Sizes
 %%%-----------------------------------------------------------------------------
+
+%% Message sizes
+-define(HELLO_SIZE, 8).
+-define(FEATURES_REQUEST_SIZE, 8).
+-define(FEATURES_REPLY_SIZE, 32).
 
 %% Structure sizes
 -define(PORT_SIZE, 48).

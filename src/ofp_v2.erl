@@ -290,6 +290,18 @@ encode_actions(_) ->
 
 -spec encode_body(ofp_message()) -> binary().
 encode_body(#ofp_hello{}) ->
+    <<>>;
+encode_body(#ofp_features_request{}) ->
+    <<>>;
+encode_body(#ofp_features_reply{datapath_mac = DataPathMac,
+                                datapath_id = DataPathID, n_buffers = NBuffers,
+                                n_tables = NTables, capabilities = Capabilities,
+                                ports = Ports}) ->
+    PortsBin = encode_list(Ports),
+    CapaBin = flags_to_binary(capability, Capabilities, 4),
+    <<DataPathMac:6/bytes, DataPathID:16, NBuffers:32, NTables:8,
+      0:24, CapaBin:4/bytes, 0:32, PortsBin/bytes>>;
+encode_body(_) ->
     <<>>.
 
 %%%-----------------------------------------------------------------------------
@@ -614,7 +626,21 @@ decode_actions(Binary, Actions) ->
 
 -spec decode_body(atom(), binary()) -> ofp_message().
 decode_body(hello, _) ->
-    #ofp_hello{}.
+    #ofp_hello{};
+decode_body(features_request, _) ->
+    #ofp_features_request{};
+decode_body(features_reply, Binary) ->
+    PortsLength = size(Binary) - ?FEATURES_REPLY_SIZE + ?OFP_HEADER_SIZE,
+    <<DataPathMac:6/bytes, DataPathID:16, NBuffers:32,
+      NTables:8, 0:24, CapaBin:4/bytes, 0:32,
+      PortsBin:PortsLength/bytes>> = Binary,
+    Capabilities = binary_to_flags(capability, CapaBin),
+    Ports = [decode_port(PortBin)
+             || PortBin <- ofp_utils:split_binaries(PortsBin, ?PORT_SIZE)],
+    #ofp_features_reply{datapath_mac = DataPathMac,
+                        datapath_id = DataPathID, n_buffers = NBuffers,
+                        n_tables = NTables, capabilities = Capabilities,
+                        ports = Ports}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions

@@ -161,6 +161,21 @@
 -define(OFPAT_EXPERIMENTER, 16#ffff).
 -define(OFPAT_EXPERIMENTER_BIT, 31).
 
+%%%-----------------------------------------------------------------------------
+%%% Controller-to-Switch Messages
+%%%-----------------------------------------------------------------------------
+
+%%% Features (Handshake) -------------------------------------------------------
+
+%% Capabilities of the switch; enum ofp_capabilities
+-define(OFPC_FLOW_STATS, 0).
+-define(OFPC_TABLE_STATS, 1).
+-define(OFPC_PORT_STATS, 2).
+-define(OFPC_GROUP_STATS, 3).
+-define(OFPC_IP_REASM, 5).
+-define(OFPC_QUEUE_STATS, 6).
+-define(OFPC_ARP_MATCH_IP, 7).
+
 %%% Rest -----------------------------------------------------------------------
 
 %% Controller max length; Buffer ids
@@ -170,6 +185,11 @@
 %%%-----------------------------------------------------------------------------
 %%% Sizes
 %%%-----------------------------------------------------------------------------
+
+%% Message sizes
+-define(HELLO_SIZE, 8).
+-define(FEATURES_REQUEST_SIZE, 8).
+-define(FEATURES_REPLY_SIZE, 32).
 
 %% Structure sizes
 -define(PORT_SIZE, 64).
