@@ -101,12 +101,15 @@ encode_struct(#ofp_match{type = Type, oxm_fields = Fields}) ->
     MPLSLabel = encode_field_value(FieldList, mpls_label, 32),
     MPLSTc = encode_field_value(FieldList, mpls_tc, 8),
     case IPProto of
-        <<6>> ->
+        <<16#6:8>> ->
             TPSrc = encode_field_value(FieldList, tcp_src, 16),
             TPDst = encode_field_value(FieldList, tcp_dst, 16);
-        <<17>> ->
+        <<16#11:8>> ->
             TPSrc = encode_field_value(FieldList, udp_src, 16),
             TPDst = encode_field_value(FieldList, udp_dst, 16);
+        <<16#84:8>> ->
+            TPSrc = encode_field_value(FieldList, sctp_src, 16),
+            TPDst = encode_field_value(FieldList, sctp_dst, 16);
         _ ->
             TPSrc = <<0:16>>,
             TPDst = <<0:16>>
@@ -118,11 +121,11 @@ encode_struct(#ofp_match{type = Type, oxm_fields = Fields}) ->
     {Wildcards, _} = lists:unzip(FieldList),
     <<WildcardsInt:32>> = flags_to_binary(flow_wildcard,
                                           Wildcards -- [ipv4_src, ipv4_dst,
-                                                        eth_src, eth_dst], 4),
+                                                        eth_src, eth_dst,
+                                                        metadata], 4),
     WildcardsBin = <<(bnot WildcardsInt):32>>,
-    %% FIXME: Encode real metadata
-    Metadata = <<(16#0):64>>,
-    MetadataMask = <<(16#ffffffffffffffff):64>>,
+    Metadata = encode_field_value(FieldList, metadata, 64),
+    MetadataMask = encode_field_mask(Fields, metadata, 64),
     <<TypeInt:16, ?MATCH_SIZE:16, InPort:4/bytes, WildcardsBin:4/bytes,
       EthSrc:6/bytes, EthSrcMask:6/bytes, EthDst:6/bytes, EthDstMask:6/bytes,
       VlanVid:2/bytes, VlanPcp:1/bytes, 0:8, EthType:2/bytes, IPDscp:1/bytes,
@@ -133,8 +136,7 @@ encode_struct(#ofp_match{type = Type, oxm_fields = Fields}) ->
 encode_struct(#ofp_instruction_goto_table{table_id = Table}) ->
     Type = ofp_v2_map:instruction_type(goto_table),
     Length = ?INSTRUCTION_GOTO_TABLE_SIZE,
-    TableInt = ofp_v2_map:encode_table_id(Table),
-    <<Type:16, Length:16, TableInt:8, 0:24>>;
+    <<Type:16, Length:16, Table:8, 0:24>>;
 encode_struct(#ofp_instruction_write_metadata{metadata = Metadata,
                                               metadata_mask = MetaMask}) ->
     Type = ofp_v2_map:instruction_type(write_metadata),
@@ -313,7 +315,26 @@ encode_body(#ofp_get_config_reply{flags = Flags, miss_send_len = Miss}) ->
     <<FlagsBin:2/bytes, Miss:16>>;
 encode_body(#ofp_set_config{flags = Flags, miss_send_len = Miss}) ->
     FlagsBin = flags_to_binary(configuration, Flags, 2),
-    <<FlagsBin:2/bytes, Miss:16>>.
+    <<FlagsBin:2/bytes, Miss:16>>;
+encode_body(#ofp_flow_mod{cookie = Cookie, cookie_mask = CookieMask,
+                          table_id = Table, command = Command,
+                          idle_timeout = Idle, hard_timeout = Hard,
+                          priority = Priority, buffer_id = Buffer,
+                          out_port = OutPort, out_group = OutGroup,
+                          flags = Flags, match = Match,
+                          instructions = Instructions}) ->
+    TableInt = ofp_v3_map:encode_table_id(Table),
+    BufferInt = ofp_v3_map:encode_buffer_id(Buffer),
+    CommandInt = ofp_v3_map:flow_command(Command),
+    OutPortInt = ofp_v3_map:encode_port_no(OutPort),
+    OutGroupInt = ofp_v3_map:encode_group_id(OutGroup),
+    FlagsBin = flags_to_binary(flow_flag, Flags, 2),
+    MatchBin = encode_struct(Match),
+    InstructionsBin = encode_list(Instructions),
+    <<Cookie:8/bytes, CookieMask:8/bytes, TableInt:8, CommandInt:8,
+      Idle:16, Hard:16, Priority:16, BufferInt:32, OutPortInt:32,
+      OutGroupInt:32, FlagsBin:2/bytes, 0:16, MatchBin:?MATCH_SIZE/bytes,
+      InstructionsBin/bytes>>.
 
 %%%-----------------------------------------------------------------------------
 %%% Decode functions
@@ -387,8 +408,7 @@ decode_match(Binary) ->
       VlanVid:2/bytes, VlanPcp:1/bytes, 0:8, EthType:2/bytes, IPDscp:1/bytes,
       IPProto:1/bytes, IPv4Src:4/bytes, SrcMask:4/bytes, IPv4Dst:4/bytes,
       DstMask:4/bytes, TPSrc:2/bytes, TPDst:2/bytes, MPLSLabel:4/bytes,
-      MPLSTc:1/bytes, 0:24, _Metadata:8/bytes, _MetadataMask:8/bytes>> = Binary,
-    %% FIXME: Put decoded metadata in the right place
+      MPLSTc:1/bytes, 0:24, Metadata:8/bytes, MetadataMask:8/bytes>> = Binary,
     Type = ofp_v2_map:match_type(TypeInt),
     Wildcards = binary_to_flags(flow_wildcard,
                                 <<((bnot WildcardsInt) band 16#ffffff3f):32>>),
@@ -402,8 +422,9 @@ decode_match(Binary) ->
                     WildcardsTmp = Wildcards;
                 1 ->
                     AddTmp = case IPProto of
-                                 <<6>> -> [tcp_src];
-                                 <<17>> -> [udp_src];
+                                 <<16#6:8>> -> [tcp_src];
+                                 <<16#11:8>> -> [udp_src];
+                                 <<16#84:8>> -> [sctp_src];
                                  _ -> []
                              end,
                     WildcardsTmp = Wildcards ++ AddTmp
@@ -413,8 +434,9 @@ decode_match(Binary) ->
                     Wildcards2 = WildcardsTmp;
                 1 ->
                     Add2 = case IPProto of
-                               <<6>> -> [tcp_dst];
-                               <<17>> -> [udp_dst];
+                               <<16#6:8>> -> [tcp_dst];
+                               <<16#11:8>> -> [udp_dst];
+                               <<16#84:8>> -> [sctp_dst];
                                _ -> []
                            end,
                     Wildcards2 = WildcardsTmp ++ Add2
@@ -462,10 +484,14 @@ decode_match(Binary) ->
                       mpls_label ->
                           F#ofp_field{value = MPLSLabel};
                       mpls_tc ->
-                          F#ofp_field{value = MPLSTc}
+                          F#ofp_field{value = MPLSTc};
+                      metadata ->
+                          F#ofp_field{value = Metadata,
+                                      has_mask = true,
+                                      mask = MetadataMask}
                   end
               end || FType <- Wildcards2 ++ [ipv4_src, ipv4_dst,
-                                            eth_src, eth_dst]],
+                                             eth_src, eth_dst, metadata]],
     #ofp_match{type = Type, oxm_fields = Fields}.
 
 %% @doc Decode instructions
@@ -482,8 +508,7 @@ decode_instructions(Binary, Instructions) ->
     Type = ofp_v2_map:instruction_type(TypeInt),
     case Type of
         goto_table ->
-            <<TableInt:8, 0:24, Rest/bytes>> = Data,
-            Table = ofp_v2_map:decode_table_id(TableInt),
+            <<Table:8, 0:24, Rest/bytes>> = Data,
             Instruction = #ofp_instruction_goto_table{table_id = Table};
         write_metadata ->
             <<0:32, Metadata:8/bytes, MetaMask:8/bytes,
@@ -666,7 +691,25 @@ decode_body(get_config_reply, Binary) ->
 decode_body(set_config, Binary) ->
     <<FlagsBin:2/bytes, Miss:16>> = Binary,
     Flags = binary_to_flags(configuration, FlagsBin),
-    #ofp_set_config{flags = Flags, miss_send_len = Miss}.
+    #ofp_set_config{flags = Flags, miss_send_len = Miss};
+decode_body(flow_mod, Binary) ->
+    <<Cookie:8/bytes, CookieMask:8/bytes, TableInt:8, CommandInt:8,
+      Idle:16, Hard:16, Priority:16, BufferInt:32, OutPortInt:32,
+      OutGroupInt:32, FlagsBin:2/bytes, 0:16, MatchBin:?MATCH_SIZE/bytes,
+      InstrBin/bytes>> = Binary,
+    Table = ofp_v3_map:decode_table_id(TableInt),
+    Buffer = ofp_v3_map:decode_buffer_id(BufferInt),
+    Command = ofp_v3_map:flow_command(CommandInt),
+    OutPort = ofp_v3_map:decode_port_no(OutPortInt),
+    OutGroup = ofp_v3_map:decode_group_id(OutGroupInt),
+    Flags = binary_to_flags(flow_flag, FlagsBin),
+    Match = decode_match(MatchBin),
+    Instructions = decode_instructions(InstrBin),
+    #ofp_flow_mod{cookie = Cookie, cookie_mask = CookieMask,
+                  table_id = Table, command = Command, idle_timeout = Idle,
+                  hard_timeout = Hard, priority = Priority, buffer_id = Buffer,
+                  out_port = OutPort, out_group = OutGroup, flags = Flags,
+                  match = Match, instructions = Instructions}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions

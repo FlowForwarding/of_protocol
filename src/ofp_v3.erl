@@ -135,8 +135,7 @@ encode_struct(#ofp_field{class = Class, field = Field, has_mask = HasMask,
 encode_struct(#ofp_instruction_goto_table{table_id = Table}) ->
     Type = ofp_v3_map:instruction_type(goto_table),
     Length = ?INSTRUCTION_GOTO_TABLE_SIZE,
-    TableInt = ofp_v3_map:encode_table_id(Table),
-    <<Type:16, Length:16, TableInt:8, 0:24>>;
+    <<Type:16, Length:16, Table:8, 0:24>>;
 encode_struct(#ofp_instruction_write_metadata{metadata = Metadata,
                                               metadata_mask = MetaMask}) ->
     Type = ofp_v3_map:instruction_type(write_metadata),
@@ -805,8 +804,7 @@ decode_instructions(Binary, Instructions) ->
     Type = ofp_v3_map:instruction_type(TypeInt),
     case Type of
         goto_table ->
-            <<TableInt:8, 0:24, Rest/bytes>> = Data,
-            Table = ofp_v3_map:decode_table_id(TableInt),
+            <<Table:8, 0:24, Rest/bytes>> = Data,
             Instruction = #ofp_instruction_goto_table{table_id = Table};
         write_metadata ->
             <<0:32, Metadata:8/bytes, MetaMask:8/bytes,

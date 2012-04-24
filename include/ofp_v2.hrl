@@ -183,6 +183,19 @@
 -define(OFPC_FRAG_REASM, 1).
 -define(OFPC_INVALID_TTL_TO_CONTROLLER, 2).
 
+%%% Modify-State ---------------------------------------------------------------
+
+%% Flow mod commands
+-define(OFPFC_ADD, 0).
+-define(OFPFC_MODIFY, 1).
+-define(OFPFC_MODIFY_STRICT, 2).
+-define(OFPFC_DELETE, 3).
+-define(OFPFC_DELETE_STRICT, 4).
+
+%% Flow mod flags
+-define(OFPFF_SEND_FLOW_REM, 0).
+-define(OFPFF_CHECK_OVERLAP, 1).
+
 %%% Rest -----------------------------------------------------------------------
 
 %% Controller max length; Buffer ids
@@ -200,6 +213,7 @@
 -define(GET_CONFIG_REQUEST_SIZE, 8).
 -define(GET_CONFIG_REPLY_SIZE, 12).
 -define(SET_CONFIG_SIZE, 12).
+-define(FLOW_MOD_SIZE, 136).
 -define(DESC_STATS_REQUEST_SIZE, 16).
 -define(DESC_STATS_REPLY_SIZE, 1072).
 

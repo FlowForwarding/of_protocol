@@ -25,7 +25,9 @@
          action_set_type/1]).
 -export([capability/1]).
 -export([configuration/1]).
--export([encode_buffer_id/1,
+-export([flow_command/1,
+         flow_flag/1,
+         encode_buffer_id/1,
          decode_buffer_id/1]).
 
 -include("of_protocol.hrl").
@@ -201,6 +203,8 @@ flow_wildcard(tcp_src)                    -> ?OFPFW_TP_SRC;
 flow_wildcard(tcp_dst)                    -> ?OFPFW_TP_DST;
 flow_wildcard(udp_src)                    -> ?OFPFW_TP_SRC;
 flow_wildcard(udp_dst)                    -> ?OFPFW_TP_DST;
+flow_wildcard(sctp_src)                   -> ?OFPFW_TP_SRC;
+flow_wildcard(sctp_dst)                   -> ?OFPFW_TP_DST;
 flow_wildcard(mpls_label)                 -> ?OFPFW_MPLS_LABEL;
 flow_wildcard(?OFPFW_MPLS_LABEL)          -> mpls_label;
 flow_wildcard(mpls_tc)                    -> ?OFPFW_MPLS_TC;
@@ -336,7 +340,27 @@ configuration(?OFPC_INVALID_TTL_TO_CONTROLLER) -> invalid_ttl_to_controller;
 configuration(Type) when is_atom(Type)         -> throw({bad_type, Type});
 configuration(Type) when is_integer(Type)      -> throw({bad_value, Type}).
 
-%%% Rest -----------------------------------------------------------------------
+%%% Modify-State ---------------------------------------------------------------
+
+flow_command(add)                        -> ?OFPFC_ADD;
+flow_command(?OFPFC_ADD)                 -> add;
+flow_command(modify)                     -> ?OFPFC_MODIFY;
+flow_command(?OFPFC_MODIFY)              -> modify;
+flow_command(modify_strict)              -> ?OFPFC_MODIFY_STRICT;
+flow_command(?OFPFC_MODIFY_STRICT)       -> modify_strict;
+flow_command(delete)                     -> ?OFPFC_DELETE;
+flow_command(?OFPFC_DELETE)              -> delete;
+flow_command(delete_strict)              -> ?OFPFC_DELETE_STRICT;
+flow_command(?OFPFC_DELETE_STRICT)       -> delete_strict;
+flow_command(Type) when is_atom(Type)    -> throw({bad_type, Type});
+flow_command(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+flow_flag(send_flow_rem)              -> ?OFPFF_SEND_FLOW_REM;
+flow_flag(?OFPFF_SEND_FLOW_REM)       -> send_flow_rem;
+flow_flag(check_overlap)              -> ?OFPFF_CHECK_OVERLAP;
+flow_flag(?OFPFF_CHECK_OVERLAP)       -> check_overlap;
+flow_flag(Type) when is_atom(Type)    -> throw({bad_type, Type});
+flow_flag(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 encode_buffer_id(no_buffer)                -> ?OFPCML_NO_BUFFER;
 encode_buffer_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
