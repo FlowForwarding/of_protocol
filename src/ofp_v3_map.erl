@@ -25,6 +25,8 @@
          field_type/2]).
 -export([instruction_type/1]).
 -export([action_type/1]).
+-export([flow_command/1,
+         flow_flag/1]).
 -export([error_type/1,
          hello_failed/1,
          bad_request/1,
@@ -44,8 +46,6 @@
          removed_reason/1,
          port_reason/1,
          table_config/1,
-         flow_command/1,
-         flow_flag/1,
          group_type/1,
          group_command/1,
          controller_role/1,
@@ -406,6 +406,30 @@ configuration(?OFPC_INVALID_TTL_TO_CONTROLLER) -> invalid_ttl_to_controller;
 configuration(Type) when is_atom(Type)         -> throw({bad_type, Type});
 configuration(Type) when is_integer(Type)      -> throw({bad_value, Type}).
 
+%%% Modify-State ---------------------------------------------------------------
+
+flow_command(add)                        -> ?OFPFC_ADD;
+flow_command(?OFPFC_ADD)                 -> add;
+flow_command(modify)                     -> ?OFPFC_MODIFY;
+flow_command(?OFPFC_MODIFY)              -> modify;
+flow_command(modify_strict)              -> ?OFPFC_MODIFY_STRICT;
+flow_command(?OFPFC_MODIFY_STRICT)       -> modify_strict;
+flow_command(delete)                     -> ?OFPFC_DELETE;
+flow_command(?OFPFC_DELETE)              -> delete;
+flow_command(delete_strict)              -> ?OFPFC_DELETE_STRICT;
+flow_command(?OFPFC_DELETE_STRICT)       -> delete_strict;
+flow_command(Type) when is_atom(Type)    -> throw({bad_type, Type});
+flow_command(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+flow_flag(send_flow_rem)              -> ?OFPFF_SEND_FLOW_REM;
+flow_flag(?OFPFF_SEND_FLOW_REM)       -> send_flow_rem;
+flow_flag(check_overlap)              -> ?OFPFF_CHECK_OVERLAP;
+flow_flag(?OFPFF_CHECK_OVERLAP)       -> check_overlap;
+flow_flag(reset_counts)               -> ?OFPFF_RESET_COUNTS;
+flow_flag(?OFPFF_RESET_COUNTS)        -> reset_counts;
+flow_flag(Type) when is_atom(Type)    -> throw({bad_type, Type});
+flow_flag(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
 %%% Rest -----------------------------------------------------------------------
 
 error_type(hello_failed)                -> ?OFPET_HELLO_FAILED;
@@ -692,28 +716,6 @@ table_config(drop)                       -> ?OFPTC_TABLE_MISS_DROP;
 table_config(?OFPTC_TABLE_MISS_DROP)     -> drop;
 table_config(Type) when is_atom(Type)    -> throw({bad_type, Type});
 table_config(Type) when is_integer(Type) -> throw({bad_value, Type}).
-
-flow_command(add)                        -> ?OFPFC_ADD;
-flow_command(?OFPFC_ADD)                 -> add;
-flow_command(modify)                     -> ?OFPFC_MODIFY;
-flow_command(?OFPFC_MODIFY)              -> modify;
-flow_command(modify_strict)              -> ?OFPFC_MODIFY_STRICT;
-flow_command(?OFPFC_MODIFY_STRICT)       -> modify_strict;
-flow_command(delete)                     -> ?OFPFC_DELETE;
-flow_command(?OFPFC_DELETE)              -> delete;
-flow_command(delete_strict)              -> ?OFPFC_DELETE_STRICT;
-flow_command(?OFPFC_DELETE_STRICT)       -> delete_strict;
-flow_command(Type) when is_atom(Type)    -> throw({bad_type, Type});
-flow_command(Type) when is_integer(Type) -> throw({bad_value, Type}).
-
-flow_flag(send_flow_rem)              -> ?OFPFF_SEND_FLOW_REM;
-flow_flag(?OFPFF_SEND_FLOW_REM)       -> send_flow_rem;
-flow_flag(check_overlap)              -> ?OFPFF_CHECK_OVERLAP;
-flow_flag(?OFPFF_CHECK_OVERLAP)       -> check_overlap;
-flow_flag(reset_counts)               -> ?OFPFF_RESET_COUNTS;
-flow_flag(?OFPFF_RESET_COUNTS)        -> reset_counts;
-flow_flag(Type) when is_atom(Type)    -> throw({bad_type, Type});
-flow_flag(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 group_command(add)                        -> ?OFPGC_ADD;
 group_command(?OFPGC_ADD)                 -> add;

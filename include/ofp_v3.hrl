@@ -208,16 +208,7 @@
 -define(OFPC_FRAG_REASM, 1).
 -define(OFPC_INVALID_TTL_TO_CONTROLLER, 2).
 
-%%% Rest -----------------------------------------------------------------------
-
-%% Table ids
--define(OFPTT_MAX, 16#fe).
--define(OFPTT_ALL, 16#ff).
-
-%% Table config
--define(OFPTC_TABLE_MISS_CONTINUE, 0).
--define(OFPTC_TABLE_MISS_DROP, 1).
--define(OFPTC_TABLE_MISS_MASK, 3).
+%%% Modify-State ---------------------------------------------------------------
 
 %% Flow mod commands
 -define(OFPFC_ADD, 0).
@@ -230,6 +221,17 @@
 -define(OFPFF_SEND_FLOW_REM, 0).
 -define(OFPFF_CHECK_OVERLAP, 1).
 -define(OFPFF_RESET_COUNTS, 2).
+
+%%% Rest -----------------------------------------------------------------------
+
+%% Table ids
+-define(OFPTT_MAX, 16#fe).
+-define(OFPTT_ALL, 16#ff).
+
+%% Table config
+-define(OFPTC_TABLE_MISS_CONTINUE, 0).
+-define(OFPTC_TABLE_MISS_DROP, 1).
+-define(OFPTC_TABLE_MISS_MASK, 3).
 
 %% Group mod commands
 -define(OFPGC_ADD, 0).

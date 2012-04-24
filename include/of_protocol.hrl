@@ -517,7 +517,8 @@
                               | delete_strict.
 -type ofp_flow_mod_flag() :: send_flow_rem
                            | check_overlap
-                           | reset_counts.
+                           | reset_counts
+                           | emerg.        %% OFP 1.0
 
 %% Flow mod
 -record(ofp_flow_mod, {
@@ -532,7 +533,7 @@
           out_port :: ofp_port_no(),
           out_group :: ofp_group_id(),
           flags = [] :: [ofp_flow_mod_flag()],
-          actions = [] :: [ofp_action()],
+          %% actions = [] :: [ofp_action()],
           match :: ofp_match(),
           instructions = [] :: [ofp_instruction()]
          }).

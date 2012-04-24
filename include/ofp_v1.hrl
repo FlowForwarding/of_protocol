@@ -148,7 +148,24 @@
 -define(OFPC_FRAG_DROP, 0).
 -define(OFPC_FRAG_REASM, 1).
 
+%%% Modify-State ---------------------------------------------------------------
+
+%% Flow mod commands
+-define(OFPFC_ADD, 0).
+-define(OFPFC_MODIFY, 1).
+-define(OFPFC_MODIFY_STRICT, 2).
+-define(OFPFC_DELETE, 3).
+-define(OFPFC_DELETE_STRICT, 4).
+
+%% Flow mod flags
+-define(OFPFF_SEND_FLOW_REM, 0).
+-define(OFPFF_CHECK_OVERLAP, 1).
+-define(OFPFF_EMERG, 2).
+
 %%% Rest -----------------------------------------------------------------------
+
+%% Controller max length; Buffer ids
+-define(OFPCML_NO_BUFFER, 16#ffff).
 
 %% Stats types
 -define(OFPST_DESC, 0).

@@ -23,6 +23,10 @@
          action_set_type/1]).
 -export([capability/1]).
 -export([configuration/1]).
+-export([flow_command/1,
+         flow_flag/1,
+         encode_buffer_id/1,
+         decode_buffer_id/1]).
 -export([stats_type/1]).
 
 -include("of_protocol.hrl").
@@ -215,26 +219,27 @@ action_type(?OFPAT_VENDOR_BIT)          -> experimenter;
 action_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
 action_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
-action_set_type(vlan_vid) -> ?OFPAT_SET_VLAN_VID;
-action_set_type(?OFPAT_SET_VLAN_VID) -> vlan_vid;
-action_set_type(vlan_pcp) -> ?OFPAT_SET_VLAN_PCP;
-action_set_type(?OFPAT_SET_VLAN_PCP) -> vlan_pcp;
-action_set_type(eth_src) -> ?OFPAT_SET_DL_SRC;
-action_set_type(?OFPAT_SET_DL_SRC) -> eth_src;
-action_set_type(eth_dst) -> ?OFPAT_SET_DL_DST;
-action_set_type(?OFPAT_SET_DL_DST) -> eth_dst;
-action_set_type(ipv4_src) -> ?OFPAT_SET_NW_SRC;
-action_set_type(?OFPAT_SET_NW_SRC) -> ipv4_src;
-action_set_type(ipv4_dst) -> ?OFPAT_SET_NW_DST;
-action_set_type(?OFPAT_SET_NW_DST) -> ipv4_dst;
-action_set_type(ip_dscp) -> ?OFPAT_SET_NW_TOS;
-action_set_type(?OFPAT_SET_NW_TOS) -> ip_dscp;
-action_set_type(tcp_src) -> ?OFPAT_SET_TP_SRC;
-action_set_type(tcp_dst) -> ?OFPAT_SET_TP_DST;
-action_set_type(udp_src) -> ?OFPAT_SET_TP_SRC;
-action_set_type(udp_dst) -> ?OFPAT_SET_TP_DST;
-action_set_type(?OFPAT_SET_TP_SRC) -> tp_src;
-action_set_type(?OFPAT_SET_TP_DST) -> tp_dst;
+action_set_type(vlan_vid)                   -> ?OFPAT_SET_VLAN_VID;
+action_set_type(?OFPAT_SET_VLAN_VID)        -> vlan_vid;
+action_set_type(vlan_pcp)                   -> ?OFPAT_SET_VLAN_PCP;
+action_set_type(?OFPAT_SET_VLAN_PCP)        -> vlan_pcp;
+action_set_type(eth_src)                    -> ?OFPAT_SET_DL_SRC;
+action_set_type(?OFPAT_SET_DL_SRC)          -> eth_src;
+action_set_type(eth_dst)                    -> ?OFPAT_SET_DL_DST;
+action_set_type(?OFPAT_SET_DL_DST)          -> eth_dst;
+action_set_type(ipv4_src)                   -> ?OFPAT_SET_NW_SRC;
+action_set_type(?OFPAT_SET_NW_SRC)          -> ipv4_src;
+action_set_type(ipv4_dst)                   -> ?OFPAT_SET_NW_DST;
+action_set_type(?OFPAT_SET_NW_DST)          -> ipv4_dst;
+action_set_type(ip_dscp)                    -> ?OFPAT_SET_NW_TOS;
+action_set_type(?OFPAT_SET_NW_TOS)          -> ip_dscp;
+action_set_type(tcp_src)                    -> ?OFPAT_SET_TP_SRC;
+action_set_type(tcp_dst)                    -> ?OFPAT_SET_TP_DST;
+action_set_type(udp_src)                    -> ?OFPAT_SET_TP_SRC;
+action_set_type(udp_dst)                    -> ?OFPAT_SET_TP_DST;
+action_set_type(?OFPAT_SET_TP_SRC)          -> tp_src;
+action_set_type(?OFPAT_SET_TP_DST)          -> tp_dst;
+action_set_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
 action_set_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 %%%-----------------------------------------------------------------------------
@@ -268,6 +273,37 @@ configuration(frag_reasm)                      -> ?OFPC_FRAG_REASM;
 configuration(?OFPC_FRAG_REASM)                -> frag_reasm;
 configuration(Type) when is_atom(Type)         -> throw({bad_type, Type});
 configuration(Type) when is_integer(Type)      -> throw({bad_value, Type}).
+
+%%% Modify-State ---------------------------------------------------------------
+
+flow_command(add)                        -> ?OFPFC_ADD;
+flow_command(?OFPFC_ADD)                 -> add;
+flow_command(modify)                     -> ?OFPFC_MODIFY;
+flow_command(?OFPFC_MODIFY)              -> modify;
+flow_command(modify_strict)              -> ?OFPFC_MODIFY_STRICT;
+flow_command(?OFPFC_MODIFY_STRICT)       -> modify_strict;
+flow_command(delete)                     -> ?OFPFC_DELETE;
+flow_command(?OFPFC_DELETE)              -> delete;
+flow_command(delete_strict)              -> ?OFPFC_DELETE_STRICT;
+flow_command(?OFPFC_DELETE_STRICT)       -> delete_strict;
+flow_command(Type) when is_atom(Type)    -> throw({bad_type, Type});
+flow_command(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+flow_flag(send_flow_rem)              -> ?OFPFF_SEND_FLOW_REM;
+flow_flag(?OFPFF_SEND_FLOW_REM)       -> send_flow_rem;
+flow_flag(check_overlap)              -> ?OFPFF_CHECK_OVERLAP;
+flow_flag(?OFPFF_CHECK_OVERLAP)       -> check_overlap;
+flow_flag(emerg)                      -> ?OFPFF_EMERG;
+flow_flag(?OFPFF_EMERG)               -> emerg;
+flow_flag(Type) when is_atom(Type)    -> throw({bad_type, Type});
+flow_flag(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+encode_buffer_id(no_buffer)                -> ?OFPCML_NO_BUFFER;
+encode_buffer_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
+encode_buffer_id(Int) when is_integer(Int) -> Int.
+
+decode_buffer_id(?OFPCML_NO_BUFFER)        -> no_buffer;
+decode_buffer_id(Int) when is_integer(Int) -> Int.
 
 %%%-----------------------------------------------------------------------------
 %%% Helper functions

@@ -134,12 +134,10 @@ encode_struct(#ofp_action_output{port = Port, max_len = MaxLen}) ->
     PortInt = ofp_v1_map:encode_port_no(Port),
     MaxLenInt = ofp_v1_map:encode_buffer_id(MaxLen),
     <<Type:16, Length:16, PortInt:16, MaxLenInt:16>>;
-encode_struct(#ofp_action_set_queue{queue_id = Queue}) ->
+encode_struct(#ofp_action_set_queue{port = Port, queue_id = Queue}) ->
     Type = ofp_v1_map:action_type(set_queue),
     QueueInt = ofp_v1_map:encode_queue_id(Queue),
     Length = ?ACTION_SET_QUEUE_SIZE,
-    %% FIXME: Fill in valid port value
-    Port = 0,
     <<Type:16, Length:16, Port:16, 0:48, QueueInt:32>>;
 encode_struct(#ofp_action_pop_vlan{}) ->
     Type = ofp_v1_map:action_type(pop_vlan),
@@ -204,8 +202,9 @@ encode_actions(Actions) ->
 
 encode_actions([], Actions) ->
     Actions;
-encode_actions([_Action | Rest], Actions) ->
-    encode_actions(Rest, Actions).
+encode_actions([Action | Rest], Actions) ->
+    ActionBin = encode_struct(Action),
+    encode_actions(Rest, <<Actions/bytes, ActionBin/bytes>>).
 
 %%% Messages -------------------------------------------------------------------
 
@@ -221,7 +220,7 @@ encode_body(#ofp_features_request{}) ->
 encode_body(#ofp_features_reply{datapath_mac = DataPathMac,
                                 datapath_id = DataPathID, n_buffers = NBuffers,
                                 n_tables = NTables, capabilities = Capabilities,
-                                actions = Actions, ports = Ports}) ->
+                                actions = _Actions, ports = Ports}) ->
     PortsBin = encode_list(Ports),
     CapaBin = flags_to_binary(capability, Capabilities, 4),
     %% FIXME: Encode actions
@@ -231,7 +230,7 @@ encode_body(#ofp_features_reply{datapath_mac = DataPathMac,
 encode_body(#ofp_desc_stats_reply{flags = Flags, mfr_desc = MFR,
                                   hw_desc = HW, sw_desc = SW,
                                   serial_num = Serial, dp_desc = DP}) ->
-    TypeInt = ofp_v3_map:stats_type(desc),
+    TypeInt = ofp_v1_map:stats_type(desc),
     FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
     MFRPad = (?DESC_STR_LEN - size(MFR)) * 8,
     HWPad = (?DESC_STR_LEN - size(HW)) * 8,
@@ -249,7 +248,29 @@ encode_body(#ofp_get_config_reply{flags = Flags, miss_send_len = Miss}) ->
     <<FlagsBin:2/bytes, Miss:16>>;
 encode_body(#ofp_set_config{flags = Flags, miss_send_len = Miss}) ->
     FlagsBin = flags_to_binary(configuration, Flags, 2),
-    <<FlagsBin:2/bytes, Miss:16>>.
+    <<FlagsBin:2/bytes, Miss:16>>;
+encode_body(#ofp_flow_mod{match = Match, cookie = Cookie, command = Command,
+                          idle_timeout = Idle, hard_timeout = Hard,
+                          priority = Priority, buffer_id = Buffer,
+                          out_port = OutPort,  flags = Flags,
+                          instructions = Instructions}) ->
+    BufferInt = ofp_v1_map:encode_buffer_id(Buffer),
+    CommandInt = ofp_v1_map:flow_command(Command),
+    OutPortInt = ofp_v1_map:encode_port_no(OutPort),
+    FlagsBin = flags_to_binary(flow_flag, Flags, 2),
+    MatchBin = encode_struct(Match),
+    GetActions = fun(#ofp_instruction_write_actions{actions = Actions}, []) ->
+                         Actions;
+                    (#ofp_instruction_write_actions{}, Actions) ->
+                         Actions;
+                    (_, Actions) ->
+                         Actions
+                 end,
+    Actions = lists:foldl(GetActions, [], Instructions),
+    ActionsBin = encode_actions(Actions),
+    <<MatchBin/bytes, Cookie:8/bytes, CommandInt:16, Idle:16, Hard:16,
+      Priority:16, BufferInt:32, OutPortInt:16, FlagsBin:2/bytes,
+      ActionsBin/bytes>>.
 
 %%%-----------------------------------------------------------------------------
 %%% Decode functions
@@ -352,7 +373,7 @@ decode_match(Binary) ->
             end
     end,
     Fields = [begin
-                  F = #ofp_field{field = Type},
+                  F = #ofp_field{class = openflow_basic, field = Type},
                   case Type of
                       in_port ->
                           F#ofp_field{value = InPort};
@@ -410,8 +431,8 @@ decode_actions(Binary, Actions) ->
             MaxLen = ofp_v1_map:decode_buffer_id(MaxLenInt),
             Action = [#ofp_action_output{port = Port, max_len = MaxLen}];
         set_queue ->
-            <<_Port:16, _:48, QueueInt:32, Rest/bytes>> = Data,
-            Action = [#ofp_action_set_queue{queue_id = QueueInt}];
+            <<Port:16, _:48, QueueInt:32, Rest/bytes>> = Data,
+            Action = [#ofp_action_set_queue{port = Port, queue_id = QueueInt}];
         pop_vlan ->
             <<_:32, Rest/bytes>> = Data,
             Action = [#ofp_action_pop_vlan{}];
@@ -422,46 +443,68 @@ decode_actions(Binary, Actions) ->
             case SetType = ofp_v1_map:action_set_type(TypeInt) of
                 tp_src ->
                     <<Value:16, _:16, Rest/bytes>> = Data,
-                    Action = [#ofp_field{class = openflow_basic,
-                                         field = tcp_src, value = Value}
-                              %% #ofp_field{class = openflow_basic,
-                              %%            field = udp_src, value = Value}
+                    Action = [#ofp_action_set_field{
+                                 field = #ofp_field{class = openflow_basic,
+                                                    field = tcp_src,
+                                                    value = Value}}
+                              %% #ofp_action_set_field{
+                              %%    field = #ofp_field{class = openflow_basic,
+                              %%                       field = udp_src,
+                              %%                       value = Value}}
                              ];
                 tp_dst ->
                     <<Value:16, _:16, Rest/bytes>> = Data,
-                    Action = [#ofp_field{class = openflow_basic,
-                                         field = tcp_src, value = Value}
-                              %% #ofp_field{class = openflow_basic,
-                              %%            field = udp_src, value = Value}
+                    Action = [#ofp_action_set_field{
+                                 field = #ofp_field{class = openflow_basic,
+                                                    field = tcp_dst,
+                                                    value = Value}}
+                              %% #ofp_action_set_field{
+                              %%    field = #ofp_field{class = openflow_basic,
+                              %%                       field = udp_dst,
+                              %%                       value = Value}}
                              ];
                 vlan_pcp ->
                     <<Value:8, _:24, Rest/bytes>> = Data,
-                    Action = [#ofp_field{class = openflow_basic,
-                                         field = SetType, value = Value}];
+                    Action = [#ofp_action_set_field{
+                                 field = #ofp_field{class = openflow_basic,
+                                                    field = SetType,
+                                                    value = Value}}];
                 ip_dscp ->
                     <<Value:8, _:24, Rest/bytes>> = Data,
-                    Action = [#ofp_field{class = openflow_basic,
-                                         field = SetType, value = Value}];
+                    Action = [#ofp_action_set_field{
+                                 field = #ofp_field{class = openflow_basic,
+                                                    field = SetType,
+                                                    value = Value}}];
                 vlan_vid ->
                     <<Value:16, _:16, Rest/bytes>> = Data,
-                    Action = [#ofp_field{class = openflow_basic,
-                                         field = SetType, value = Value}];
+                    Action = [#ofp_action_set_field{
+                                 field = #ofp_field{class = openflow_basic,
+                                                    field = SetType,
+                                                    value = Value}}];
                 ipv4_src ->
                     <<Value:32, Rest/bytes>> = Data,
-                    Action = [#ofp_field{class = openflow_basic,
-                                         field = SetType, value = Value}];
+                    Action = [#ofp_action_set_field{
+                                 field = #ofp_field{class = openflow_basic,
+                                                    field = SetType,
+                                                    value = Value}}];
                 ipv4_dst ->
                     <<Value:32, Rest/bytes>> = Data,
-                    Action = [#ofp_field{class = openflow_basic,
-                                         field = SetType, value = Value}];
+                    Action = [#ofp_action_set_field{
+                                 field = #ofp_field{class = openflow_basic,
+                                                    field = SetType,
+                                                    value = Value}}];
                 eth_src ->
                     <<Value:48, _:48, Rest/bytes>> = Data,
-                    Action = [#ofp_field{class = openflow_basic,
-                                         field = SetType, value = Value}];
+                    Action = [#ofp_action_set_field{
+                                 field = #ofp_field{class = openflow_basic,
+                                                    field = SetType,
+                                                    value = Value}}];
                 eth_dst ->
                     <<Value:48, _:48, Rest/bytes>> = Data,
-                    Action = [#ofp_field{class = openflow_basic,
-                                         field = SetType, value = Value}]
+                    Action = [#ofp_action_set_field{
+                                 field = #ofp_field{class = openflow_basic,
+                                                    field = SetType,
+                                                    value = Value}}]
             end
     end,
     decode_actions(Rest, Action ++ Actions).
@@ -502,6 +545,22 @@ decode_body(set_config, Binary) ->
     <<FlagsBin:2/bytes, Miss:16>> = Binary,
     Flags = binary_to_flags(configuration, FlagsBin),
     #ofp_set_config{flags = Flags, miss_send_len = Miss};
+decode_body(flow_mod, Binary) ->
+    <<MatchBin:40/bytes, Cookie:8/bytes, CommandInt:16, Idle:16, Hard:16,
+      Priority:16, BufferInt:32, OutPortInt:16, FlagsBin:2/bytes,
+      ActionsBin/bytes>> = Binary,
+    Buffer = ofp_v1_map:decode_buffer_id(BufferInt),
+    Command = ofp_v1_map:flow_command(CommandInt),
+    OutPort = ofp_v1_map:decode_port_no(OutPortInt),
+    Flags = binary_to_flags(flow_flag, FlagsBin),
+    Match = decode_match(MatchBin),
+    Actions = decode_actions(ActionsBin),
+    Instructions = [#ofp_instruction_write_actions{actions = Actions}],
+    #ofp_flow_mod{cookie = Cookie, cookie_mask = <<0:64>>, table_id = 0,
+                  command = Command, idle_timeout = Idle, hard_timeout = Hard,
+                  priority = Priority, buffer_id = Buffer, out_port = OutPort,
+                  out_group = 16#fffffffe, flags = Flags, match = Match,
+                  instructions = Instructions};
 decode_body(stats_request, Binary) ->
     <<TypeInt:16, FlagsBin:2/bytes,
       _Data/bytes>> = Binary,
