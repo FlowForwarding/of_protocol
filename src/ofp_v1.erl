@@ -559,7 +559,7 @@ decode_body(flow_mod, Binary) ->
                        [] ->
                            [];
                        _ ->
-                           [#ofp_instruction_write_actions{actions = Actions}],
+                           [#ofp_instruction_write_actions{actions = Actions}]
                    end,
     #ofp_flow_mod{cookie = Cookie, cookie_mask = <<0:64>>, table_id = 0,
                   command = Command, idle_timeout = Idle, hard_timeout = Hard,
