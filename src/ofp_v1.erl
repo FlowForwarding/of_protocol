@@ -555,7 +555,12 @@ decode_body(flow_mod, Binary) ->
     Flags = binary_to_flags(flow_flag, FlagsBin),
     Match = decode_match(MatchBin),
     Actions = decode_actions(ActionsBin),
-    Instructions = [#ofp_instruction_write_actions{actions = Actions}],
+    Instructions = case Actions of
+                       [] ->
+                           [];
+                       _ ->
+                           [#ofp_instruction_write_actions{actions = Actions}],
+                   end,
     #ofp_flow_mod{cookie = Cookie, cookie_mask = <<0:64>>, table_id = 0,
                   command = Command, idle_timeout = Idle, hard_timeout = Hard,
                   priority = Priority, buffer_id = Buffer, out_port = OutPort,
