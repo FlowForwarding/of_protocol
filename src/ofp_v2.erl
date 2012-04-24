@@ -291,6 +291,10 @@ encode_actions(_) ->
 -spec encode_body(ofp_message()) -> binary().
 encode_body(#ofp_hello{}) ->
     <<>>;
+encode_body(#ofp_echo_request{data = Data}) ->
+    Data;
+encode_body(#ofp_echo_reply{data = Data}) ->
+    Data;
 encode_body(#ofp_features_request{}) ->
     <<>>;
 encode_body(#ofp_features_reply{datapath_mac = DataPathMac,
@@ -633,6 +637,10 @@ decode_actions(Binary, Actions) ->
 -spec decode_body(atom(), binary()) -> ofp_message().
 decode_body(hello, _) ->
     #ofp_hello{};
+decode_body(echo_request, Data) ->
+    #ofp_echo_request{data = Data};
+decode_body(echo_reply, Data) ->
+    #ofp_echo_reply{data = Data};
 decode_body(features_request, _) ->
     #ofp_features_request{};
 decode_body(features_reply, Binary) ->
