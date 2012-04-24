@@ -116,9 +116,10 @@ encode_struct(#ofp_match{type = Type, oxm_fields = Fields}) ->
     SrcMask = encode_field_mask(Fields, ipv4_src, 32),
     DstMask = encode_field_mask(Fields, ipv4_dst, 32),
     {Wildcards, _} = lists:unzip(FieldList),
-    WildcardsBin = flags_to_binary(flow_wildcard,
-                                   Wildcards -- [ipv4_src, ipv4_dst,
-                                                 eth_src, eth_dst], 4),
+    <<WildcardsInt:32>> = flags_to_binary(flow_wildcard,
+                                          Wildcards -- [ipv4_src, ipv4_dst,
+                                                        eth_src, eth_dst], 4),
+    WildcardsBin = <<(bnot WildcardsInt):32>>,
     %% FIXME: Encode real metadata
     Metadata = <<(16#0):64>>,
     MetadataMask = <<(16#ffffffffffffffff):64>>,
@@ -390,7 +391,7 @@ decode_match(Binary) ->
     %% FIXME: Put decoded metadata in the right place
     Type = ofp_v2_map:match_type(TypeInt),
     Wildcards = binary_to_flags(flow_wildcard,
-                                <<(WildcardsInt band 16#ffffff3f):32>>),
+                                <<((bnot WildcardsInt) band 16#ffffff3f):32>>),
     case lists:member(ip_proto, Wildcards) of
         false ->
             Wildcards2 = Wildcards;

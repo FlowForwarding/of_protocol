@@ -121,7 +121,7 @@ encode_struct(#ofp_match{oxm_fields = Fields}) ->
     {Wildcards, _} = lists:unzip(FieldList),
     <<WildcardsInt:32>> = flags_to_binary(flow_wildcard,
                                           Wildcards -- [ipv4_src, ipv4_dst], 4),
-    WildcardsBin = <<(WildcardsInt bor (SrcMask bsl 8)
+    WildcardsBin = <<((bnot WildcardsInt) bor (SrcMask bsl 8)
                           bor (DstMask bsl 14)):32>>,
     <<WildcardsBin:4/bytes, InPort:2/bytes, EthSrc:6/bytes, EthDst:6/bytes,
       VlanVid:2/bytes, VlanPcp:1/bytes, 0:8, EthType:2/bytes, IPDscp:1/bytes,
@@ -343,7 +343,7 @@ decode_match(Binary) ->
       IPProto:1/bytes, 0:16, IPv4Src:4/bytes, IPv4Dst:4/bytes,
       TPSrc:2/bytes, TPDst:2/bytes>> = Binary,
     Wildcards = binary_to_flags(flow_wildcard,
-                                <<(WildcardsInt band 16#fff0003f):32>>),
+                                <<((bnot WildcardsInt) band 16#30003f):32>>),
     case lists:member(ip_proto, Wildcards) of
         false ->
             Wildcards2 = Wildcards;
