@@ -227,6 +227,10 @@ encode_body(#ofp_features_reply{datapath_mac = DataPathMac,
     ActionsBin = <<0:32>>,
     <<DataPathMac:6/bytes, DataPathID:16, NBuffers:32, NTables:8,
       0:24, CapaBin:4/bytes, ActionsBin:4/bytes, PortsBin/bytes>>;
+encode_body(#ofp_desc_stats_request{flags = Flags}) ->
+    TypeInt = ofp_v1_map:stats_type(desc),
+    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
+    <<TypeInt:16, FlagsBin:2/bytes>>;
 encode_body(#ofp_desc_stats_reply{flags = Flags, mfr_desc = MFR,
                                   hw_desc = HW, sw_desc = SW,
                                   serial_num = Serial, dp_desc = DP}) ->
@@ -241,6 +245,19 @@ encode_body(#ofp_desc_stats_reply{flags = Flags, mfr_desc = MFR,
       MFR/bytes, 0:MFRPad, HW/bytes, 0:HWPad,
       SW/bytes, 0:SWPad, Serial/bytes, 0:SerialPad,
       DP/bytes, 0:DPPad>>;
+encode_body(#ofp_flow_stats_request{flags = Flags, table_id = Table,
+                                    out_port = Port, match = Match}) ->
+    TypeInt = ofp_v1_map:stats_type(flow),
+    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
+    TableInt = ofp_v1_map:encode_table_id(Table),
+    PortInt = ofp_v1_map:encode_port_no(Port),
+    MatchBin = encode_struct(Match),
+    <<TypeInt:16, FlagsBin:2/bytes, MatchBin:?MATCH_SIZE/bytes,
+      TableInt:8, 0:8, PortInt:16>>;
+encode_body(#ofp_table_stats_request{flags = Flags}) ->
+    TypeInt = ofp_v1_map:stats_type(table),
+    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
+    <<TypeInt:16, FlagsBin:2/bytes>>;
 encode_body(#ofp_get_config_request{}) ->
     <<>>;
 encode_body(#ofp_get_config_reply{flags = Flags, miss_send_len = Miss}) ->
@@ -567,15 +584,23 @@ decode_body(flow_mod, Binary) ->
                   out_group = 16#fffffffe, flags = Flags, match = Match,
                   instructions = Instructions};
 decode_body(stats_request, Binary) ->
-    <<TypeInt:16, FlagsBin:2/bytes,
-      _Data/bytes>> = Binary,
+    <<TypeInt:16, FlagsBin:2/bytes, Data/bytes>> = Binary,
     Type = ofp_v1_map:stats_type(TypeInt),
     Flags = binary_to_flags(stats_request_flag, FlagsBin),
     case Type of
         desc ->
             #ofp_desc_stats_request{flags = Flags};
-        _ ->
-            undefined
+        flow ->
+            <<MatchBin:?MATCH_SIZE/bytes, TableInt:8, _:8, PortInt:16>> = Data,
+            Table = ofp_v1_map:decode_table_id(TableInt),
+            Port = ofp_v1_map:decode_port_no(PortInt),
+            Match = decode_match(MatchBin),
+            #ofp_flow_stats_request{flags = Flags, table_id = Table,
+                                    out_port = Port, out_group = 16#fffffffe,
+                                    cookie = <<0:64>>, cookie_mask = <<0:64>>,
+                                    match = Match};
+        table ->
+            #ofp_table_stats_request{flags = Flags}
     end.
 
 %%%-----------------------------------------------------------------------------

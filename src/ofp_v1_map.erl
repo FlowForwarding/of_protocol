@@ -27,7 +27,11 @@
          flow_flag/1,
          encode_buffer_id/1,
          decode_buffer_id/1]).
--export([stats_type/1]).
+-export([stats_type/1,
+         stats_request_flag/1,
+         stats_reply_flag/1,
+         encode_table_id/1,
+         decode_table_id/1]).
 
 -include("of_protocol.hrl").
 -include("ofp_v1.hrl").
@@ -305,13 +309,34 @@ encode_buffer_id(Int) when is_integer(Int) -> Int.
 decode_buffer_id(?OFPCML_NO_BUFFER)        -> no_buffer;
 decode_buffer_id(Int) when is_integer(Int) -> Int.
 
-%%%-----------------------------------------------------------------------------
-%%% Helper functions
-%%%-----------------------------------------------------------------------------
+%%% Read-State -----------------------------------------------------------------
 
 stats_type(desc)                       -> ?OFPST_DESC;
 stats_type(?OFPST_DESC)                -> desc;
+stats_type(flow)                       -> ?OFPST_FLOW;
+stats_type(?OFPST_FLOW)                -> flow;
+stats_type(table)                      -> ?OFPST_TABLE;
+stats_type(?OFPST_TABLE)               -> table;
 stats_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+stats_request_flag(Type) when is_atom(Type)    -> throw({bad_type, Type});
+stats_request_flag(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+stats_reply_flag(Type) when is_atom(Type)    -> throw({bad_type, Type});
+stats_reply_flag(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+%%% Rest -----------------------------------------------------------------------
+
+encode_table_id(all)                      -> ?OFPTT_ALL;
+encode_table_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
+encode_table_id(Int) when is_integer(Int) -> Int.
+
+decode_table_id(?OFPTT_ALL)               -> all;
+decode_table_id(Int) when is_integer(Int) -> Int.
+
+%%%-----------------------------------------------------------------------------
+%%% Helper functions
+%%%-----------------------------------------------------------------------------
 
 %% -spec get_experimenter_bit(atom()) -> integer().
 %% get_experimenter_bit(instruction_type) ->

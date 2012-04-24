@@ -162,13 +162,27 @@
 -define(OFPFF_CHECK_OVERLAP, 1).
 -define(OFPFF_EMERG, 2).
 
+%%% Read-State -----------------------------------------------------------------
+
+%% Stats types
+-define(OFPST_DESC, 0).
+-define(OFPST_FLOW, 1).
+-define(OFPST_TABLE, 3).
+
+%% Stats request flags - none yet defined
+%% -define(OFPSF_REQ_*)
+
+%% Stats reply flags
+-define(OFPSF_REPLY_MORE, 1).
+
 %%% Rest -----------------------------------------------------------------------
 
 %% Controller max length; Buffer ids
 -define(OFPCML_NO_BUFFER, 16#ffff).
 
-%% Stats types
--define(OFPST_DESC, 0).
+%% Table ids
+-define(OFPTT_MAX, 16#fe).
+-define(OFPTT_ALL, 16#ff).
 
 %%%-----------------------------------------------------------------------------
 %%% Sizes
@@ -184,6 +198,10 @@
 -define(FLOW_MOD_SIZE, 72).
 -define(DESC_STATS_REQUEST_SIZE, 12).
 -define(DESC_STATS_REPLY_SIZE, 1068).
+-define(FLOW_STATS_REQUEST_SIZE, 56).
+-define(FLOW_STATS_REPLY_SIZE, 12).
+-define(TABLE_STATS_REQUEST_SIZE, 12).
+-define(TABLE_STATS_REPLY_SIZE, 12).
 
 %% Structure sizes
 -define(PORT_SIZE, 48).
@@ -200,3 +218,5 @@
 -define(ACTION_SET_QUEUE_SIZE, 8).
 -define(ACTION_OUTPUT_SIZE, 8).
 -define(ACTION_EXPERIMENTER_SIZE, 8).
+-define(FLOW_STATS_SIZE, 88).
+-define(TABLE_STATS_SIZE, 64).
