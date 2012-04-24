@@ -323,11 +323,11 @@ encode_body(#ofp_flow_mod{cookie = Cookie, cookie_mask = CookieMask,
                           out_port = OutPort, out_group = OutGroup,
                           flags = Flags, match = Match,
                           instructions = Instructions}) ->
-    TableInt = ofp_v3_map:encode_table_id(Table),
-    BufferInt = ofp_v3_map:encode_buffer_id(Buffer),
-    CommandInt = ofp_v3_map:flow_command(Command),
-    OutPortInt = ofp_v3_map:encode_port_no(OutPort),
-    OutGroupInt = ofp_v3_map:encode_group_id(OutGroup),
+    TableInt = ofp_v2_map:encode_table_id(Table),
+    BufferInt = ofp_v2_map:encode_buffer_id(Buffer),
+    CommandInt = ofp_v2_map:flow_command(Command),
+    OutPortInt = ofp_v2_map:encode_port_no(OutPort),
+    OutGroupInt = ofp_v2_map:encode_group_id(OutGroup),
     FlagsBin = flags_to_binary(flow_flag, Flags, 2),
     MatchBin = encode_struct(Match),
     InstructionsBin = encode_list(Instructions),
@@ -697,11 +697,11 @@ decode_body(flow_mod, Binary) ->
       Idle:16, Hard:16, Priority:16, BufferInt:32, OutPortInt:32,
       OutGroupInt:32, FlagsBin:2/bytes, 0:16, MatchBin:?MATCH_SIZE/bytes,
       InstrBin/bytes>> = Binary,
-    Table = ofp_v3_map:decode_table_id(TableInt),
-    Buffer = ofp_v3_map:decode_buffer_id(BufferInt),
-    Command = ofp_v3_map:flow_command(CommandInt),
-    OutPort = ofp_v3_map:decode_port_no(OutPortInt),
-    OutGroup = ofp_v3_map:decode_group_id(OutGroupInt),
+    Table = ofp_v2_map:decode_table_id(TableInt),
+    Buffer = ofp_v2_map:decode_buffer_id(BufferInt),
+    Command = ofp_v2_map:flow_command(CommandInt),
+    OutPort = ofp_v2_map:decode_port_no(OutPortInt),
+    OutGroup = ofp_v2_map:decode_group_id(OutGroupInt),
     Flags = binary_to_flags(flow_flag, FlagsBin),
     Match = decode_match(MatchBin),
     Instructions = decode_instructions(InstrBin),
@@ -735,12 +735,12 @@ flags_to_binary(_, [], Binary, _) ->
     Binary;
 flags_to_binary(Type, [Flag | Rest], Binary, BitSize) ->
     <<Binary2:BitSize>> = Binary,
-    %% case Flag of
-    %%     experimenter ->
-    %%         Bit = ofp_v2_map:get_experimenter_bit(Type);
-    %%     _ ->
-            Bit = ofp_v2_map:Type(Flag),
-    %% end,
+    case Flag of
+        experimenter ->
+            Bit = ofp_v2_map:get_experimenter_bit(Type);
+        _ ->
+            Bit = ofp_v2_map:Type(Flag)
+    end,
     NewBinary = (Binary2 bor (1 bsl Bit)),
     flags_to_binary(Type, Rest, <<NewBinary:BitSize>>, BitSize).
 

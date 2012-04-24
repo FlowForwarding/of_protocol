@@ -202,6 +202,15 @@
 -define(OFPCML_MAX, 16#ffe5).
 -define(OFPCML_NO_BUFFER, 16#ffff).
 
+%% Table ids
+-define(OFPTT_MAX, 16#fe).
+-define(OFPTT_ALL, 16#ff).
+
+%% Group ids
+-define(OFPG_MAX, 16#fffffffd).
+-define(OFPG_ANY, 16#fffffffe).
+-define(OFPG_ALL, 16#ffffffff).
+
 %%%-----------------------------------------------------------------------------
 %%% Sizes
 %%%-----------------------------------------------------------------------------

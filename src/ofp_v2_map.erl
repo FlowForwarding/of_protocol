@@ -6,7 +6,7 @@
 -module(ofp_v2_map).
 
 %% Helper functions
-%% -export([get_experimenter_bit/1]).
+-export([get_experimenter_bit/1]).
 
 %% Mapping functions
 -export([msg_type/1]).
@@ -29,6 +29,10 @@
          flow_flag/1,
          encode_buffer_id/1,
          decode_buffer_id/1]).
+-export([encode_table_id/1,
+         decode_table_id/1,
+         encode_group_id/1,
+         decode_group_id/1]).
 
 -include("of_protocol.hrl").
 -include("ofp_v2.hrl").
@@ -369,12 +373,30 @@ encode_buffer_id(Int) when is_integer(Int) -> Int.
 decode_buffer_id(?OFPCML_NO_BUFFER)        -> no_buffer;
 decode_buffer_id(Int) when is_integer(Int) -> Int.
 
+%%% Rest -----------------------------------------------------------------------
+
+encode_table_id(all)                      -> ?OFPTT_ALL;
+encode_table_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
+encode_table_id(Int) when is_integer(Int) -> Int.
+
+decode_table_id(?OFPTT_ALL)               -> all;
+decode_table_id(Int) when is_integer(Int) -> Int.
+
+encode_group_id(any)                      -> ?OFPG_ANY;
+encode_group_id(all)                      -> ?OFPG_ALL;
+encode_group_id(Type) when is_atom(Type)  -> throw({bad_type, Type});
+encode_group_id(Int) when is_integer(Int) -> Int.
+
+decode_group_id(?OFPG_ANY)                -> any;
+decode_group_id(?OFPG_ALL)                -> all;
+decode_group_id(Int) when is_integer(Int) -> Int.
+
 %%%-----------------------------------------------------------------------------
 %%% Helper functions
 %%%-----------------------------------------------------------------------------
 
-%% -spec get_experimenter_bit(atom()) -> integer().
-%% get_experimenter_bit(instruction_type) ->
-%%     ?OFPIT_EXPERIMENTER_BIT;
-%% get_experimenter_bit(action_type) ->
-%%     ?OFPAT_EXPERIMENTER_BIT.
+-spec get_experimenter_bit(atom()) -> integer().
+get_experimenter_bit(instruction_type) ->
+    ?OFPIT_EXPERIMENTER_BIT;
+get_experimenter_bit(action_type) ->
+    ?OFPAT_EXPERIMENTER_BIT.
