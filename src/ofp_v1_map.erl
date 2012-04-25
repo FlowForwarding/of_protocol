@@ -30,6 +30,7 @@
 -export([stats_type/1,
          stats_request_flag/1,
          stats_reply_flag/1,
+         packet_in_reason/1,
          encode_table_id/1,
          decode_table_id/1]).
 
@@ -333,6 +334,14 @@ encode_table_id(Int) when is_integer(Int) -> Int.
 
 decode_table_id(?OFPTT_ALL)               -> all;
 decode_table_id(Int) when is_integer(Int) -> Int.
+
+%%% Async messages -------------------------------------------------------------
+
+packet_in_reason(no_match)                       -> ?OFPR_NO_MATCH;
+packet_in_reason(?OFPR_NO_MATCH)                 -> no_match;
+packet_in_reason(action)                         -> ?OFPR_ACTION;
+packet_in_reason(?OFPR_ACTION)                   -> action;
+packet_in_reason(Reason) when is_integer(Reason) -> throw({bad_value, Reason}).
 
 %%%-----------------------------------------------------------------------------
 %%% Helper functions

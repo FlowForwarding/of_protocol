@@ -332,7 +332,14 @@ encode_body(#ofp_flow_mod{match = Match, cookie = Cookie, command = Command,
     ActionsBin = encode_actions(Actions),
     <<MatchBin/bytes, Cookie:8/bytes, CommandInt:16, Idle:16, Hard:16,
       Priority:16, BufferInt:32, OutPortInt:16, FlagsBin:2/bytes,
-      ActionsBin/bytes>>.
+      ActionsBin/bytes>>;
+encode_body(#ofp_packet_in{buffer_id = Buffer, in_port = Port,
+                           reason = Reason, data = Data}) ->
+    BufferInt = ofp_v1_map:encode_buffer_id(Buffer),
+    PortInt = ofp_v1_map:encode_port_no(Port),
+    ReasonInt = ofp_v1_map:packet_in_reason(Reason),
+    TotalLen = byte_size(Data),
+    <<BufferInt:32, TotalLen:16, PortInt:16, ReasonInt:8, 0:8, Data/binary>>.
 
 %%%-----------------------------------------------------------------------------
 %%% Decode functions
@@ -662,6 +669,15 @@ decode_body(set_config, Binary) ->
     <<FlagsBin:2/bytes, Miss:16>> = Binary,
     Flags = binary_to_flags(configuration, FlagsBin),
     #ofp_set_config{flags = Flags, miss_send_len = Miss};
+decode_body(packet_in, Binary) ->
+    <<BufferInt:32, TotalLen:16, PortInt:16, ReasonInt:8, 0:8, Tail/binary>> =
+        Binary,
+    Buffer = ofp_v1_map:decode_buffer_id(BufferInt),
+    Port = ofp_v1_map:decode_port_no(PortInt),
+    Reason = ofp_v1_map:packet_in_reason(ReasonInt),
+    <<Data:TotalLen/binary>> = Tail,
+    #ofp_packet_in{buffer_id = Buffer, in_port = Port,
+                   reason = Reason, data = Data};
 decode_body(flow_mod, Binary) ->
     <<MatchBin:40/bytes, Cookie:8/bytes, CommandInt:16, Idle:16, Hard:16,
       Priority:16, BufferInt:32, OutPortInt:16, FlagsBin:2/bytes,
