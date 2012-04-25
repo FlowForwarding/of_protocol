@@ -239,14 +239,12 @@ encode_struct(#ofp_flow_stats{table_id = Table, duration_sec = Sec,
                               cookie = Cookie, packet_count = PCount,
                               byte_count = BCount, match = Match,
                               instructions = Instructions}) ->
-    TableInt = ofp_v3_map:encode_table_id(Table),
     MatchBin = encode_struct(Match),
     InstrsBin = encode_list(Instructions),
     Length = ?FLOW_STATS_SIZE + size(MatchBin) - ?MATCH_SIZE + size(InstrsBin),
-    <<Length:16, TableInt:8, 0:8, Sec:32,
-      NSec:32, Priority:16, Idle:16, Hard:16,
-      0:48, Cookie:8/bytes, PCount:64, BCount:64,
-      MatchBin/bytes, InstrsBin/bytes>>;
+    <<Length:16, Table:8, 0:8, Sec:32, NSec:32, Priority:16, Idle:16, Hard:16,
+      0:48, Cookie:8/bytes, PCount:64, BCount:64, MatchBin/bytes,
+      InstrsBin/bytes>>;
 encode_struct(#ofp_table_stats{table_id = Table, name = Name,
                                match = Match, wildcards = Wildcards,
                                write_actions = WriteActions,
@@ -456,8 +454,7 @@ encode_body(#ofp_flow_stats_reply{flags = Flags, stats = Stats}) ->
     TypeInt = ofp_v3_map:stats_type(flow),
     FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
     StatsBin = encode_list(Stats),
-    <<TypeInt:16, FlagsBin/bytes, 0:32,
-      StatsBin/bytes>>;
+    <<TypeInt:16, FlagsBin/bytes, 0:32, StatsBin/bytes>>;
 encode_body(#ofp_aggregate_stats_request{flags = Flags,
                                          table_id = Table, out_port = Port,
                                          out_group = Group, cookie = Cookie,
@@ -846,19 +843,17 @@ decode_buckets(Binary, Buckets) ->
     decode_buckets(Rest, [Bucket | Buckets]).
 
 decode_flow_stats(Binary) ->
-    <<_:16, TableInt:8, 0:8, Sec:32,
-      NSec:32, Priority:16, Idle:16, Hard:16,
-      0:48, Cookie:8/bytes, PCount:64, BCount:64,
-      Data/bytes>> = Binary,
-    Table = ofp_v3_map:decode_table_id(TableInt),
+    <<_:16, Table:8, _:8, Sec:32, NSec:32, Priority:16, Idle:16, Hard:16,
+      _:48, Cookie:8/bytes, PCount:64, BCount:64, Data/bytes>> = Binary,
     <<_:16, MatchLength:16, _/bytes>> = Data,
     MatchLengthPad = MatchLength + (8 - (MatchLength rem 8)),
     <<MatchBin:MatchLengthPad/bytes, InstrsBin/bytes>> = Data,
     Match = decode_match(MatchBin),
     Instrs = decode_instructions(InstrsBin),
     #ofp_flow_stats{table_id = Table, duration_sec = Sec, duration_nsec = NSec,
-                    priority = Priority, idle_timeout = Idle, hard_timeout = Hard,
-                    cookie = Cookie, packet_count = PCount, byte_count = BCount,
+                    priority = Priority, idle_timeout = Idle,
+                    hard_timeout = Hard, cookie = Cookie,
+                    packet_count = PCount, byte_count = BCount,
                     match = Match, instructions = Instrs}.
 
 decode_flow_stats_list(Binary) ->
