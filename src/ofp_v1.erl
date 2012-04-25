@@ -178,7 +178,22 @@ encode_struct(#ofp_action_set_field{field = #ofp_field{field = Type,
             <<SetType:16, ?ACTION_SET_TP_SIZE:16, Value:16/bits, 0:16>>;
         sctp_dst ->
             <<SetType:16, ?ACTION_SET_TP_SIZE:16, Value:16/bits, 0:16>>
-    end.
+    end;
+
+encode_struct(#ofp_table_stats{table_id = Table, name = Name,
+                               wildcards = Wildcards, max_entries = Max,
+                               active_count = ACount, lookup_count = LCount,
+                               matched_count = MCount}) ->
+    Padding = (?OFP_MAX_TABLE_NAME_LEN - size(Name)) * 8,
+    Wildcards1 = ordsets:intersection(lists:sort(Wildcards),
+                                      lists:sort([in_port, vlan_vid, eth_src,
+                                                  eth_dst, eth_type, ip_proto,
+                                                  tcp_src, tcp_dst, udp_src,
+                                                  udp_dst, vlan_pcp, ip_dscp])),
+    <<WildcardsInt:32>> = flags_to_binary(flow_wildcard, Wildcards1, 4),
+    WildcardsBin = <<(WildcardsInt bor 16#fff00):32>>,
+    <<Table:8, 0:24, Name/bytes, 0:Padding, WildcardsBin/bytes,
+      Max:32, ACount:32, LCount:64, MCount:64>>.
 
 %% FIXME: Add a separate case when encoding port_no
 encode_field_value(FieldList, Type, Size) ->
@@ -258,6 +273,11 @@ encode_body(#ofp_table_stats_request{flags = Flags}) ->
     TypeInt = ofp_v1_map:stats_type(table),
     FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
     <<TypeInt:16, FlagsBin:2/bytes>>;
+encode_body(#ofp_table_stats_reply{flags = Flags, stats = Stats}) ->
+    TypeInt = ofp_v1_map:stats_type(table),
+    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    StatsBin = encode_list(Stats),
+    <<TypeInt:16, FlagsBin:2/bytes, StatsBin/bytes>>;
 encode_body(#ofp_get_config_request{}) ->
     <<>>;
 encode_body(#ofp_get_config_reply{flags = Flags, miss_send_len = Miss}) ->
@@ -526,6 +546,32 @@ decode_actions(Binary, Actions) ->
     end,
     decode_actions(Rest, Action ++ Actions).
 
+decode_table_stats(Binary) ->
+    <<Table:8, 0:24, NameBin:?OFP_MAX_TABLE_NAME_LEN/bytes,
+      WildcardsInt:32, Max:32, ACount:32, LCount:64, MCount:64>> = Binary,
+    Name = ofp_utils:strip_string(NameBin),
+    Wildcards = binary_to_flags(flow_wildcard,
+                                <<(WildcardsInt band 16#30003f):32>>),
+    <<TPDstBit:1, TPSrcBit:1, _:6>> = <<WildcardsInt:8>>,
+    TPSrc = case TPSrcBit of
+                0 ->
+                    [];
+                1 ->
+                    [tcp_src, udp_src]
+            end,
+    TPDst = case TPDstBit of
+                0 ->
+                    [];
+                1 ->
+                    [tcp_dst, udp_dst]
+            end,
+    Wildcards1 = Wildcards ++ [ipv4_src, ipv4_dst] ++ TPSrc ++ TPDst,
+    #ofp_table_stats{table_id = Table, name = Name, wildcards = Wildcards1,
+                     metadata_match = <<16#ffffffffffffffff:64>>,
+                     metadata_write = <<16#ffffffffffffffff:64>>,
+                     max_entries = Max, active_count = ACount,
+                     lookup_count = LCount, matched_count = MCount}.
+
 %%% Messages -----------------------------------------------------------------
 
 -spec decode_body(atom(), binary()) -> ofp_message().
@@ -601,6 +647,17 @@ decode_body(stats_request, Binary) ->
                                     match = Match};
         table ->
             #ofp_table_stats_request{flags = Flags}
+    end;
+decode_body(stats_reply, Binary) ->
+    <<TypeInt:16, FlagsBin:2/bytes, StatsBin/bytes>> = Binary,
+    Type = ofp_v1_map:stats_type(TypeInt),
+    Flags = binary_to_flags(stats_reply_flag, FlagsBin),
+    case Type of
+         table ->
+            Stats = [decode_table_stats(TStats)
+                     || TStats <- ofp_utils:split_binaries(StatsBin,
+                                                           ?TABLE_STATS_SIZE)],
+            #ofp_table_stats_reply{flags = Flags, stats = Stats}
     end.
 
 %%%-----------------------------------------------------------------------------

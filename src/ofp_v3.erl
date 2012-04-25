@@ -259,7 +259,6 @@ encode_struct(#ofp_table_stats{table_id = Table, name = Name,
                                max_entries = Max, active_count = ACount,
                                lookup_count = LCount,
                                matched_count = MCount}) ->
-    TableInt = ofp_v3_map:encode_table_id(Table),
     Padding = (?OFP_MAX_TABLE_NAME_LEN - size(Name)) * 8,
     MatchBin = flags_to_binary(field_type, Match, 8),
     WildcardsBin = flags_to_binary(field_type, Wildcards, 8),
@@ -269,10 +268,9 @@ encode_struct(#ofp_table_stats{table_id = Table, name = Name,
     ApplySetBin = flags_to_binary(field_type, ApplySet, 8),
     InstructionsBin = flags_to_binary(instruction_type, Instructions, 4),
     ConfigInt = ofp_v3_map:table_config(Config),
-    <<TableInt:8, 0:56, Name/bytes, 0:Padding,
-      MatchBin/bytes, WildcardsBin/bytes, WriteActionsBin/bytes,
-      ApplyActionsBin/bytes, WriteSetBin/bytes, ApplySetBin/bytes,
-      MetaMatch:64, MetaWrite:64, InstructionsBin/bytes,
+    <<Table:8, 0:56, Name/bytes, 0:Padding, MatchBin/bytes, WildcardsBin/bytes,
+      WriteActionsBin/bytes, ApplyActionsBin/bytes, WriteSetBin/bytes,
+      ApplySetBin/bytes, MetaMatch:64, MetaWrite:64, InstructionsBin/bytes,
       ConfigInt:32, Max:32, ACount:32, LCount:64, MCount:64>>;
 encode_struct(#ofp_port_stats{port_no = Port,
                               rx_packets = RXPackets, tx_packets = TXPackets,
@@ -1146,7 +1144,8 @@ decode_body(stats_reply, Binary) ->
                                   serial_num = ofp_utils:strip_string(Serial),
                                   dp_desc = ofp_utils:strip_string(DP)};
         flow ->
-            StatsLength = size(Binary) - ?FLOW_STATS_REPLY_SIZE + ?OFP_HEADER_SIZE,
+            StatsLength = size(Binary) - ?FLOW_STATS_REPLY_SIZE +
+                ?OFP_HEADER_SIZE,
             <<StatsBin:StatsLength/bytes>> = Data,
             Stats = decode_flow_stats_list(StatsBin),
             #ofp_flow_stats_reply{flags = Flags,
@@ -1155,37 +1154,46 @@ decode_body(stats_reply, Binary) ->
             <<PCount:64, BCount:64, FCount:32,
               0:32>> = Data,
             #ofp_aggregate_stats_reply{flags = Flags,
-                                       packet_count = PCount, byte_count = BCount,
+                                       packet_count = PCount,
+                                       byte_count = BCount,
                                        flow_count = FCount};
         table ->
-            StatsLength = size(Binary) - ?TABLE_STATS_REPLY_SIZE + ?OFP_HEADER_SIZE,
+            StatsLength = size(Binary) - ?TABLE_STATS_REPLY_SIZE +
+                ?OFP_HEADER_SIZE,
             <<StatsBin:StatsLength/bytes>> = Data,
             Stats = [decode_table_stats(TStats)
-                     || TStats <- ofp_utils:split_binaries(StatsBin, ?TABLE_STATS_SIZE)],
+                     || TStats <- ofp_utils:split_binaries(StatsBin,
+                                                           ?TABLE_STATS_SIZE)],
             #ofp_table_stats_reply{flags = Flags,
                                    stats = Stats};
         port ->
-            StatsLength = size(Binary) - ?PORT_STATS_REPLY_SIZE + ?OFP_HEADER_SIZE,
+            StatsLength = size(Binary) - ?PORT_STATS_REPLY_SIZE +
+                ?OFP_HEADER_SIZE,
             <<StatsBin:StatsLength/bytes>> = Data,
             Stats = [decode_port_stats(PStats)
-                     || PStats <- ofp_utils:split_binaries(StatsBin, ?PORT_STATS_SIZE)],
+                     || PStats <- ofp_utils:split_binaries(StatsBin,
+                                                           ?PORT_STATS_SIZE)],
             #ofp_port_stats_reply{flags = Flags,
                                   stats = Stats};
         queue ->
-            StatsLength = size(Binary) - ?QUEUE_STATS_REPLY_SIZE + ?OFP_HEADER_SIZE,
+            StatsLength = size(Binary) - ?QUEUE_STATS_REPLY_SIZE +
+                ?OFP_HEADER_SIZE,
             <<StatsBin:StatsLength/bytes>> = Data,
             Stats = [decode_queue_stats(QStats)
-                     || QStats <- ofp_utils:split_binaries(StatsBin, ?QUEUE_STATS_SIZE)],
+                     || QStats <- ofp_utils:split_binaries(StatsBin,
+                                                           ?QUEUE_STATS_SIZE)],
             #ofp_queue_stats_reply{flags = Flags,
                                    stats = Stats};
         group ->
-            StatsLength = size(Binary) - ?GROUP_STATS_REPLY_SIZE + ?OFP_HEADER_SIZE,
+            StatsLength = size(Binary) - ?GROUP_STATS_REPLY_SIZE +
+                ?OFP_HEADER_SIZE,
             <<StatsBin:StatsLength/bytes>> = Data,
             Stats = decode_group_stats_list(StatsBin),
             #ofp_group_stats_reply{flags = Flags,
                                    stats = Stats};
         group_desc ->
-            StatsLength = size(Binary) - ?GROUP_DESC_STATS_REPLY_SIZE + ?OFP_HEADER_SIZE,
+            StatsLength = size(Binary) - ?GROUP_DESC_STATS_REPLY_SIZE +
+                ?OFP_HEADER_SIZE,
             <<StatsBin:StatsLength/bytes>> = Data,
             Stats = decode_group_desc_stats_list(StatsBin),
             #ofp_group_desc_stats_reply{flags = Flags,
@@ -1204,11 +1212,13 @@ decode_body(stats_reply, Binary) ->
             #ofp_group_features_stats_reply{flags = Flags,
                                             types = Types,
                                             capabilities = Capabilities,
-                                            max_groups = {Max1, Max2, Max3, Max4},
+                                            max_groups = {Max1, Max2,
+                                                          Max3, Max4},
                                             actions = {Actions1, Actions2,
                                                        Actions3, Actions4}};
         experimenter ->
-            DataLength = size(Binary) - ?EXPERIMENTER_STATS_REPLY_SIZE + ?OFP_HEADER_SIZE,
+            DataLength = size(Binary) - ?EXPERIMENTER_STATS_REPLY_SIZE +
+                ?OFP_HEADER_SIZE,
             <<Experimenter:32, ExpType:32,
               ExpData:DataLength/bytes>> = Data,
             #ofp_experimenter_stats_reply{flags = Flags,

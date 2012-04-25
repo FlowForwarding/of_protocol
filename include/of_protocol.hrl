@@ -389,20 +389,20 @@
 -record(ofp_table_stats, {
           table_id :: ofp_table_id(),
           name :: binary(),
-          match :: [atom()],
-          wildcards :: [atom()],
-          write_actions :: [atom()],
-          apply_actions :: [atom()],
-          write_setfields :: [atom()],
-          apply_setfields :: [atom()],
-          metadata_match :: integer(),
-          metadata_write :: integer(),
-          instructions :: [atom()],
+          match = [] :: [atom()],
+          wildcards = [] :: [atom()],
+          write_actions = [] :: [atom()],
+          apply_actions = [] :: [atom()],
+          write_setfields = [] :: [atom()],
+          apply_setfields = [] :: [atom()],
+          metadata_match :: binary(),
+          metadata_write :: binary(),
+          instructions = [] :: [atom()],
           config :: ofp_table_config(),
           max_entries :: integer(),
-          active_count :: integer(),
-          lookup_count :: integer(),
-          matched_count :: integer()
+          active_count = 0 :: integer(),
+          lookup_count = 0 :: integer(),
+          matched_count = 0 :: integer()
          }).
 -type ofp_table_stats() :: #ofp_table_stats{}.
 
