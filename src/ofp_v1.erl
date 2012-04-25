@@ -356,6 +356,15 @@ encode_body(#ofp_packet_in{buffer_id = Buffer, in_port = Port,
     ReasonInt = ofp_v1_map:packet_in_reason(Reason),
     TotalLen = byte_size(Data),
     <<BufferInt:32, TotalLen:16, PortInt:16, ReasonInt:8, 0:8, Data/binary>>;
+encode_body(#ofp_flow_removed{match = Match, cookie = Cookie,
+                              priority = Priority, reason = Reason,
+                              duration_sec = DurSec, duration_nsec = DurNSec,
+                              idle_timeout = Idle, packet_count = Packets,
+                              byte_count = Bytes}) ->
+    MatchBin = encode_struct(Match),
+    ReasonInt = ofp_v1_map:flow_removed_reason(Reason),
+    <<MatchBin/binary, Cookie/binary, Priority:16, ReasonInt:8,
+      0:8, DurSec:32, DurNSec:32, Idle:16, 0:16, Packets:64, Bytes:64>>;
 encode_body(#ofp_packet_out{buffer_id = Buffer, in_port = Port,
                             actions = Actions, data = Data}) ->
     BufferInt = ofp_v1_map:encode_buffer_id(Buffer),
@@ -707,6 +716,16 @@ decode_body(packet_in, Binary) ->
     <<Data:TotalLen/binary>> = Tail,
     #ofp_packet_in{buffer_id = Buffer, in_port = Port,
                    reason = Reason, data = Data};
+decode_body(flow_removed, Binary) ->
+    <<MatchBin:?MATCH_SIZE/binary, Cookie:8/binary, Priority:16,
+      ReasonInt:8, 0:8, DurSec:32, DurNSec:32, Idle:16, 0:16, Packets:64,
+      Bytes:64>> = Binary,
+    Match = decode_match(MatchBin),
+    Reason = ofp_v1_map:flow_removed_reason(ReasonInt),
+    #ofp_flow_removed{match = Match, cookie = Cookie, priority = Priority,
+                      reason = Reason, duration_sec = DurSec,
+                      duration_nsec = DurNSec, idle_timeout = Idle,
+                      packet_count = Packets, byte_count = Bytes};
 decode_body(packet_out, Binary) ->
     <<BufferInt:32, PortInt:16, ActionsLen:16, Tail/binary>> = Binary,
     Buffer = ofp_v1_map:decode_buffer_id(BufferInt),

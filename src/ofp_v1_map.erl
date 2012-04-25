@@ -31,6 +31,7 @@
          stats_request_flag/1,
          stats_reply_flag/1,
          packet_in_reason/1,
+         flow_removed_reason/1,
          encode_table_id/1,
          decode_table_id/1]).
 
@@ -344,6 +345,14 @@ packet_in_reason(?OFPR_NO_MATCH)                 -> no_match;
 packet_in_reason(action)                         -> ?OFPR_ACTION;
 packet_in_reason(?OFPR_ACTION)                   -> action;
 packet_in_reason(Reason) when is_integer(Reason) -> throw({bad_value, Reason}).
+
+flow_removed_reason(idle_timeout)                   -> ?OFPRR_IDLE_TIMEOUT;
+flow_removed_reason(?OFPRR_IDLE_TIMEOUT)            -> idle_timeout;
+flow_removed_reason(hard_timeout)                   -> ?OFPRR_HARD_TIMEOUT;
+flow_removed_reason(?OFPRR_HARD_TIMEOUT)            -> hard_timeout;
+flow_removed_reason(delete)                         -> ?OFPRR_DELETE;
+flow_removed_reason(?OFPRR_DELETE)                  -> delete;
+flow_removed_reason(Reason) when is_integer(Reason) -> throw({bad_value, Reason}).
 
 %%%-----------------------------------------------------------------------------
 %%% Helper functions
