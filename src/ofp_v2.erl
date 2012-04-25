@@ -481,6 +481,10 @@ decode_match(Binary) ->
                           F#ofp_field{value = TPSrc};
                       udp_dst ->
                           F#ofp_field{value = TPDst};
+                      sctp_src ->
+                          F#ofp_field{value = TPSrc};
+                      sctp_dst ->
+                          F#ofp_field{value = TPDst};
                       mpls_label ->
                           F#ofp_field{value = MPLSLabel};
                       mpls_tc ->

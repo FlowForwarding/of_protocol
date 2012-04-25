@@ -32,6 +32,7 @@
          stats_reply_flag/1,
          packet_in_reason/1,
          flow_removed_reason/1,
+         port_status_reason/1,
          encode_table_id/1,
          decode_table_id/1]).
 
@@ -353,6 +354,14 @@ flow_removed_reason(?OFPRR_HARD_TIMEOUT)            -> hard_timeout;
 flow_removed_reason(delete)                         -> ?OFPRR_DELETE;
 flow_removed_reason(?OFPRR_DELETE)                  -> delete;
 flow_removed_reason(Reason) when is_integer(Reason) -> throw({bad_value, Reason}).
+
+port_status_reason(add)                            -> ?OFPPR_ADD;
+port_status_reason(?OFPPR_ADD)                     -> add;
+port_status_reason(delete)                         -> ?OFPPR_DELETE;
+port_status_reason(?OFPPR_DELETE)                  -> delete;
+port_status_reason(modify)                         -> ?OFPPR_MODIFY;
+port_status_reason(?OFPPR_MODIFY)                  -> modify;
+port_status_reason(Reason) when is_integer(Reason) -> throw({bad_value, Reason}).
 
 %%%-----------------------------------------------------------------------------
 %%% Helper functions

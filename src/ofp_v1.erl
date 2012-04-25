@@ -173,10 +173,6 @@ encode_struct(#ofp_action_set_field{field = #ofp_field{field = Type,
         udp_src ->
             <<SetType:16, ?ACTION_SET_TP_SIZE:16, Value:16/bits, 0:16>>;
         udp_dst ->
-            <<SetType:16, ?ACTION_SET_TP_SIZE:16, Value:16/bits, 0:16>>;
-        sctp_src ->
-            <<SetType:16, ?ACTION_SET_TP_SIZE:16, Value:16/bits, 0:16>>;
-        sctp_dst ->
             <<SetType:16, ?ACTION_SET_TP_SIZE:16, Value:16/bits, 0:16>>
     end;
 
@@ -365,6 +361,10 @@ encode_body(#ofp_flow_removed{match = Match, cookie = Cookie,
     ReasonInt = ofp_v1_map:flow_removed_reason(Reason),
     <<MatchBin/binary, Cookie/binary, Priority:16, ReasonInt:8,
       0:8, DurSec:32, DurNSec:32, Idle:16, 0:16, Packets:64, Bytes:64>>;
+encode_body(#ofp_port_status{reason = Reason, desc = Desc}) ->
+    ReasonInt = ofp_v1_map:port_status_reason(Reason),
+    DescBin = encode_struct(Desc),
+    <<ReasonInt:8, 0:56, DescBin/binary>>;
 encode_body(#ofp_packet_out{buffer_id = Buffer, in_port = Port,
                             actions = Actions, data = Data}) ->
     BufferInt = ofp_v1_map:encode_buffer_id(Buffer),
@@ -726,6 +726,12 @@ decode_body(flow_removed, Binary) ->
                       reason = Reason, duration_sec = DurSec,
                       duration_nsec = DurNSec, idle_timeout = Idle,
                       packet_count = Packets, byte_count = Bytes};
+decode_body(port_status, Binary) ->
+    <<ReasonInt:8, 0:56, DescBin/binary>> = Binary,
+    Reason = ofp_v1_map:port_status_reason(ReasonInt),
+    Desc = decode_port(DescBin),
+    #ofp_port_status{reason = Reason,
+                     desc = Desc};
 decode_body(packet_out, Binary) ->
     <<BufferInt:32, PortInt:16, ActionsLen:16, Tail/binary>> = Binary,
     Buffer = ofp_v1_map:decode_buffer_id(BufferInt),
