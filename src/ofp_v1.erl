@@ -180,6 +180,26 @@ encode_struct(#ofp_action_set_field{field = #ofp_field{field = Type,
             <<SetType:16, ?ACTION_SET_TP_SIZE:16, Value:16/bits, 0:16>>
     end;
 
+encode_struct(#ofp_flow_stats{table_id = Table, duration_sec = Sec,
+                              duration_nsec = NSec, priority = Priority,
+                              idle_timeout = Idle, hard_timeout = Hard,
+                              cookie = Cookie, packet_count = PCount,
+                              byte_count = BCount, match = Match,
+                              instructions = Instructions}) ->
+    MatchBin = encode_struct(Match),
+    GetActions = fun(#ofp_instruction_write_actions{actions = Actions}, []) ->
+                         Actions;
+                    (#ofp_instruction_write_actions{}, Actions) ->
+                         Actions;
+                    (_, Actions) ->
+                         Actions
+                 end,
+    Actions = lists:foldl(GetActions, [], Instructions),
+    ActionsBin = encode_actions(Actions),
+    Length = ?FLOW_STATS_SIZE + size(ActionsBin),
+    <<Length:16, Table:8, 0:8, MatchBin:?MATCH_SIZE/bytes, Sec:32, NSec:32,
+      Priority:16, Idle:16, Hard:16, 0:48, Cookie:8/bytes, PCount:64,
+      BCount:64, ActionsBin/bytes>>;
 encode_struct(#ofp_table_stats{table_id = Table, name = Name,
                                wildcards = Wildcards, max_entries = Max,
                                active_count = ACount, lookup_count = LCount,
@@ -269,6 +289,11 @@ encode_body(#ofp_flow_stats_request{flags = Flags, table_id = Table,
     MatchBin = encode_struct(Match),
     <<TypeInt:16, FlagsBin:2/bytes, MatchBin:?MATCH_SIZE/bytes,
       TableInt:8, 0:8, PortInt:16>>;
+encode_body(#ofp_flow_stats_reply{flags = Flags, stats = Stats}) ->
+    TypeInt = ofp_v1_map:stats_type(flow),
+    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    StatsBin = encode_list(Stats),
+    <<TypeInt:16, FlagsBin:2/bytes, StatsBin/bytes>>;
 encode_body(#ofp_table_stats_request{flags = Flags}) ->
     TypeInt = ofp_v1_map:stats_type(table),
     FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
@@ -546,6 +571,35 @@ decode_actions(Binary, Actions) ->
     end,
     decode_actions(Rest, Action ++ Actions).
 
+decode_flow_stats(Binary) ->
+    <<_:16, Table:8, _:8, MatchBin:?MATCH_SIZE/bytes, Sec:32, NSec:32,
+      Priority:16, Idle:16, Hard:16, _:48, Cookie:8/bytes, PCount:64, BCount:64,
+      ActionsBin/bytes>> = Binary,
+    Match = decode_match(MatchBin),
+    Actions = decode_actions(ActionsBin),
+    Instructions = case Actions of
+                       [] ->
+                           [];
+                       _ ->
+                           [#ofp_instruction_write_actions{actions = Actions}]
+                   end,
+    #ofp_flow_stats{table_id = Table, duration_sec = Sec, duration_nsec = NSec,
+                    priority = Priority, idle_timeout = Idle,
+                    hard_timeout = Hard, cookie = Cookie, packet_count = PCount,
+                    byte_count = BCount, match = Match,
+                    instructions = Instructions}.
+
+decode_flow_stats_list(Binary) ->
+    decode_flow_stats_list(Binary, []).
+
+decode_flow_stats_list(<<>>, FlowStatsList) ->
+    lists:reverse(FlowStatsList);
+decode_flow_stats_list(Binary, FlowStatsList) ->
+    <<Length:16, _/bytes>> = Binary,
+    <<FlowStatsBin:Length/bytes, Rest/bytes>> = Binary,
+    FlowStats = decode_flow_stats(FlowStatsBin),
+    decode_flow_stats_list(Rest, [FlowStats | FlowStatsList]).
+
 decode_table_stats(Binary) ->
     <<Table:8, 0:24, NameBin:?OFP_MAX_TABLE_NAME_LEN/bytes,
       WildcardsInt:32, Max:32, ACount:32, LCount:64, MCount:64>> = Binary,
@@ -653,7 +707,10 @@ decode_body(stats_reply, Binary) ->
     Type = ofp_v1_map:stats_type(TypeInt),
     Flags = binary_to_flags(stats_reply_flag, FlagsBin),
     case Type of
-         table ->
+        flow ->
+            Stats = decode_flow_stats_list(StatsBin),
+            #ofp_flow_stats_reply{flags = Flags, stats = Stats};
+        table ->
             Stats = [decode_table_stats(TStats)
                      || TStats <- ofp_utils:split_binaries(StatsBin,
                                                            ?TABLE_STATS_SIZE)],

@@ -380,7 +380,6 @@
           packet_count :: integer(),
           byte_count :: integer(),
           match :: ofp_match(),
-          actions = [] :: [ofp_action()],
           instructions = [] :: [ofp_instruction()]
          }).
 -type ofp_flow_stats() :: #ofp_flow_stats{}.
