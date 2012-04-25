@@ -372,7 +372,20 @@ encode_body(#ofp_packet_out{buffer_id = Buffer, in_port = Port,
     ActionsBin = encode_actions(Actions),
     ActionsLen = byte_size(ActionsBin),
     <<BufferInt:32, PortInt:16, ActionsLen:16, ActionsBin/binary,
-      Data/binary>>.
+      Data/binary>>;
+encode_body(#ofp_port_mod{port_no = PortNo, hw_addr = HWAddr,
+                          config = Config, mask = Mask,
+                          advertise = Advertise}) ->
+    PortInt = ofp_v1_map:encode_port_no(PortNo),
+    ConfigBin = flags_to_binary(port_config, Config, 4),
+    MaskBin = flags_to_binary(port_config, Mask, 4),
+    AdvertiseBin = flags_to_binary(port_feature, Advertise, 4),
+    <<PortInt:16, HWAddr/binary, ConfigBin/binary, MaskBin/binary,
+      AdvertiseBin/binary, 0:32>>;
+encode_body(#ofp_barrier_request{}) ->
+    <<>>;
+encode_body(#ofp_barrier_reply{}) ->
+    <<>>.
 
 %%%-----------------------------------------------------------------------------
 %%% Decode functions
@@ -761,6 +774,15 @@ decode_body(flow_mod, Binary) ->
                   priority = Priority, buffer_id = Buffer, out_port = OutPort,
                   out_group = 16#fffffffe, flags = Flags, match = Match,
                   instructions = Instructions};
+decode_body(port_mod, Binary) ->
+    <<PortInt:16, HWAddr:6/binary, ConfigBin:4/binary, MaskBin:4/binary,
+      AdvertiseBin:4/binary, 0:32>> = Binary,
+    Port = ofp_v1_map:decode_port_no(PortInt),
+    Config = binary_to_flags(port_config, ConfigBin),
+    Mask = binary_to_flags(port_config, MaskBin),
+    Advertise = binary_to_flags(port_feature, AdvertiseBin),
+    #ofp_port_mod{port_no = Port, hw_addr = HWAddr, config = Config,
+                  mask = Mask, advertise = Advertise};
 decode_body(stats_request, Binary) ->
     <<TypeInt:16, FlagsBin:2/bytes, Data/bytes>> = Binary,
     Type = ofp_v1_map:stats_type(TypeInt),
@@ -804,7 +826,11 @@ decode_body(stats_reply, Binary) ->
                      || QStats <- ofp_utils:split_binaries(StatsBin,
                                                            ?QUEUE_STATS_SIZE)],
             #ofp_queue_stats_reply{flags = Flags, stats = Stats}
-    end.
+    end;
+decode_body(barrier_request, <<>>) ->
+    #ofp_barrier_request{};
+decode_body(barrier_reply, <<>>) ->
+    #ofp_barrier_reply{}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions
