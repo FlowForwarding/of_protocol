@@ -425,11 +425,11 @@
 
 %% Queue stats
 -record(ofp_queue_stats, {
-          port_no :: ofp_port_no(),
-          queue_id :: ofp_queue_id(),
-          tx_bytes :: integer(),
-          tx_packets :: integer(),
-          tx_errors :: integer()
+          port_no :: integer(),
+          queue_id :: integer(),
+          tx_bytes = 0 :: integer(),
+          tx_packets = 0 :: integer(),
+          tx_errors = 0 :: integer()
          }).
 -type ofp_queue_stats() :: #ofp_queue_stats{}.
 

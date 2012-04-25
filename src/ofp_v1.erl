@@ -213,7 +213,11 @@ encode_struct(#ofp_table_stats{table_id = Table, name = Name,
     <<WildcardsInt:32>> = flags_to_binary(flow_wildcard, Wildcards1, 4),
     WildcardsBin = <<(WildcardsInt bor 16#fff00):32>>,
     <<Table:8, 0:24, Name/bytes, 0:Padding, WildcardsBin/bytes,
-      Max:32, ACount:32, LCount:64, MCount:64>>.
+      Max:32, ACount:32, LCount:64, MCount:64>>;
+encode_struct(#ofp_queue_stats{port_no = Port, queue_id = Queue,
+                               tx_bytes = Bytes, tx_packets = Packets,
+                               tx_errors = Errors}) ->
+    <<Port:16, 0:16, Queue:32, Bytes:64, Packets:64, Errors:64>>.
 
 %% FIXME: Add a separate case when encoding port_no
 encode_field_value(FieldList, Type, Size) ->
@@ -300,6 +304,18 @@ encode_body(#ofp_table_stats_request{flags = Flags}) ->
     <<TypeInt:16, FlagsBin:2/bytes>>;
 encode_body(#ofp_table_stats_reply{flags = Flags, stats = Stats}) ->
     TypeInt = ofp_v1_map:stats_type(table),
+    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    StatsBin = encode_list(Stats),
+    <<TypeInt:16, FlagsBin:2/bytes, StatsBin/bytes>>;
+encode_body(#ofp_queue_stats_request{flags = Flags, port_no = Port,
+                                     queue_id = Queue}) ->
+    TypeInt = ofp_v1_map:stats_type(queue),
+    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
+    PortInt = ofp_v1_map:encode_port_no(Port),
+    QueueInt = ofp_v1_map:encode_queue_id(Queue),
+    <<TypeInt:16, FlagsBin:2/bytes, PortInt:16, 0:16, QueueInt:32>>;
+encode_body(#ofp_queue_stats_reply{flags = Flags, stats = Stats}) ->
+    TypeInt = ofp_v1_map:stats_type(queue),
     FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin:2/bytes, StatsBin/bytes>>;
@@ -641,6 +657,11 @@ decode_table_stats(Binary) ->
                      max_entries = Max, active_count = ACount,
                      lookup_count = LCount, matched_count = MCount}.
 
+decode_queue_stats(Binary) ->
+    <<Port:16, _:16, Queue:32, Bytes:64, Packets:64, Errors:64>> = Binary,
+    #ofp_queue_stats{port_no = Port, queue_id = Queue, tx_bytes = Bytes,
+                     tx_packets = Packets, tx_errors = Errors}.
+
 %%% Messages -----------------------------------------------------------------
 
 -spec decode_body(atom(), binary()) -> ofp_message().
@@ -732,7 +753,13 @@ decode_body(stats_request, Binary) ->
                                     cookie = <<0:64>>, cookie_mask = <<0:64>>,
                                     match = Match};
         table ->
-            #ofp_table_stats_request{flags = Flags}
+            #ofp_table_stats_request{flags = Flags};
+        queue ->
+            <<PortInt:16, _:16, QueueInt:32>> = Data,
+            Port = ofp_v1_map:decode_port_no(PortInt),
+            Queue = ofp_v1_map:decode_queue_id(QueueInt),
+            #ofp_queue_stats_request{flags = Flags, port_no = Port,
+                                     queue_id = Queue}
     end;
 decode_body(stats_reply, Binary) ->
     <<TypeInt:16, FlagsBin:2/bytes, StatsBin/bytes>> = Binary,
@@ -746,7 +773,12 @@ decode_body(stats_reply, Binary) ->
             Stats = [decode_table_stats(TStats)
                      || TStats <- ofp_utils:split_binaries(StatsBin,
                                                            ?TABLE_STATS_SIZE)],
-            #ofp_table_stats_reply{flags = Flags, stats = Stats}
+            #ofp_table_stats_reply{flags = Flags, stats = Stats};
+        queue ->
+            Stats = [decode_queue_stats(QStats)
+                     || QStats <- ofp_utils:split_binaries(StatsBin,
+                                                           ?QUEUE_STATS_SIZE)],
+            #ofp_queue_stats_reply{flags = Flags, stats = Stats}
     end.
 
 %%%-----------------------------------------------------------------------------

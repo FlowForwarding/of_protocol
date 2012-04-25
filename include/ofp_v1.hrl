@@ -168,6 +168,7 @@
 -define(OFPST_DESC, 0).
 -define(OFPST_FLOW, 1).
 -define(OFPST_TABLE, 3).
+-define(OFPST_QUEUE, 5).
 
 %% Stats request flags - none yet defined
 %% -define(OFPSF_REQ_*)
@@ -211,6 +212,8 @@
 -define(FLOW_STATS_REPLY_SIZE, 12).
 -define(TABLE_STATS_REQUEST_SIZE, 12).
 -define(TABLE_STATS_REPLY_SIZE, 12).
+-define(QUEUE_STATS_REQUEST_SIZE, 20).
+-define(QUEUE_STATS_REPLY_SIZE, 12).
 
 %% Structure sizes
 -define(PORT_SIZE, 48).
@@ -229,3 +232,4 @@
 -define(ACTION_EXPERIMENTER_SIZE, 8).
 -define(FLOW_STATS_SIZE, 88).
 -define(TABLE_STATS_SIZE, 64).
+-define(QUEUE_STATS_SIZE, 32).

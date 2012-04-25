@@ -318,6 +318,8 @@ stats_type(flow)                       -> ?OFPST_FLOW;
 stats_type(?OFPST_FLOW)                -> flow;
 stats_type(table)                      -> ?OFPST_TABLE;
 stats_type(?OFPST_TABLE)               -> table;
+stats_type(queue)                      -> ?OFPST_QUEUE;
+stats_type(?OFPST_QUEUE)               -> queue;
 stats_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 stats_request_flag(Type) when is_atom(Type)    -> throw({bad_type, Type});

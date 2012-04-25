@@ -288,10 +288,7 @@ encode_struct(#ofp_port_stats{port_no = Port,
 encode_struct(#ofp_queue_stats{port_no = Port, queue_id = Queue,
                                tx_bytes = Bytes, tx_packets = Packets,
                                tx_errors = Errors}) ->
-    PortInt = ofp_v3_map:encode_port_no(Port),
-    QueueInt = ofp_v3_map:encode_queue_id(Queue),
-    <<PortInt:32, QueueInt:32, Bytes:64,
-      Packets:64, Errors:64>>;
+    <<Port:32, Queue:32, Bytes:64, Packets:64, Errors:64>>;
 encode_struct(#ofp_group_stats{group_id = Group, ref_count = RefCount,
                                packet_count = PCount, byte_count = BCount,
                                bucket_stats = Buckets}) ->
