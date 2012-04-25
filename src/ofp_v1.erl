@@ -339,7 +339,15 @@ encode_body(#ofp_packet_in{buffer_id = Buffer, in_port = Port,
     PortInt = ofp_v1_map:encode_port_no(Port),
     ReasonInt = ofp_v1_map:packet_in_reason(Reason),
     TotalLen = byte_size(Data),
-    <<BufferInt:32, TotalLen:16, PortInt:16, ReasonInt:8, 0:8, Data/binary>>.
+    <<BufferInt:32, TotalLen:16, PortInt:16, ReasonInt:8, 0:8, Data/binary>>;
+encode_body(#ofp_packet_out{buffer_id = Buffer, in_port = Port,
+                            actions = Actions, data = Data}) ->
+    BufferInt = ofp_v1_map:encode_buffer_id(Buffer),
+    PortInt = ofp_v1_map:encode_port_no(Port),
+    ActionsBin = encode_actions(Actions),
+    ActionsLen = byte_size(ActionsBin),
+    <<BufferInt:32, PortInt:16, ActionsLen:16, ActionsBin/binary,
+      Data/binary>>.
 
 %%%-----------------------------------------------------------------------------
 %%% Decode functions
@@ -551,25 +559,25 @@ decode_actions(Binary, Actions) ->
                                                     field = SetType,
                                                     value = Value}}];
                 ipv4_src ->
-                    <<Value:32, Rest/bytes>> = Data,
+                    <<Value:4/bytes, Rest/bytes>> = Data,
                     Action = [#ofp_action_set_field{
                                  field = #ofp_field{class = openflow_basic,
                                                     field = SetType,
                                                     value = Value}}];
                 ipv4_dst ->
-                    <<Value:32, Rest/bytes>> = Data,
+                    <<Value:4/bytes, Rest/bytes>> = Data,
                     Action = [#ofp_action_set_field{
                                  field = #ofp_field{class = openflow_basic,
                                                     field = SetType,
                                                     value = Value}}];
                 eth_src ->
-                    <<Value:48, _:48, Rest/bytes>> = Data,
+                    <<Value:6/bytes, _:48, Rest/bytes>> = Data,
                     Action = [#ofp_action_set_field{
                                  field = #ofp_field{class = openflow_basic,
                                                     field = SetType,
                                                     value = Value}}];
                 eth_dst ->
-                    <<Value:48, _:48, Rest/bytes>> = Data,
+                    <<Value:6/bytes, _:48, Rest/bytes>> = Data,
                     Action = [#ofp_action_set_field{
                                  field = #ofp_field{class = openflow_basic,
                                                     field = SetType,
@@ -678,6 +686,14 @@ decode_body(packet_in, Binary) ->
     <<Data:TotalLen/binary>> = Tail,
     #ofp_packet_in{buffer_id = Buffer, in_port = Port,
                    reason = Reason, data = Data};
+decode_body(packet_out, Binary) ->
+    <<BufferInt:32, PortInt:16, ActionsLen:16, Tail/binary>> = Binary,
+    Buffer = ofp_v1_map:decode_buffer_id(BufferInt),
+    Port = ofp_v1_map:decode_port_no(PortInt),
+    <<ActionsBin:ActionsLen/binary, Data/binary>> = Tail,
+    Actions = decode_actions(ActionsBin),
+    #ofp_packet_out{buffer_id = Buffer, in_port = Port,
+                    actions = Actions, data = Data};
 decode_body(flow_mod, Binary) ->
     <<MatchBin:40/bytes, Cookie:8/bytes, CommandInt:16, Idle:16, Hard:16,
       Priority:16, BufferInt:32, OutPortInt:16, FlagsBin:2/bytes,
