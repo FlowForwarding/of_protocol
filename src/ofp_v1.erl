@@ -390,12 +390,10 @@ encode_body(#ofp_barrier_request{}) ->
 encode_body(#ofp_barrier_reply{}) ->
     <<>>;
 encode_body(#ofp_queue_get_config_request{port = Port}) ->
-    PortInt = ofp_v1_map:encode_port_no(Port),
-    <<PortInt:16, 0:16>>;
+    <<Port:16, 0:16>>;
 encode_body(#ofp_queue_get_config_reply{port = Port, queues = Queues}) ->
-    PortInt = ofp_v1_map:encode_port_no(Port),
     QueuesBin = encode_list(Queues),
-    <<PortInt:16, 0:48, QueuesBin/binary>>.
+    <<Port:16, 0:48, QueuesBin/binary>>.
 
 %%%-----------------------------------------------------------------------------
 %%% Decode functions
@@ -846,12 +844,10 @@ decode_body(barrier_request, <<>>) ->
 decode_body(barrier_reply, <<>>) ->
     #ofp_barrier_reply{};
 decode_body(queue_get_config_request, Binary) ->
-    <<PortInt:16, 0:16>> = Binary,
-    Port = ofp_v1_map:decode_port_no(PortInt),
+    <<Port:16, 0:16>> = Binary,
     #ofp_queue_get_config_request{port = Port};
 decode_body(queue_get_config_reply, Binary) ->
-    <<PortInt:16, 0:48, QueuesBin/binary>> = Binary,
-    Port = ofp_v1_map:decode_port_no(PortInt),
+    <<Port:16, 0:48, QueuesBin/binary>> = Binary,
     Queues = decode_packet_queues(QueuesBin),
     #ofp_queue_get_config_reply{port = Port, queues = Queues}.
 
