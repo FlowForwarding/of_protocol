@@ -44,6 +44,52 @@
 -define(OFPT_QUEUE_GET_CONFIG_REQUEST, 20).
 -define(OFPT_QUEUE_GET_CONFIG_REPLY, 21).
 
+%%% Error codes ---------------------------------------------------------------
+
+-define(OFPET_HELLO_FAILED, 0).
+-define(OFPET_BAD_REQUEST, 1).
+-define(OFPET_BAD_ACTION, 2).
+-define(OFPET_FLOW_MOD_FAILED, 3).
+-define(OFPET_PORT_MOD_FAILED, 4).
+-define(OFPET_QUEUE_OP_FAILED, 5).
+
+-define(OFPHFC_INCOMPATIBLE, 0).
+-define(OFPHFC_EPERM, 1).
+
+-define(OFPBRC_BAD_VERSION, 0).
+-define(OFPBRC_BAD_TYPE, 1).
+-define(OFPBRC_BAD_STAT, 2).
+-define(OFPBRC_BAD_EXPERIMENTER, 3).
+-define(OFPBRC_BAD_EXP_TYPE, 4).
+-define(OFPBRC_EPERM, 5).
+-define(OFPBRC_BAD_LEN, 6).
+-define(OFPBRC_BUFFER_EMPTY, 7).
+-define(OFPBRC_BUFFER_UNKNOWN, 8).
+
+-define(OFPBAC_BAD_TYPE, 0).
+-define(OFPBAC_BAD_LEN, 1).
+-define(OFPBAC_BAD_EXPERIMENTER, 2).
+-define(OFPBAC_BAD_EXP_TYPE, 3).
+-define(OFPBAC_BAD_OUT_PORT, 4).
+-define(OFPBAC_BAD_ARGUMENT, 5).
+-define(OFPBAC_EPERM, 6).
+-define(OFPBAC_TOO_MANY, 7).
+-define(OFPBAC_BAD_QUEUE, 8).
+
+-define(OFPFMFC_ALL_TABLES_FULL, 0).
+-define(OFPFMFC_OVERLAP, 1).
+-define(OFPFMFC_EPERM, 2).
+-define(OFPFMFC_BAD_TIMEOUT, 3).
+-define(OFPFMFC_BAD_COMMAND, 4).
+-define(OFPFMFC_UNSUPPORTED, 5).
+
+-define(OFPPMFC_BAD_PORT, 0).
+-define(OFPPMFC_BAD_HW_ADDR, 1).
+
+-define(OFPQOFC_BAD_PORT, 0).
+-define(OFPQOFC_BAD_QUEUE, 1).
+-define(OFPQOFC_EPERM, 2).
+
 %%% Port Structures ------------------------------------------------------------
 
 %% Port config; enum ofp_port_config

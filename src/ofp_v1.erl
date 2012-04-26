@@ -62,7 +62,6 @@ encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
                         config = Config, state = State, curr = Curr,
                         advertised = Advertised, supported = Supported,
                         peer = Peer}) ->
-    PortNoInt = ofp_v1_map:encode_port_no(PortNo),
     NameBin = ofp_utils:encode_string(Name, ?OFP_MAX_PORT_NAME_LEN),
     ConfigBin = flags_to_binary(port_config, Config, 4),
     StateBin = flags_to_binary(port_state, State, 4),
@@ -70,7 +69,7 @@ encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
     AdvertisedBin = flags_to_binary(port_feature, Advertised, 4),
     SupportedBin = flags_to_binary(port_feature, Supported, 4),
     PeerBin = flags_to_binary(port_feature, Peer, 4),
-    <<PortNoInt:16, HWAddr:?OFP_ETH_ALEN/bytes,
+    <<PortNo:16, HWAddr:?OFP_ETH_ALEN/bytes,
       NameBin:?OFP_MAX_PORT_NAME_LEN/bytes,
       ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
       AdvertisedBin:4/bytes, SupportedBin:4/bytes, PeerBin:4/bytes>>;
@@ -246,6 +245,10 @@ encode_actions([Action | Rest], Actions) ->
 -spec encode_body(ofp_message()) -> binary().
 encode_body(#ofp_hello{}) ->
     <<>>;
+encode_body(#ofp_error{type = Type, code = Code, data = Data}) ->
+    TypeInt = ofp_v1_map:error_type(Type),
+    CodeInt = ofp_v1_map:Type(Code),
+    <<TypeInt:16, CodeInt:16, Data/bytes>>;
 encode_body(#ofp_echo_request{data = Data}) ->
     Data;
 encode_body(#ofp_echo_reply{data = Data}) ->
@@ -413,10 +416,9 @@ do_decode(Binary) ->
 
 %% @doc Decode port structure.
 decode_port(Binary) ->
-    <<PortNoInt:16, HWAddr:6/bytes, NameBin:?OFP_MAX_PORT_NAME_LEN/bytes,
+    <<PortNo:16, HWAddr:6/bytes, NameBin:?OFP_MAX_PORT_NAME_LEN/bytes,
       ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
       AdvertisedBin:4/bytes, SupportedBin:4/bytes, PeerBin:4/bytes>> = Binary,
-    PortNo = ofp_v1_map:decode_port_no(PortNoInt),
     Name = ofp_utils:strip_string(NameBin),
     Config = binary_to_flags(port_config, ConfigBin),
     State = binary_to_flags(port_state, StateBin),
@@ -696,6 +698,11 @@ decode_queue_stats(Binary) ->
 -spec decode_body(atom(), binary()) -> ofp_message().
 decode_body(hello, _) ->
     #ofp_hello{};
+decode_body(error, Binary) ->
+    <<TypeInt:16, CodeInt:16, Data/bytes>> = Binary,
+    Type = ofp_v1_map:error_type(TypeInt),
+    Code = ofp_v1_map:Type(CodeInt),
+    #ofp_error{type = Type, code = Code, data = Data};
 decode_body(features_request, _) ->
     #ofp_features_request{};
 decode_body(echo_request, Data) ->
