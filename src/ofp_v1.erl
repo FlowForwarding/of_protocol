@@ -246,6 +246,10 @@ encode_actions([Action | Rest], Actions) ->
 -spec encode_body(ofp_message()) -> binary().
 encode_body(#ofp_hello{}) ->
     <<>>;
+encode_body(#ofp_error{type = Type, code = Code, data = Data}) ->
+    TypeInt = ofp_v1_map:error_type(Type),
+    CodeInt = ofp_v1_map:Type(Code),
+    <<TypeInt:16, CodeInt:16, Data/bytes>>;
 encode_body(#ofp_echo_request{data = Data}) ->
     Data;
 encode_body(#ofp_echo_reply{data = Data}) ->
@@ -696,6 +700,11 @@ decode_queue_stats(Binary) ->
 -spec decode_body(atom(), binary()) -> ofp_message().
 decode_body(hello, _) ->
     #ofp_hello{};
+decode_body(error, Binary) ->
+    <<TypeInt:16, CodeInt:16, Data/bytes>> = Binary,
+    Type = ofp_v1_map:error_type(TypeInt),
+    Code = ofp_v1_map:Type(CodeInt),
+    #ofp_error{type = Type, code = Code, data = Data};
 decode_body(features_request, _) ->
     #ofp_features_request{};
 decode_body(echo_request, Data) ->

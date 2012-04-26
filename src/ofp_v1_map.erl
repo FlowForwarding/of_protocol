@@ -27,6 +27,13 @@
          flow_flag/1,
          encode_buffer_id/1,
          decode_buffer_id/1]).
+-export([error_type/1,
+         hello_failed/1,
+         bad_request/1,
+         bad_action/1,
+         flow_mod_failed/1,
+         port_mod_failed/1,
+         queue_op_failed/1]).
 -export([stats_type/1,
          stats_request_flag/1,
          stats_reply_flag/1,
@@ -311,6 +318,103 @@ encode_buffer_id(Int) when is_integer(Int) -> Int.
 
 decode_buffer_id(?OFPCML_NO_BUFFER)        -> no_buffer;
 decode_buffer_id(Int) when is_integer(Int) -> Int.
+
+%% Error messages --------------------------------------------------------------
+
+error_type(hello_failed)               -> ?OFPET_HELLO_FAILED;
+error_type(?OFPET_HELLO_FAILED)        -> hello_failed;
+error_type(bad_request)                -> ?OFPET_BAD_REQUEST;
+error_type(?OFPET_BAD_REQUEST)         -> bad_request;
+error_type(bad_action)                 -> ?OFPET_BAD_ACTION;
+error_type(?OFPET_BAD_ACTION)          -> bad_action;
+error_type(flow_mod_failed)            -> ?OFPET_FLOW_MOD_FAILED;
+error_type(?OFPET_FLOW_MOD_FAILED)     -> flow_mod_failed;
+error_type(port_mod_failed)            -> ?OFPET_PORT_MOD_FAILED;
+error_type(?OFPET_PORT_MOD_FAILED)     -> port_mod_failed;
+error_type(queue_op_failed)            -> ?OFPET_QUEUE_OP_FAILED;
+error_type(?OFPET_QUEUE_OP_FAILED)     -> queue_op_failed;
+error_type(Type) when is_integer(Type) -> throw({bad_type, Type});
+error_type(Type) when is_atom(Type)    -> throw({bad_value, Type}).
+
+hello_failed(incompatible)               -> ?OFPHFC_INCOMPATIBLE;
+hello_failed(?OFPHFC_INCOMPATIBLE)       -> incompatible;
+hello_failed(eperm)                      -> ?OFPHFC_EPERM;
+hello_failed(?OFPHFC_EPERM)              -> eperm;
+hello_failed(Type) when is_integer(Type) -> throw({bad_type, Type});
+hello_failed(Type) when is_atom(Type)    -> throw({bad_value, Type}).
+
+bad_request(bad_version)                -> ?OFPBRC_BAD_VERSION;
+bad_request(?OFPBRC_BAD_VERSION)        -> bad_version;
+bad_request(bad_type)                   -> ?OFPBRC_BAD_TYPE;
+bad_request(?OFPBRC_BAD_TYPE)           -> bad_type;
+bad_request(bad_stat)                   -> ?OFPBRC_BAD_STAT;
+bad_request(?OFPBRC_BAD_STAT)           -> bad_stat;
+bad_request(bad_experimenter)           -> ?OFPBRC_BAD_EXPERIMENTER;
+bad_request(?OFPBRC_BAD_EXPERIMENTER)   -> bad_experimenter;
+bad_request(bad_exp_type)               -> ?OFPBRC_BAD_EXP_TYPE;
+bad_request(?OFPBRC_BAD_EXP_TYPE)       -> bad_exp_type;
+bad_request(eperm)                      -> ?OFPBRC_EPERM;
+bad_request(?OFPBRC_EPERM)              -> eperm;
+bad_request(bad_len)                    -> ?OFPBRC_BAD_LEN;
+bad_request(?OFPBRC_BAD_LEN)            -> bad_len;
+bad_request(buffer_empty)               -> ?OFPBRC_BUFFER_EMPTY;
+bad_request(?OFPBRC_BUFFER_EMPTY)       -> buffer_empty;
+bad_request(buffer_unknown)             -> ?OFPBRC_BUFFER_UNKNOWN;
+bad_request(?OFPBRC_BUFFER_UNKNOWN)     -> buffer_unknown;
+bad_request(Type) when is_integer(Type) -> throw({bad_type, Type});
+bad_request(Type) when is_atom(Type)    -> throw({bad_value, Type}).
+
+bad_action(bad_type)                   -> ?OFPBAC_BAD_TYPE;
+bad_action(?OFPBAC_BAD_TYPE)           -> bad_type;
+bad_action(bad_len)                    -> ?OFPBAC_BAD_LEN;
+bad_action(?OFPBAC_BAD_LEN)            -> bad_len;
+bad_action(bad_experimenter)           -> ?OFPBAC_BAD_EXPERIMENTER;
+bad_action(?OFPBAC_BAD_EXPERIMENTER)   -> bad_experimenter;
+bad_action(bad_exp_type)               -> ?OFPBAC_BAD_EXP_TYPE;
+bad_action(?OFPBAC_BAD_EXP_TYPE)       -> bad_exp_type;
+bad_action(bad_out_port)               -> ?OFPBAC_BAD_OUT_PORT;
+bad_action(?OFPBAC_BAD_OUT_PORT)       -> bad_out_port;
+bad_action(bad_argument)               -> ?OFPBAC_BAD_ARGUMENT;
+bad_action(?OFPBAC_BAD_ARGUMENT)       -> bad_argument;
+bad_action(eperm)                      -> ?OFPBAC_EPERM;
+bad_action(?OFPBAC_EPERM)              -> eperm;
+bad_action(too_many)                   -> ?OFPBAC_TOO_MANY;
+bad_action(?OFPBAC_TOO_MANY)           -> too_many;
+bad_action(bad_queue)                  -> ?OFPBAC_BAD_QUEUE;
+bad_action(?OFPBAC_BAD_QUEUE)          -> bad_queue;
+bad_action(Type) when is_atom(Type)    -> throw({bad_type, Type});
+bad_action(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+flow_mod_failed(all_tables_full)            -> ?OFPFMFC_ALL_TABLES_FULL;
+flow_mod_failed(?OFPFMFC_ALL_TABLES_FULL)   -> all_tables_full;
+flow_mod_failed(overlap)                    -> ?OFPFMFC_OVERLAP;
+flow_mod_failed(?OFPFMFC_OVERLAP)           -> overlap;
+flow_mod_failed(eperm)                      -> ?OFPFMFC_EPERM;
+flow_mod_failed(?OFPFMFC_EPERM)             -> eperm;
+flow_mod_failed(bad_timeout)                -> ?OFPFMFC_BAD_TIMEOUT;
+flow_mod_failed(?OFPFMFC_BAD_TIMEOUT)       -> bad_timeout;
+flow_mod_failed(bad_command)                -> ?OFPFMFC_BAD_COMMAND;
+flow_mod_failed(?OFPFMFC_BAD_COMMAND)       -> bad_command;
+flow_mod_failed(unsupported)                -> ?OFPFMFC_UNSUPPORTED;
+flow_mod_failed(?OFPFMFC_UNSUPPORTED)       -> unsupported;
+flow_mod_failed(Type) when is_atom(Type)    -> throw({bad_type, Type});
+flow_mod_failed(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+port_mod_failed(bad_port)                   -> ?OFPPMFC_BAD_PORT;
+port_mod_failed(?OFPPMFC_BAD_PORT)          -> bad_port;
+port_mod_failed(bad_hw_addr)                -> ?OFPPMFC_BAD_HW_ADDR;
+port_mod_failed(?OFPPMFC_BAD_HW_ADDR)       -> bad_hw_addr;
+port_mod_failed(Type) when is_atom(Type)    -> throw({bad_type, Type});
+port_mod_failed(Type) when is_integer(Type) -> throw({bad_value, Type}).
+
+queue_op_failed(bad_port)                   -> ?OFPQOFC_BAD_PORT;
+queue_op_failed(?OFPQOFC_BAD_PORT)          -> bad_port;
+queue_op_failed(bad_queue)                  -> ?OFPQOFC_BAD_QUEUE;
+queue_op_failed(?OFPQOFC_BAD_QUEUE)         -> bad_queue;
+queue_op_failed(eperm)                      -> ?OFPQOFC_EPERM;
+queue_op_failed(?OFPQOFC_EPERM)             -> eperm;
+queue_op_failed(Type) when is_atom(Type)    -> throw({bad_type, Type});
+queue_op_failed(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
 %%% Read-State -----------------------------------------------------------------
 
