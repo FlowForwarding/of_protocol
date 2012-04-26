@@ -634,10 +634,10 @@
 
 %% Aggregate stats reply
 -record(ofp_aggregate_stats_reply, {
-          flags :: [ofp_stats_reply_flags()],
-          packet_count :: integer(),
-          byte_count :: integer(),
-          flow_count :: integer()
+          flags = [] :: [ofp_stats_reply_flags()],
+          packet_count = 0 :: integer(),
+          byte_count = 0 :: integer(),
+          flow_count = 0 :: integer()
          }).
 -type ofp_aggregate_stats_reply() :: #ofp_aggregate_stats_reply{}.
 
