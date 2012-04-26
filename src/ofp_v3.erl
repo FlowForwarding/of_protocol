@@ -77,7 +77,7 @@ encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
       AdvertisedBin:4/bytes, SupportedBin:4/bytes,
       PeerBin:4/bytes, CurrSpeed:32, MaxSpeed:32>>;
 
-encode_struct(#ofp_packet_queue{queue_id = Queue, port = Port,
+encode_struct(#ofp_packet_queue{queue_id = Queue, port_no = Port,
                                 properties = Props}) ->
     PropsBin = encode_list(Props),
     Length = ?PACKET_QUEUE_SIZE + size(PropsBin),
@@ -634,7 +634,7 @@ decode_queues(Binary, Queues) ->
     PropsLength = Length - ?PACKET_QUEUE_SIZE,
     <<PropsBin:PropsLength/bytes, Rest/bytes>> = Data,
     Props = decode_properties(PropsBin),
-    Queue = #ofp_packet_queue{queue_id = QueueId, port = Port,
+    Queue = #ofp_packet_queue{queue_id = QueueId, port_no = Port,
                               properties = Props},
     decode_queues(Rest, [Queue | Queues]).
 

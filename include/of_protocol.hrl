@@ -51,15 +51,17 @@
                         | blocked
                         | live.
 
+-type ofp_port_reserved() :: all
+                           | controller
+                           | table
+                           | in_port
+                           | any        %% 'none' in OFP 1.0
+                           | local
+                           | normal
+                           | flood.
+
 -type ofp_port_no() :: integer()
-                     | in_port
-                     | table
-                     | normal
-                     | flood
-                     | all
-                     | controller
-                     | local
-                     | any.       %% 'none' in OFP 1.0
+                     | ofp_port_reserved().
 
 -type ofp_port_feature() :: '10mb_hd'
                           | '10mb_fd'
@@ -80,7 +82,7 @@
 
 %% Port
 -record(ofp_port, {
-          port_no :: integer() | local,
+          port_no :: ofp_port_no(),
           hw_addr :: binary(),
           name :: binary(),
           config = [] :: [ofp_port_config()],
@@ -118,8 +120,8 @@
 
 %% Packet queue
 -record(ofp_packet_queue, {
-          queue_id :: integer(),
-          port :: integer(),
+          queue_id :: ofp_queue_id(),
+          port_no :: ofp_port_no(),
           properties :: [ofp_queue_property()]
          }).
 -type ofp_packet_queue() :: #ofp_packet_queue{}.
@@ -407,26 +409,26 @@
 
 %% Port stats
 -record(ofp_port_stats, {
-          port_no :: ofp_port_no(),
-          rx_packets :: integer(),
-          tx_packets :: integer(),
-          rx_bytes :: integer(),
-          tx_bytes :: integer(),
-          rx_dropped :: integer(),
-          tx_dropped :: integer(),
-          rx_errors :: integer(),
-          tx_errors :: integer(),
-          rx_frame_err :: integer(),
-          rx_over_err :: integer(),
-          rx_crc_err :: integer(),
-          collisions :: integer()
+          port_no          :: ofp_port_no(),
+          rx_packets   = 0 :: integer(),
+          tx_packets   = 0 :: integer(),
+          rx_bytes     = 0 :: integer(),
+          tx_bytes     = 0 :: integer(),
+          rx_dropped   = 0 :: integer(),
+          tx_dropped   = 0 :: integer(),
+          rx_errors    = 0 :: integer(),
+          tx_errors    = 0 :: integer(),
+          rx_frame_err = 0 :: integer(),
+          rx_over_err  = 0 :: integer(),
+          rx_crc_err   = 0 :: integer(),
+          collisions   = 0 :: integer()
          }).
 -type ofp_port_stats() :: #ofp_port_stats{}.
 
 %% Queue stats
 -record(ofp_queue_stats, {
-          port_no :: integer(),
-          queue_id :: integer(),
+          port_no :: ofp_port_no(),
+          queue_id :: ofp_queue_id(),
           tx_bytes = 0 :: integer(),
           tx_packets = 0 :: integer(),
           tx_errors = 0 :: integer()
@@ -541,6 +543,7 @@
 -type ofp_group_mod_command() :: add
                                | modify
                                | delete.
+
 -type ofp_group_type() :: all
                         | select
                         | indirect
