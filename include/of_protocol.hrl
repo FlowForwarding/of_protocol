@@ -427,11 +427,11 @@
 
 %% Queue stats
 -record(ofp_queue_stats, {
-          port_no :: ofp_port_no(),
-          queue_id :: ofp_queue_id(),
-          tx_bytes = 0 :: integer(),
+          port_no        :: ofp_port_no(),
+          queue_id       :: ofp_queue_id(),
+          tx_bytes   = 0 :: integer(),
           tx_packets = 0 :: integer(),
-          tx_errors = 0 :: integer()
+          tx_errors  = 0 :: integer()
          }).
 -type ofp_queue_stats() :: #ofp_queue_stats{}.
 
@@ -516,6 +516,7 @@
                               | modify_strict
                               | delete
                               | delete_strict.
+
 -type ofp_flow_mod_flag() :: send_flow_rem
                            | check_overlap
                            | reset_counts
