@@ -174,7 +174,7 @@
 
 %% OXM field
 -record(ofp_field, {
-          class :: ofp_field_class(),
+          class = openflow_basic :: ofp_field_class(),
           field :: ofp_field_type(),
           has_mask = false :: boolean(),
           value :: binary(),
@@ -187,7 +187,7 @@
 
 %% Match
 -record(ofp_match, {
-          type :: ofp_match_type(),
+          type = oxm :: ofp_match_type(),
           oxm_fields = [] :: [ofp_field()]
          }).
 
@@ -311,7 +311,7 @@
 -record(ofp_action_output, {
           seq = 14,
           port :: ofp_port_no(),
-          max_len :: ofp_buffer_id()
+          max_len = no_buffer :: ofp_buffer_id()
          }).
 
 %% Experimenter action
@@ -528,14 +528,13 @@
           cookie_mask :: binary(),
           table_id :: ofp_table_id(),
           command :: ofp_flow_mod_command(),
-          idle_timeout :: integer(),
-          hard_timeout :: integer(),
+          idle_timeout = 0 :: integer(),
+          hard_timeout = 0 :: integer(),
           priority :: integer(),
-          buffer_id :: ofp_buffer_id(),
-          out_port :: ofp_port_no(),
-          out_group :: ofp_group_id(),
+          buffer_id = no_buffer :: ofp_buffer_id(),
+          out_port = any :: ofp_port_no(),
+          out_group = any :: ofp_group_id(),
           flags = [] :: [ofp_flow_mod_flag()],
-          %% actions = [] :: [ofp_action()],
           match :: ofp_match(),
           instructions = [] :: [ofp_instruction()]
          }).
