@@ -643,13 +643,13 @@
 
 %% Request for table stats
 -record(ofp_table_stats_request, {
-          flags :: [ofp_stats_request_flags()]
+          flags = [] :: [ofp_stats_request_flags()]
          }).
 -type ofp_table_stats_request() :: #ofp_table_stats_request{}.
 
 %% Table stats reply
 -record(ofp_table_stats_reply, {
-          flags :: [atom()],
+          flags = [] :: [atom()],
           stats = [] :: [#ofp_table_stats{}]
          }).
 -type ofp_table_stats_reply() :: #ofp_table_stats_reply{}.
