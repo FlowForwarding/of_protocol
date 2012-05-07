@@ -872,7 +872,7 @@ decode_table_stats(Binary) ->
     <<TableInt:8, 0:56, NameBin:?OFP_MAX_TABLE_NAME_LEN/bytes,
       MatchBin:8/bytes, WildcardsBin:8/bytes, WriteActionsBin:4/bytes,
       ApplyActionsBin:4/bytes, WriteSetBin:8/bytes, ApplySetBin:8/bytes,
-      MetaMatch:64, MetaWrite:64, InstructionsBin:4/bytes,
+      MetaMatch:8/bytes, MetaWrite:8/bytes, InstructionsBin:4/bytes,
       ConfigInt:32, Max:32, ACount:32, LCount:64,
       MCount:64>> = Binary,
     Table = ofp_v3_map:decode_table_id(TableInt),
