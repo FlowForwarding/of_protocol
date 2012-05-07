@@ -710,12 +710,14 @@ port_reason(?OFPPR_MODIFY)              -> modify;
 port_reason(Type) when is_atom(Type)    -> throw({bad_type, Type});
 port_reason(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
-table_config(continue)                   -> ?OFPTC_TABLE_MISS_CONTINUE;
-table_config(?OFPTC_TABLE_MISS_CONTINUE) -> continue;
-table_config(drop)                       -> ?OFPTC_TABLE_MISS_DROP;
-table_config(?OFPTC_TABLE_MISS_DROP)     -> drop;
-table_config(Type) when is_atom(Type)    -> throw({bad_type, Type});
-table_config(Type) when is_integer(Type) -> throw({bad_value, Type}).
+table_config(controller)                   -> ?OFPTC_TABLE_MISS_CONTROLLER;
+table_config(?OFPTC_TABLE_MISS_CONTROLLER) -> controller;
+table_config(continue)                     -> ?OFPTC_TABLE_MISS_CONTINUE;
+table_config(?OFPTC_TABLE_MISS_CONTINUE)   -> continue;
+table_config(drop)                         -> ?OFPTC_TABLE_MISS_DROP;
+table_config(?OFPTC_TABLE_MISS_DROP)       -> drop;
+table_config(Type) when is_atom(Type)      -> throw({bad_type, Type});
+table_config(Type) when is_integer(Type)   -> throw({bad_value, Type}).
 
 group_command(add)                        -> ?OFPGC_ADD;
 group_command(?OFPGC_ADD)                 -> add;

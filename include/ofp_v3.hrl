@@ -229,8 +229,9 @@
 -define(OFPTT_ALL, 16#ff).
 
 %% Table config
--define(OFPTC_TABLE_MISS_CONTINUE, 0).
--define(OFPTC_TABLE_MISS_DROP, 1).
+-define(OFPTC_TABLE_MISS_CONTROLLER, 0).
+-define(OFPTC_TABLE_MISS_CONTINUE, 1).
+-define(OFPTC_TABLE_MISS_DROP, 2).
 -define(OFPTC_TABLE_MISS_MASK, 3).
 
 %% Group mod commands
