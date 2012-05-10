@@ -498,7 +498,7 @@ decode_match(Binary) ->
                   F = #ofp_field{class = openflow_basic, field = Type},
                   case Type of
                       in_port ->
-                          F#ofp_field{value = InPort};
+                          F#ofp_field{value = <<0:16, InPort/bytes>>};
                       eth_src ->
                           F#ofp_field{value = EthSrc};
                       eth_dst ->
