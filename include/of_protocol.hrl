@@ -604,11 +604,11 @@
 %% Request for flow stats
 -record(ofp_flow_stats_request, {
           flags = [] :: [ofp_stats_request_flags()],
-          table_id :: ofp_table_id(),
-          out_port :: ofp_port_no(),
-          out_group :: ofp_group_id(),
-          cookie :: binary(),
-          cookie_mask :: binary(),
+          table_id = all :: ofp_table_id(),
+          out_port = any :: ofp_port_no(),
+          out_group = any :: ofp_group_id(),
+          cookie = <<0:64>> :: binary(),
+          cookie_mask = <<0:64>> :: binary(),
           match :: ofp_match()
          }).
 -type ofp_flow_stats_request() :: #ofp_flow_stats_request{}.
@@ -623,12 +623,12 @@
 %% Request for aggregate stats
 -record(ofp_aggregate_stats_request, {
           flags = [] :: [ofp_stats_request_flags()],
-          table_id :: ofp_table_id(),
-          out_port :: ofp_port_no(),
-          out_group :: ofp_group_id(),
-          cookie :: binary(),
-          cookie_mask :: binary(),
-          match :: ofp_match()}).
+          table_id = all :: ofp_table_id(),
+          out_port = any :: ofp_port_no(),
+          out_group = any :: ofp_group_id(),
+          cookie = <<0:64>> :: binary(),
+          cookie_mask = <<0:64>> :: binary(),
+          match = #ofp_match{} :: ofp_match()}).
 -type ofp_aggregate_stats_request() :: #ofp_aggregate_stats_request{}.
 
 %% Aggregate stats reply
@@ -670,8 +670,8 @@
 %% Request for queue stats
 -record(ofp_queue_stats_request, {
           flags = [] :: [ofp_stats_request_flags()],
-          port_no :: ofp_port_no(),
-          queue_id :: ofp_queue_id()
+          port_no = all :: ofp_port_no(),
+          queue_id = all :: ofp_queue_id()
          }).
 -type ofp_queue_stats_request() :: #ofp_queue_stats_request{}.
 
@@ -685,7 +685,7 @@
 %% Request for group stats
 -record(ofp_group_stats_request, {
           flags = [] :: [ofp_stats_request_flags()],
-          group_id :: ofp_group_id()
+          group_id = all :: ofp_group_id()
          }).
 -type ofp_group_stats_request() :: #ofp_group_stats_request{}.
 
