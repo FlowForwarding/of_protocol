@@ -187,8 +187,8 @@
 
 %% Match
 -record(ofp_match, {
-          type = oxm :: ofp_match_type(),
-          oxm_fields = [] :: [ofp_field()]
+          type       = oxm :: ofp_match_type(),
+          oxm_fields = []  :: [ofp_field()]
          }).
 
 -type ofp_match() :: #ofp_match{}.
@@ -603,13 +603,13 @@
 
 %% Request for flow stats
 -record(ofp_flow_stats_request, {
-          flags = [] :: [ofp_stats_request_flags()],
-          table_id = all :: ofp_table_id(),
-          out_port = any :: ofp_port_no(),
-          out_group = any :: ofp_group_id(),
-          cookie = <<0:64>> :: binary(),
-          cookie_mask = <<0:64>> :: binary(),
-          match :: ofp_match()
+          flags       = []           :: [ofp_stats_request_flags()],
+          table_id    = all          :: ofp_table_id(),
+          out_port    = any          :: ofp_port_no(),
+          out_group   = any          :: ofp_group_id(),
+          cookie      = <<0:64>>     :: binary(),
+          cookie_mask = <<0:64>>     :: binary(),
+          match       = #ofp_match{} :: ofp_match()
          }).
 -type ofp_flow_stats_request() :: #ofp_flow_stats_request{}.
 
@@ -722,11 +722,13 @@
 
 %% Group features stats reply
 -record(ofp_group_features_stats_reply, {
-          flags = [] :: [ofp_stats_reply_flags()],
-          types = [] :: [atom()],
-          capabilities :: [ofp_group_features_capabilities()],
-          max_groups :: {integer(), integer(), integer(), integer()},
-          actions :: {[atom()], [atom()], [atom()], [atom()]}
+          flags        = []               :: [ofp_stats_reply_flags()],
+          types        = []               :: [atom()],
+          capabilities = []               :: [ofp_group_features_capabilities()],
+          max_groups   = {0,0,0,0}        :: {integer(), integer(),
+                                              integer(), integer()},
+          actions      = {[], [], [], []} :: {[atom()], [atom()],
+                                              [atom()], [atom()]}
          }).
 -type ofp_group_features_stats_reply() :: #ofp_group_features_stats_reply{}.
 
