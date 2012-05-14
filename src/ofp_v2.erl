@@ -58,6 +58,8 @@ do_encode(#ofp_message{experimental = Experimental,
 %%% Structures -----------------------------------------------------------------
 
 %% @doc Encode other structures
+-spec encode_struct(ofp_packet_queue() | ofp_instruction() | ofp_match() | ofp_action() | ofp_port() | ofp_queue_property())
+                   -> binary().
 encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
                         config = Config, state = State, curr = Curr,
                         advertised = Advertised, supported = Supported,
@@ -76,7 +78,6 @@ encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
       ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
       AdvertisedBin:4/bytes, SupportedBin:4/bytes,
       PeerBin:4/bytes, CurrSpeed:32, MaxSpeed:32>>;
-
 encode_struct(#ofp_packet_queue{queue_id = Queue, properties = Props}) ->
     PropsBin = encode_list(Props),
     Length = ?PACKET_QUEUE_SIZE + size(PropsBin),
@@ -84,7 +85,6 @@ encode_struct(#ofp_packet_queue{queue_id = Queue, properties = Props}) ->
 encode_struct(#ofp_queue_prop_min_rate{rate = Rate}) ->
     PropertyInt = ofp_v2_map:queue_property(min_rate),
     <<PropertyInt:16, ?QUEUE_PROP_MIN_RATE_SIZE:16, 0:32, Rate:16, 0:48>>;
-
 encode_struct(#ofp_match{type = Type, oxm_fields = Fields}) ->
     TypeInt = ofp_v2_map:match_type(Type),
     FieldList = encode_fields(Fields),
@@ -132,7 +132,6 @@ encode_struct(#ofp_match{type = Type, oxm_fields = Fields}) ->
       IPProto:1/bytes, IPv4Src:4/bytes, SrcMask:4/bytes, IPv4Dst:4/bytes,
       DstMask:4/bytes, TPSrc:2/bytes, TPDst:2/bytes, MPLSLabel:4/bytes,
       MPLSTc:1/bytes, 0:24, Metadata:8/bytes, MetadataMask:8/bytes>>;
-
 encode_struct(#ofp_instruction_goto_table{table_id = Table}) ->
     Type = ofp_v2_map:instruction_type(goto_table),
     Length = ?INSTRUCTION_GOTO_TABLE_SIZE,
@@ -160,7 +159,6 @@ encode_struct(#ofp_instruction_experimenter{experimenter = Experimenter}) ->
     Type = ofp_v2_map:instruction_type(experimenter),
     Length = ?INSTRUCTION_EXPERIMENTER_SIZE,
     <<Type:16, Length:16, Experimenter:32>>;
-
 encode_struct(#ofp_action_output{port = Port, max_len = MaxLen}) ->
     Type = ofp_v2_map:action_type(output),
     Length = ?ACTION_OUTPUT_SIZE,
@@ -221,7 +219,6 @@ encode_struct(#ofp_action_experimenter{experimenter = Experimenter}) ->
     Type = ofp_v2_map:action_type(experimenter),
     Length = ?ACTION_EXPERIMENTER_SIZE,
     <<Type:16, Length:16, Experimenter:32>>;
-
 encode_struct(#ofp_action_set_field{field = #ofp_field{field = Type,
                                                        value = Value}}) ->
     SetType = ofp_v2_map:action_set_type(Type),
@@ -291,7 +288,7 @@ encode_actions(_) ->
 
 %%% Messages -----------------------------------------------------------------
 
--spec encode_body(ofp_message()) -> binary().
+-spec encode_body(ofp_message_body()) -> binary().
 encode_body(#ofp_hello{}) ->
     <<>>;
 encode_body(#ofp_echo_request{data = Data}) ->
@@ -371,36 +368,6 @@ decode_port(Binary) ->
               config = Config, state = State, curr = Curr,
               advertised = Advertised, supported = Supported,
               peer = Peer, curr_speed = CurrSpeed, max_speed = MaxSpeed}.
-
-%% @doc Decode packet queues
-decode_packet_queues(Binary) ->
-    decode_packet_queues(Binary, []).
-
-decode_packet_queues(<<>>, Queues) ->
-    lists:reverse(Queues);
-decode_packet_queues(Binary, Queues) ->
-    <<QueueId:32, Length:16, 0:16, Data/bytes>> = Binary,
-    PropsLength = Length - ?PACKET_QUEUE_SIZE,
-    <<PropsBin:PropsLength/bytes, Rest/bytes>> = Data,
-    Props = decode_queue_properties(PropsBin),
-    Queue = #ofp_packet_queue{queue_id = QueueId, properties = Props},
-    decode_packet_queues(Rest, [Queue | Queues]).
-
-%% @doc Decode queue properties
-decode_queue_properties(Binary) ->
-    decode_queue_properties(Binary, []).
-
-decode_queue_properties(<<>>, Properties) ->
-    lists:reverse(Properties);
-decode_queue_properties(Binary, Properties) ->
-    <<TypeInt:16, _Length:16, 0:32, Data/bytes>> = Binary,
-    Type = ofp_v2_map:queue_property(TypeInt),
-    case Type of
-        min_rate ->
-            <<Rate:16, 0:48, Rest/bytes>> = Data,
-            Property = #ofp_queue_prop_min_rate{rate = Rate}
-    end,
-    decode_queue_properties(Rest, [Property | Properties]).
 
 decode_match(Binary) ->
     <<TypeInt:16, ?MATCH_SIZE:16, InPort:4/bytes, WildcardsInt:32,
@@ -603,7 +570,7 @@ decode_actions(Binary, Actions) ->
                 tp_src ->
                     <<Value:16, _:16, Rest/bytes>> = Data,
                     Action = [#ofp_field{class = openflow_basic,
-                                         field = tcp_src, value = Value}
+                                         field = tcp_src, value = <<Value:16>>}
                               %% #ofp_field{class = openflow_basic,
                               %%            field = udp_src, value = Value}
                               %% #ofp_field{class = openflow_basic,
@@ -612,7 +579,7 @@ decode_actions(Binary, Actions) ->
                 tp_dst ->
                     <<Value:16, _:16, Rest/bytes>> = Data,
                     Action = [#ofp_field{class = openflow_basic,
-                                         field = tcp_src, value = Value}
+                                         field = tcp_src, value = <<Value:16>>}
                               %% #ofp_field{class = openflow_basic,
                               %%            field = udp_src, value = Value}
                               %% #ofp_field{class = openflow_basic,
@@ -621,50 +588,50 @@ decode_actions(Binary, Actions) ->
                 vlan_pcp ->
                     <<Value:8, _:24, Rest/bytes>> = Data,
                     Action = [#ofp_field{class = openflow_basic,
-                                         field = SetType, value = Value}];
+                                         field = SetType, value = <<Value:8>>}];
                 mpls_tc ->
                     <<Value:8, _:24, Rest/bytes>> = Data,
                     Action = [#ofp_field{class = openflow_basic,
-                                         field = SetType, value = Value}];
+                                         field = SetType, value = <<Value:8>>}];
                 ip_dscp ->
                     <<Value:8, _:24, Rest/bytes>> = Data,
                     Action = [#ofp_field{class = openflow_basic,
-                                         field = SetType, value = Value}];
+                                         field = SetType, value = <<Value:8>>}];
                 ip_ecn ->
                     <<Value:8, _:24, Rest/bytes>> = Data,
                     Action = [#ofp_field{class = openflow_basic,
-                                         field = SetType, value = Value}];
+                                         field = SetType, value = <<Value:8>>}];
                 vlan_vid ->
                     <<Value:16, _:16, Rest/bytes>> = Data,
                     Action = [#ofp_field{class = openflow_basic,
-                                         field = SetType, value = Value}];
+                                         field = SetType, value = <<Value:16>>}];
                 mpls_label ->
                     <<Value:32, Rest/bytes>> = Data,
                     Action = [#ofp_field{class = openflow_basic,
-                                         field = SetType, value = Value}];
+                                         field = SetType, value = <<Value:32>>}];
                 ipv4_src ->
                     <<Value:32, Rest/bytes>> = Data,
                     Action = [#ofp_field{class = openflow_basic,
-                                         field = SetType, value = Value}];
+                                         field = SetType, value = <<Value:32>>}];
                 ipv4_dst ->
                     <<Value:32, Rest/bytes>> = Data,
                     Action = [#ofp_field{class = openflow_basic,
-                                         field = SetType, value = Value}];
+                                         field = SetType, value = <<Value:32>>}];
                 eth_src ->
                     <<Value:48, _:48, Rest/bytes>> = Data,
                     Action = [#ofp_field{class = openflow_basic,
-                                         field = SetType, value = Value}];
+                                         field = SetType, value = <<Value:48>>}];
                 eth_dst ->
                     <<Value:48, _:48, Rest/bytes>> = Data,
                     Action = [#ofp_field{class = openflow_basic,
-                                         field = SetType, value = Value}]
+                                         field = SetType, value = <<Value:48>>}]
             end
     end,
     decode_actions(Rest, Action ++ Actions).
 
 %%% Messages -----------------------------------------------------------------
 
--spec decode_body(atom(), binary()) -> ofp_message().
+-spec decode_body(atom(), binary()) -> ofp_message_body().
 decode_body(hello, _) ->
     #ofp_hello{};
 decode_body(echo_request, Data) ->

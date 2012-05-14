@@ -242,7 +242,7 @@ encode_actions([Action | Rest], Actions) ->
 
 %%% Messages -------------------------------------------------------------------
 
--spec encode_body(ofp_message()) -> binary().
+-spec encode_body(ofp_message_body()) -> binary().
 encode_body(#ofp_hello{}) ->
     <<>>;
 encode_body(#ofp_error{type = Type, code = Code, data = Data}) ->
@@ -568,7 +568,7 @@ decode_actions(Binary, Actions) ->
                     Action = [#ofp_action_set_field{
                                  field = #ofp_field{class = openflow_basic,
                                                     field = tcp_src,
-                                                    value = Value}}
+                                                    value = <<Value:16>>}}
                               %% #ofp_action_set_field{
                               %%    field = #ofp_field{class = openflow_basic,
                               %%                       field = udp_src,
@@ -579,7 +579,7 @@ decode_actions(Binary, Actions) ->
                     Action = [#ofp_action_set_field{
                                  field = #ofp_field{class = openflow_basic,
                                                     field = tcp_dst,
-                                                    value = Value}}
+                                                    value = <<Value:16>>}}
                               %% #ofp_action_set_field{
                               %%    field = #ofp_field{class = openflow_basic,
                               %%                       field = udp_dst,
@@ -590,19 +590,19 @@ decode_actions(Binary, Actions) ->
                     Action = [#ofp_action_set_field{
                                  field = #ofp_field{class = openflow_basic,
                                                     field = SetType,
-                                                    value = Value}}];
+                                                    value = <<Value:8>>}}];
                 ip_dscp ->
                     <<Value:8, _:24, Rest/bytes>> = Data,
                     Action = [#ofp_action_set_field{
                                  field = #ofp_field{class = openflow_basic,
                                                     field = SetType,
-                                                    value = Value}}];
+                                                    value = <<Value:8>>}}];
                 vlan_vid ->
                     <<Value:16, _:16, Rest/bytes>> = Data,
                     Action = [#ofp_action_set_field{
                                  field = #ofp_field{class = openflow_basic,
                                                     field = SetType,
-                                                    value = Value}}];
+                                                    value = <<Value:16>>}}];
                 ipv4_src ->
                     <<Value:4/bytes, Rest/bytes>> = Data,
                     Action = [#ofp_action_set_field{
@@ -914,7 +914,7 @@ count_zeros4(<<_,X,0,0>>) -> 16 + count_zeros1(X);
 count_zeros4(<<_,_,X,0>>) -> 8 + count_zeros1(X);
 count_zeros4(<<_,_,_,X>>) -> count_zeros1(X).
 
--spec count_zeros1(binary()) -> integer().
+-spec count_zeros1(byte()) -> integer().
 count_zeros1(X) when X band 2#11111111 == 0 -> 8;
 count_zeros1(X) when X band 2#01111111 == 0 -> 7;
 count_zeros1(X) when X band 2#00111111 == 0 -> 6;
