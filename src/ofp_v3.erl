@@ -348,10 +348,11 @@ encode_body(#ofp_set_config{flags = Flags, miss_send_len = Miss}) ->
     <<FlagsBin:2/bytes, Miss:16>>;
 encode_body(#ofp_packet_in{buffer_id = BufferId, reason = Reason,
                            table_id = TableId, match = Match, data = Data}) ->
+    BufferIdInt = ofp_v3_map:encode_buffer_id(BufferId),
     ReasonInt = ofp_v3_map:reason(Reason),
     MatchBin = encode_struct(Match),
     TotalLen = byte_size(Data),
-    <<BufferId:32, TotalLen:16, ReasonInt:8, TableId:8,
+    <<BufferIdInt:32, TotalLen:16, ReasonInt:8, TableId:8,
       MatchBin/bytes, 0:16, Data/bytes>>;
 encode_body(#ofp_flow_removed{cookie = Cookie, priority = Priority,
                               reason = Reason, table_id = TableId,
@@ -376,10 +377,11 @@ encode_body(#ofp_queue_get_config_reply{port = Port, queues = Queues}) ->
     <<PortInt:32, 0:32, QueuesBin/bytes>>;
 encode_body(#ofp_packet_out{buffer_id = BufferId, in_port = Port,
                             actions = Actions, data = Data}) ->
+    BufferIdInt = ofp_v3_map:encode_buffer_id(BufferId),
     PortInt = ofp_v3_map:encode_port_no(Port),
     ActionsBin = encode_list(Actions),
     ActionsLength = size(ActionsBin),
-    <<BufferId:32, PortInt:32,
+    <<BufferIdInt:32, PortInt:32,
       ActionsLength:16, 0:48, ActionsBin/bytes, Data/bytes>>;
 encode_body(#ofp_flow_mod{cookie = Cookie, cookie_mask = CookieMask,
                           table_id = Table, command = Command,
@@ -1029,17 +1031,20 @@ decode_body(set_config, Binary) ->
     Flags = binary_to_flags(configuration, FlagsBin),
     #ofp_set_config{flags = Flags, miss_send_len = Miss};
 decode_body(packet_in, Binary) ->
-    <<BufferId:32, TotalLen:16, ReasonInt:8,
+    <<BufferIdInt:32, TotalLen:16, ReasonInt:8,
       TableId:8, Tail/bytes>> = Binary,
-    MatchLength = size(Binary) - (?PACKET_IN_SIZE - ?MATCH_SIZE) - 2 - TotalLen + ?OFP_HEADER_SIZE,
+    MatchLength = size(Binary) - (?PACKET_IN_SIZE - ?MATCH_SIZE)
+        - 2 - TotalLen + ?OFP_HEADER_SIZE,
     <<MatchBin:MatchLength/bytes, 0:16, Payload/bytes>> = Tail,
+    BufferId = ofp_v3_map:decode_buffer_id(BufferIdInt),
     Reason = ofp_v3_map:reason(ReasonInt),
     Match = decode_match(MatchBin),
     <<Data:TotalLen/bytes>> = Payload,
     #ofp_packet_in{buffer_id = BufferId, reason = Reason,
                    table_id = TableId, match = Match, data = Data};
 decode_body(flow_removed, Binary) ->
-    MatchLength = size(Binary) - ?FLOW_REMOVED_SIZE + ?MATCH_SIZE + ?OFP_HEADER_SIZE,
+    MatchLength = size(Binary) - ?FLOW_REMOVED_SIZE + ?MATCH_SIZE
+        + ?OFP_HEADER_SIZE,
     <<Cookie:8/bytes, Priority:16, ReasonInt:8,
       TableId:8, Sec:32, NSec:32, Idle:16,
       Hard:16, PCount:64, BCount:64,
@@ -1223,17 +1228,20 @@ decode_body(queue_get_config_request, Binary) ->
     Port = ofp_v3_map:decode_port_no(PortInt),
     #ofp_queue_get_config_request{port = Port};
 decode_body(queue_get_config_reply, Binary) ->
-    QueuesLength = size(Binary) - ?QUEUE_GET_CONFIG_REPLY_SIZE + ?OFP_HEADER_SIZE,
+    QueuesLength = size(Binary) - ?QUEUE_GET_CONFIG_REPLY_SIZE
+        + ?OFP_HEADER_SIZE,
     <<PortInt:32, 0:32, QueuesBin:QueuesLength/bytes>> = Binary,
     Port = ofp_v3_map:decode_port_no(PortInt),
     Queues = decode_queues(QueuesBin),
     #ofp_queue_get_config_reply{port = Port,
                                 queues = Queues};
 decode_body(packet_out, Binary) ->
-    <<BufferId:32, PortInt:32, ActionsLength:16,
+    <<BufferIdInt:32, PortInt:32, ActionsLength:16,
       0:48, Binary2/bytes>> = Binary,
-    DataLength = size(Binary) - ?PACKET_OUT_SIZE + ?OFP_HEADER_SIZE - ActionsLength,
+    DataLength = size(Binary) - ?PACKET_OUT_SIZE + ?OFP_HEADER_SIZE
+        - ActionsLength,
     <<ActionsBin:ActionsLength/bytes, Data:DataLength/bytes>> = Binary2,
+    BufferId = ofp_v3_map:encode_buffer_id(BufferIdInt),
     Port = ofp_v3_map:decode_port_no(PortInt),
     Actions = decode_actions(ActionsBin),
     #ofp_packet_out{buffer_id = BufferId, in_port = Port,

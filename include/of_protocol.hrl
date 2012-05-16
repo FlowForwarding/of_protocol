@@ -524,18 +524,18 @@
 
 %% Flow mod
 -record(ofp_flow_mod, {
-          cookie :: binary(),
-          cookie_mask :: binary(),
-          table_id :: ofp_table_id(),
+          cookie = <<0:64>> :: binary(),
+          cookie_mask = <<0:64>> :: binary(),
+          table_id = all :: ofp_table_id(),
           command :: ofp_flow_mod_command(),
           idle_timeout = 0 :: integer(),
           hard_timeout = 0 :: integer(),
-          priority :: integer(),
+          priority = 16#ffff :: integer(),
           buffer_id = no_buffer :: ofp_buffer_id(),
           out_port = any :: ofp_port_no(),
           out_group = any :: ofp_group_id(),
           flags = [] :: [ofp_flow_mod_flag()],
-          match :: ofp_match(),
+          match = #ofp_match{} :: ofp_match(),
           instructions = [] :: [ofp_instruction()]
          }).
 -type ofp_flow_mod() :: #ofp_flow_mod{}.
@@ -574,8 +574,8 @@
 
 %% Table mod
 -record(ofp_table_mod, {
-          table_id :: ofp_table_id(),
-          config = drop :: ofp_table_config()
+          table_id = all :: ofp_table_id(),
+          config :: ofp_table_config()
          }).
 -type ofp_table_mod() :: #ofp_table_mod{}.
 
@@ -791,7 +791,7 @@
 
 %% Send packet
 -record(ofp_packet_out, {
-          buffer_id :: ofp_buffer_id(),
+          buffer_id = no_buffer :: ofp_buffer_id(),
           in_port = controller :: controller,
           actions = [] :: [ofp_action()],
           data = <<>> :: binary()
@@ -839,9 +839,9 @@
 
 %% Packet-in
 -record(ofp_packet_in, {
-          buffer_id :: ofp_buffer_id(),
-          in_port :: ofp_port_no(),
-          in_phy_port :: ofp_port_no(),
+          buffer_id = no_buffer :: ofp_buffer_id(),
+          in_port :: ofp_port_no(),                 %% OFP 1.0
+          in_phy_port :: ofp_port_no(),             %% OFP 1.0
           reason :: ofp_packet_in_reason(),
           table_id :: integer(),
           match :: ofp_match(),
