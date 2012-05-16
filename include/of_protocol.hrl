@@ -195,32 +195,39 @@
 
 %%% Flow Instruction Structures ------------------------------------------------
 
-%% Instruction structure for goto table
--record(ofp_instruction_goto_table, {
-          table_id :: integer()
-         }).
-
-%% Instruction structure for write metadata
--record(ofp_instruction_write_metadata, {
-          metadata                 :: binary(),
-          metadata_mask = <<1:64>> :: binary()
-         }).
-
-%% Instruction structure for write actions
--record(ofp_instruction_write_actions, {
-          actions :: [ofp_action()]
-         }).
-
 %% Instruction structure for apply actions
 -record(ofp_instruction_apply_actions, {
+          seq = 1,
           actions :: [ofp_action()]
          }).
 
 %% Instruction structure for clear actions
--record(ofp_instruction_clear_actions, {}).
+-record(ofp_instruction_clear_actions, {
+          seq = 2
+         }).
+
+%% Instruction structure for write actions
+-record(ofp_instruction_write_actions, {
+          seq = 3,
+          actions :: [ofp_action()]
+         }).
+
+%% Instruction structure for write metadata
+-record(ofp_instruction_write_metadata, {
+          seq = 4,
+          metadata                 :: binary(),
+          metadata_mask = <<1:64>> :: binary()
+         }).
+
+%% Instruction structure for goto table
+-record(ofp_instruction_goto_table, {
+          seq = 5,
+          table_id :: integer()
+         }).
 
 %% Instruction structure for experimenter
 -record(ofp_instruction_experimenter, {
+          seq = 6,
           experimenter :: integer()
          }).
 
@@ -365,8 +372,8 @@
 
 %% Bucket counter for use in group stats
 -record(ofp_bucket_counter, {
-          packet_count :: integer(),
-          byte_count :: integer()
+          packet_count = 0 :: integer(),
+          byte_count   = 0 :: integer()
          }).
 -type ofp_bucket_counter() :: #ofp_bucket_counter{}.
 
