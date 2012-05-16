@@ -202,8 +202,8 @@
 
 %% Instruction structure for write metadata
 -record(ofp_instruction_write_metadata, {
-          metadata :: binary(),
-          metadata_mask :: binary()
+          metadata                 :: binary(),
+          metadata_mask = <<1:64>> :: binary()
          }).
 
 %% Instruction structure for write actions
