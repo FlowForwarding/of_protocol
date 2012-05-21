@@ -98,6 +98,8 @@
 
 %%% Queue Structures -----------------------------------------------------------
 
+%% Queue rates are given in permiles. Value > 1000 means QoS is disabled.
+
 %% Min-Rate queue property
 -record(ofp_queue_prop_min_rate, {
           rate :: integer()
