@@ -53,15 +53,11 @@ strip_string(_, _) ->
 
 -spec cut_bits(binary(), integer()) -> binary().
 cut_bits(Binary, Bits) ->
-    BitSize = size(Binary) * 8,
-    case BitSize /= Bits of
-        true ->
-            <<Int:BitSize>> = Binary,
-            NewInt = Int band round(math:pow(2,Bits) - 1),
-            <<NewInt:BitSize>>;
-        false ->
-            Binary
-    end.
+    BitSize = bit_size(Binary),
+    ByteSize = byte_size(Binary) * 8,
+    <<Int:BitSize>> = Binary,
+    NewInt = Int band round(math:pow(2,Bits) - 1),
+    <<NewInt:ByteSize>>.
 
 -spec int_to_bool(boolean()) -> integer().
 int_to_bool(true) ->

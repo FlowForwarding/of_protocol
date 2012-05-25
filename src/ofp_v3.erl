@@ -110,25 +110,28 @@ encode_struct(#ofp_field{class = Class, field = Field, has_mask = HasMask,
                          value = Value, mask = Mask}) ->
     ClassInt = ofp_v3_map:field_class(Class),
     FieldInt = ofp_v3_map:field_type(Class, Field),
+    BitLength = ofp_v3_map:tlv_length(Field),
     case Class of
         openflow_basic ->
-            BitLength = ofp_v3_map:tlv_length(Field),
-            Length = (BitLength - 1) div 8 + 1;
+            Value2 = ofp_utils:cut_bits(Value, BitLength);
         _ ->
-            Length = size(Value),
-            BitLength = Length * 8
+            Value2 = Value
     end,
-    Value2 = ofp_utils:cut_bits(Value, BitLength),
     case HasMask of
         true ->
             HasMaskInt = 1,
-            Mask2 = ofp_utils:cut_bits(Mask, BitLength),
-            Rest = <<Value2:Length/bytes, Mask2:Length/bytes>>,
-            Len2 = Length * 2;
+            case Class of
+                openflow_basic ->
+                    Mask2 = ofp_utils:cut_bits(Mask, BitLength);
+                _ ->
+                    Mask2 = Mask
+            end,
+            Rest = <<Value2/bytes, Mask2/bytes>>,
+            Len2 = byte_size(Value2) * 2;
         false ->
             HasMaskInt = 0,
-            Rest = <<Value2:Length/bytes>>,
-            Len2 = Length
+            Rest = <<Value2/bytes>>,
+            Len2 = byte_size(Value2)
     end,
     <<ClassInt:16, FieldInt:7, HasMaskInt:1, Len2:8, Rest/bytes>>;
 
@@ -1258,9 +1261,7 @@ decode_body(flow_mod, Binary) ->
     Flags = binary_to_flags(flow_flag, FlagsBin),
     <<_:16, MatchLength:16, _/bytes>> = Data,
     MatchLengthPad = MatchLength + (8 - (MatchLength rem 8)),
-    InstrLength = size(Binary) - ?FLOW_MOD_SIZE +
-        ?OFP_HEADER_SIZE + ?MATCH_SIZE - MatchLengthPad,
-    <<MatchBin:MatchLengthPad/bytes, InstrBin:InstrLength/bytes>> = Data,
+    <<MatchBin:MatchLengthPad/bytes, InstrBin/bytes>> = Data,
     Match = decode_match(MatchBin),
     Instructions = decode_instructions(InstrBin),
     #ofp_flow_mod{cookie = Cookie, cookie_mask = CookieMask,
