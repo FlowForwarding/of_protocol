@@ -4,6 +4,8 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ofp_v3_map).
+-author("Erlang Solutions Ltd. <openflow@erlang-solutions.com>").
+
 
 %% Helper functions
 -export([tlv_length/1,

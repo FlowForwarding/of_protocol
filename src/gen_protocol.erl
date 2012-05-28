@@ -4,6 +4,8 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(gen_protocol).
+-author("Erlang Solutions Ltd. <openflow@erlang-solutions.com>").
+
 
 %% Encode OpenFlow Protocol message from Erlang representation to binary.
 -callback encode(Message :: of_protocol:ofp_message()) ->

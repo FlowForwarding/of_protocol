@@ -4,6 +4,8 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ofp_utils).
+-author("Erlang Solutions Ltd. <openflow@erlang-solutions.com>").
+
 
 -export([split_binaries/2,
          encode_string/2,

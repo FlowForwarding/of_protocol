@@ -4,6 +4,8 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ofp_v2_map).
+-author("Erlang Solutions Ltd. <openflow@erlang-solutions.com>").
+
 
 %% Helper functions
 -export([get_experimenter_bit/1]).

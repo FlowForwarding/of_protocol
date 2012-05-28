@@ -4,6 +4,8 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ofp_parser).
+-author("Erlang Solutions Ltd. <openflow@erlang-solutions.com>").
+
 
 %% API
 -export([new/0, parse/2]).
