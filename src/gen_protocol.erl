@@ -1,11 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012, Erlang Solutions Ltd.
+%%% Use is subject to License terms.
+%%% @copyright (C) 2012 FlowForwarding.org
 %%% @doc OpenFlow Protocol behaviour.
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(gen_protocol).
 -author("Erlang Solutions Ltd. <openflow@erlang-solutions.com>").
-
 
 %% Encode OpenFlow Protocol message from Erlang representation to binary.
 -callback encode(Message :: of_protocol:ofp_message()) ->

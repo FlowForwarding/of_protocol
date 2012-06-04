@@ -1,11 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012, Erlang Solutions Ltd.
+%%% Use is subject to License terms.
+%%% @copyright (C) 2012 FlowForwarding.org
 %%% @doc OpenFlow Protocol library module.
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(of_protocol).
 -author("Erlang Solutions Ltd. <openflow@erlang-solutions.com>").
-
 
 %% API
 -export([encode/1, decode/1, parse/2]).

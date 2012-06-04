@@ -1,11 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012, Erlang Solutions Ltd.
+%%% Use is subject to License terms.
+%%% @copyright (C) 2012 FlowForwarding.org
 %%% @doc Utility module with common functions.
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ofp_utils).
 -author("Erlang Solutions Ltd. <openflow@erlang-solutions.com>").
-
 
 -export([split_binaries/2,
          encode_string/2,

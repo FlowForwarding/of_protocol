@@ -1,11 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012, Erlang Solutions Ltd.
+%%% Use is subject to License terms.
+%%% @copyright (C) 2012 FlowForwarding.org
 %%% @doc Module for mapping between atoms and bits for OFP 1.2.
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ofp_v3_map).
 -author("Erlang Solutions Ltd. <openflow@erlang-solutions.com>").
-
 
 %% Helper functions
 -export([tlv_length/1,

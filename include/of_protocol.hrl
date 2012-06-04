@@ -1,5 +1,6 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012, Erlang Solutions Ltd.
+%%% Use is subject to License terms.
+%%% @copyright (C) 2012 FlowForwarding.org
 %%% @doc Common header file for all protocol versions.
 %%% @end
 %%%-----------------------------------------------------------------------------

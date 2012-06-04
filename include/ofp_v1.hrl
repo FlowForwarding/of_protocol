@@ -1,5 +1,6 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012, Erlang Solutions Ltd.
+%%% Use is subject to License terms.
+%%% @copyright (C) 2012 FlowForwarding.org
 %%% @doc OpenFlow Protocol version 1.0 specific header.
 %%% @end
 %%%-----------------------------------------------------------------------------
