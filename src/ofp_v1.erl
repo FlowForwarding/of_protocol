@@ -144,10 +144,11 @@ encode_struct(#ofp_action_pop_vlan{}) ->
     Type = ofp_v1_map:action_type(pop_vlan),
     Length = ?ACTION_POP_VLAN_SIZE,
     <<Type:16, Length:16, 0:32>>;
-encode_struct(#ofp_action_experimenter{experimenter = Experimenter}) ->
+encode_struct(#ofp_action_experimenter{experimenter = Experimenter,
+                                       data = Data}) ->
     Type = ofp_v1_map:action_type(experimenter),
-    Length = ?ACTION_EXPERIMENTER_SIZE,
-    <<Type:16, Length:16, Experimenter:32>>;
+    Length = ?ACTION_EXPERIMENTER_SIZE + byte_size(Data),
+    <<Type:16, Length:16, Experimenter:32, Data/bytes>>;
 
 encode_struct(#ofp_action_set_field{field = #ofp_field{field = Type,
                                                        value = Value}}) ->
@@ -546,7 +547,7 @@ decode_actions(Binary) ->
 decode_actions(<<>>, Actions) ->
     lists:reverse(Actions);
 decode_actions(Binary, Actions) ->
-    <<TypeInt:16, _Length:16, Data/bytes>> = Binary,
+    <<TypeInt:16, Length:16, Data/bytes>> = Binary,
     Type = ofp_v1_map:action_type(TypeInt),
     case Type of
         output ->
@@ -561,8 +562,10 @@ decode_actions(Binary, Actions) ->
             <<_:32, Rest/bytes>> = Data,
             Action = [#ofp_action_pop_vlan{}];
         experimenter ->
-            <<Experimenter:32, Rest/bytes>> = Data,
-            Action = [#ofp_action_experimenter{experimenter = Experimenter}];
+            DataLength = Length - ?ACTION_EXPERIMENTER_SIZE,
+            <<Experimenter:32, ExpData:DataLength/bytes, Rest/bytes>> = Data,
+            Action = [#ofp_action_experimenter{experimenter = Experimenter,
+                                               data = ExpData}];
         set_field ->
             case SetType = ofp_v1_map:action_set_type(TypeInt) of
                 tp_src ->
