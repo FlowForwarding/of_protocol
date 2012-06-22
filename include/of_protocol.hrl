@@ -114,7 +114,7 @@
 %% Experimenter queue property
 -record(ofp_queue_prop_experimenter, {
           experimenter :: integer(),
-          data :: binary()
+          data = <<>> :: binary()
          }).
 
 -type ofp_queue_property() :: #ofp_queue_prop_min_rate{} |
@@ -231,7 +231,8 @@
 %% Instruction structure for experimenter
 -record(ofp_instruction_experimenter, {
           seq = 6,
-          experimenter :: integer()
+          experimenter :: integer(),
+          data = <<>> :: binary()
          }).
 
 -type ofp_instruction() :: #ofp_instruction_goto_table{}
@@ -327,7 +328,8 @@
 %% Experimenter action
 -record(ofp_action_experimenter, {
           seq = 99,
-          experimenter :: integer()
+          experimenter :: integer(),
+          data = <<>> :: binary()
          }).
 
 -type ofp_action_type() :: output
