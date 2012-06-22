@@ -172,7 +172,6 @@
 -define(OFPAT_SET_TP_DST, 10).
 -define(OFPAT_ENQUEUE, 11).
 -define(OFPAT_VENDOR, 16#ffff).
--define(OFPAT_VENDOR_BIT, 31).
 
 %%%-----------------------------------------------------------------------------
 %%% Controller-to-Switch Messages

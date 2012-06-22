@@ -7,9 +7,6 @@
 -module(ofp_v2_map).
 -author("Erlang Solutions Ltd. <openflow@erlang-solutions.com>").
 
-%% Helper functions
--export([get_experimenter_bit/1]).
-
 %% Mapping functions
 -export([msg_type/1]).
 -export([port_config/1,
@@ -232,7 +229,6 @@ instruction_type(clear_actions)              -> ?OFPIT_CLEAR_ACTIONS;
 instruction_type(?OFPIT_CLEAR_ACTIONS)       -> clear_actions;
 instruction_type(experimenter)               -> ?OFPIT_EXPERIMENTER;
 instruction_type(?OFPIT_EXPERIMENTER)        -> experimenter;
-instruction_type(?OFPIT_EXPERIMENTER_BIT)    -> experimenter;
 instruction_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
 instruction_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
@@ -278,7 +274,6 @@ action_type(dec_nw_ttl)                 -> ?OFPAT_DEC_NW_TTL;
 action_type(?OFPAT_DEC_NW_TTL)          -> dec_nw_ttl;
 action_type(experimenter)               -> ?OFPAT_EXPERIMENTER;
 action_type(?OFPAT_EXPERIMENTER)        -> experimenter;
-action_type(?OFPAT_EXPERIMENTER_BIT)    -> experimenter;
 action_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
 action_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
@@ -392,13 +387,3 @@ encode_group_id(Int) when is_integer(Int) -> Int.
 decode_group_id(?OFPG_ANY)                -> any;
 decode_group_id(?OFPG_ALL)                -> all;
 decode_group_id(Int) when is_integer(Int) -> Int.
-
-%%%-----------------------------------------------------------------------------
-%%% Helper functions
-%%%-----------------------------------------------------------------------------
-
--spec get_experimenter_bit(atom()) -> integer().
-get_experimenter_bit(instruction_type) ->
-    ?OFPIT_EXPERIMENTER_BIT;
-get_experimenter_bit(action_type) ->
-    ?OFPAT_EXPERIMENTER_BIT.

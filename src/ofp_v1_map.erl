@@ -7,9 +7,6 @@
 -module(ofp_v1_map).
 -author("Erlang Solutions Ltd. <openflow@erlang-solutions.com>").
 
-%% Helper functions
-%% -export([get_experimenter_bit/1]).
-
 %% Mapping functions
 -export([msg_type/1]).
 -export([port_config/1,
@@ -231,7 +228,6 @@ action_type(?OFPAT_SET_TP_SRC)          -> set_field;
 action_type(?OFPAT_SET_TP_DST)          -> set_field;
 action_type(experimenter)               -> ?OFPAT_VENDOR;
 action_type(?OFPAT_VENDOR)              -> experimenter;
-action_type(?OFPAT_VENDOR_BIT)          -> experimenter;
 action_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
 action_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
@@ -468,13 +464,3 @@ port_status_reason(?OFPPR_DELETE)                  -> delete;
 port_status_reason(modify)                         -> ?OFPPR_MODIFY;
 port_status_reason(?OFPPR_MODIFY)                  -> modify;
 port_status_reason(Reason) when is_integer(Reason) -> throw({bad_value, Reason}).
-
-%%%-----------------------------------------------------------------------------
-%%% Helper functions
-%%%-----------------------------------------------------------------------------
-
-%% -spec get_experimenter_bit(atom()) -> integer().
-%% get_experimenter_bit(instruction_type) ->
-%%     ?OFPIT_EXPERIMENTER_BIT;
-%% get_experimenter_bit(action_type) ->
-%%     ?OFPAT_EXPERIMENTER_BIT.

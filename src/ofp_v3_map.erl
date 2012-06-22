@@ -8,8 +8,7 @@
 -author("Erlang Solutions Ltd. <openflow@erlang-solutions.com>").
 
 %% Helper functions
--export([tlv_length/1,
-         get_experimenter_bit/1]).
+-export([tlv_length/1]).
 
 %% Mapping functions
 -export([msg_type/1]).
@@ -334,7 +333,6 @@ instruction_type(clear_actions)              -> ?OFPIT_CLEAR_ACTIONS;
 instruction_type(?OFPIT_CLEAR_ACTIONS)       -> clear_actions;
 instruction_type(experimenter)               -> ?OFPIT_EXPERIMENTER;
 instruction_type(?OFPIT_EXPERIMENTER)        -> experimenter;
-instruction_type(?OFPIT_EXPERIMENTER_BIT)    -> experimenter;
 instruction_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
 instruction_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
@@ -370,7 +368,6 @@ action_type(set_field)                  -> ?OFPAT_SET_FIELD;
 action_type(?OFPAT_SET_FIELD)           -> set_field;
 action_type(experimenter)               -> ?OFPAT_EXPERIMENTER;
 action_type(?OFPAT_EXPERIMENTER)        -> experimenter;
-action_type(?OFPAT_EXPERIMENTER_BIT)    -> experimenter;
 action_type(Type) when is_atom(Type)    -> throw({bad_type, Type});
 action_type(Type) when is_integer(Type) -> throw({bad_value, Type}).
 
@@ -864,9 +861,3 @@ tlv_length(ipv6_nd_sll)    -> ?IPV6_ND_SLL_FIELD_LENGTH;
 tlv_length(ipv6_nd_tll)    -> ?IPV6_ND_TLL_FIELD_LENGTH;
 tlv_length(mpls_label)     -> ?MPLS_LABEL_FIELD_LENGTH;
 tlv_length(mpls_tc)        -> ?MPLS_TC_FIELD_LENGTH.
-
--spec get_experimenter_bit(atom()) -> integer().
-get_experimenter_bit(instruction_type) ->
-    ?OFPIT_EXPERIMENTER_BIT;
-get_experimenter_bit(action_type) ->
-    ?OFPAT_EXPERIMENTER_BIT.

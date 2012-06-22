@@ -129,7 +129,6 @@
 -define(OFPIT_APPLY_ACTIONS, 4).
 -define(OFPIT_CLEAR_ACTIONS, 5).
 -define(OFPIT_EXPERIMENTER, 16#ffff).
--define(OFPIT_EXPERIMENTER_BIT, 31).
 
 %%% Action Structures ----------------------------------------------------------
 
@@ -160,7 +159,6 @@
 -define(OFPAT_SET_NW_TTL, 23).
 -define(OFPAT_DEC_NW_TTL, 24).
 -define(OFPAT_EXPERIMENTER, 16#ffff).
--define(OFPAT_EXPERIMENTER_BIT, 31).
 
 %%%-----------------------------------------------------------------------------
 %%% Controller-to-Switch Messages

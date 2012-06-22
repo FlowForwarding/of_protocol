@@ -1332,12 +1332,7 @@ flags_to_binary(_, [], Binary, _) ->
     Binary;
 flags_to_binary(Type, [Flag | Rest], Binary, BitSize) ->
     <<Binary2:BitSize>> = Binary,
-    case Flag of
-        experimenter ->
-            Bit = ofp_v3_map:get_experimenter_bit(Type);
-        _ ->
-            Bit = ofp_v3_map:Type(Flag)
-    end,
+    Bit = ofp_v3_map:Type(Flag),
     NewBinary = (Binary2 bor (1 bsl Bit)),
     flags_to_binary(Type, Rest, <<NewBinary:BitSize>>, BitSize).
 
