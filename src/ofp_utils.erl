@@ -10,8 +10,7 @@
 -export([split_binaries/2,
          encode_string/2,
          strip_string/1,
-         cut_bits/2,
-         int_to_bool/1]).
+         cut_bits/2]).
 
 %%%-----------------------------------------------------------------------------
 %%% Helper functions
@@ -60,9 +59,3 @@ cut_bits(Binary, Bits) ->
     <<Int:BitSize>> = Binary,
     NewInt = Int band round(math:pow(2,Bits) - 1),
     <<NewInt:ByteSize>>.
-
--spec int_to_bool(boolean()) -> integer().
-int_to_bool(true) ->
-    1;
-int_to_bool(false) ->
-    0.

@@ -13,7 +13,6 @@
 -define(OFP_HEADER_SIZE, 8).
 
 -record(ofp_message, {
-          experimental = false :: boolean(),
           version = 3 :: integer(),
           xid :: integer(),
           body :: ofp_message_body()

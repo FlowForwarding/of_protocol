@@ -46,16 +46,13 @@ decode(Binary) ->
 %%%-----------------------------------------------------------------------------
 
 %% @doc Actual encoding of the message.
-do_encode(#ofp_message{experimental = Experimental,
-                       version = Version,
+do_encode(#ofp_message{version = Version,
                        xid = Xid,
                        body = Body}) ->
-    ExperimentalInt = ofp_utils:int_to_bool(Experimental),
     BodyBin = encode_body(Body),
     TypeInt = type_int(Body),
     Length = ?OFP_HEADER_SIZE + size(BodyBin),
-    <<ExperimentalInt:1, Version:7, TypeInt:8,
-      Length:16, Xid:32, BodyBin/bytes>>.
+    <<Version:8, TypeInt:8, Length:16, Xid:32, BodyBin/bytes>>.
 
 %%% Structures -----------------------------------------------------------------
 
@@ -344,13 +341,10 @@ encode_body(#ofp_flow_mod{cookie = Cookie, cookie_mask = CookieMask,
 %% @doc Actual decoding of the message.
 -spec do_decode(Binary :: binary()) -> ofp_message().
 do_decode(Binary) ->
-    <<ExperimentalInt:1, Version:7, TypeInt:8, _:16,
-      XID:32, BodyBin/bytes >> = Binary,
-    Experimental = (ExperimentalInt =:= 1),
+    <<Version:8, TypeInt:8, _:16, XID:32, BodyBin/bytes >> = Binary,
     Type = ofp_v2_map:msg_type(TypeInt),
     Body = decode_body(Type, BodyBin),
-    #ofp_message{experimental = Experimental, version = Version,
-                 xid = XID, body = Body}.
+    #ofp_message{version = Version, xid = XID, body = Body}.
 
 %%% Structures -----------------------------------------------------------------
 
