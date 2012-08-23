@@ -1,23 +1,30 @@
-.PHONY: all compile rel test doc clean
+.PHONY: compile get-deps test doc clean clean-doc deep-clean
 
-all: compile
+compile: rebar get-deps
+	@./rebar compile
 
-compile: rebar
-	./rebar get-deps compile
+get-deps: rebar
+	@./rebar get-deps
 
-rel: compile
-	./rebar generate -f
-	./scripts/post_generate_hook
+test: rebar
+	@./rebar skip_deps=true eunit
 
-test: compile
-	./rebar skip_deps=true eunit
-
-doc:
-	./rebar skip_deps=true doc
+doc: rebar
+	@./rebar skip_deps=true doc
 
 clean: rebar
-	./rebar clean
+	@./rebar clean
+
+clean-doc:
+	@rm -f doc/*.html
+	@rm -f doc/*.css
+	@rm -f doc/*.png
+	@rm -f doc/edoc-info
+
+deep-clean: rebar clean clean-doc
+	@./rebar delete-deps
+	@rm -f rebar
 
 rebar:
-	wget -q http://cloud.github.com/downloads/basho/rebar/rebar
-	chmod u+x rebar
+	@wget -q https://github.com/downloads/basho/rebar/rebar
+	@chmod u+x rebar
