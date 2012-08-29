@@ -33,7 +33,7 @@ encode(#ofp_message{version = Version} = Message) ->
 decode(Binary) when byte_size(Binary) >= ?OFP_HEADER_SIZE ->
     <<_:1, Version:7, _:8, Length:16, _/bytes>> = Binary,
     case get_module(Version) of
-        undefined ->
+        unsupported ->
             {error, unsupported_version};
         Module ->
             case byte_size(Binary) >= Length of
@@ -64,9 +64,7 @@ parse(Parser, Binary) ->
 -spec get_module(integer()) -> atom().
 get_module(3) ->
     ofp_v3;
-get_module(2) ->
-    ofp_v2;
 get_module(1) ->
     ofp_v1;
 get_module(_) ->
-    undefined.
+    unsupported.
