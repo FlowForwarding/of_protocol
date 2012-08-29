@@ -1,11 +1,25 @@
-%%%-----------------------------------------------------------------------------
-%%% Use is subject to License terms.
-%%% @copyright (C) 2012 FlowForwarding.org
-%%% @doc OpenFlow Protocol version 1.2 implementation.
-%%% @end
-%%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% Copyright 2012 FlowForwarding.org
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+%%-----------------------------------------------------------------------------
+
+%% @author Erlang Solutions Ltd. <openflow@erlang-solutions.com>
+%% @author Krzysztof Rutka <krzysztof.rutka@erlang-solutions.com>
+%% @copyright 2012 FlowForwarding.org
+%% @doc OpenFlow Protocol 1.2 (3) implementation.
+%% @private
 -module(ofp_v3).
--author("Erlang Solutions Ltd. <openflow@erlang-solutions.com>").
 
 -behaviour(gen_protocol).
 
@@ -15,9 +29,9 @@
 -include("of_protocol.hrl").
 -include("ofp_v3.hrl").
 
-%%%-----------------------------------------------------------------------------
-%%% gen_protocol callbacks
-%%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% gen_protocol callbacks
+%%------------------------------------------------------------------------------
 
 %% @doc Encode erlang representation to binary.
 -spec encode(Message :: ofp_message()) -> {ok, binary()} |
@@ -41,9 +55,9 @@ decode(Binary) ->
             {error, Exception}
     end.
 
-%%%-----------------------------------------------------------------------------
-%%% Encode functions
-%%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% Encode functions
+%%------------------------------------------------------------------------------
 
 %% @doc Actual encoding of the message.
 do_encode(#ofp_message{version = Version,
@@ -62,7 +76,7 @@ encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
                         advertised = Advertised, supported = Supported,
                         peer = Peer, curr_speed = CurrSpeed,
                         max_speed = MaxSpeed}) ->
-    PortNoInt = ofp_v3_map:encode_port_no(PortNo),
+    PortNoInt = get_id(port_no, PortNo),
     NameBin = ofp_utils:encode_string(Name, ?OFP_MAX_PORT_NAME_LEN),
     ConfigBin = flags_to_binary(port_config, Config, 4),
     StateBin = flags_to_binary(port_state, State, 4),
@@ -82,19 +96,19 @@ encode_struct(#ofp_packet_queue{queue_id = Queue, port_no = Port,
     Length = ?PACKET_QUEUE_SIZE + size(PropsBin),
     <<Queue:32, Port:32, Length:16, 0:48, PropsBin/bytes>>;
 encode_struct(#ofp_queue_prop_min_rate{rate = Rate}) ->
-    PropertyInt = ofp_v3_map:queue_property(min_rate),
+    PropertyInt = ofp_v3_enum:to_int(queue_properties, min_rate),
     <<PropertyInt:16, ?QUEUE_PROP_MIN_RATE_SIZE:16, 0:32, Rate:16, 0:48>>;
 encode_struct(#ofp_queue_prop_max_rate{rate = Rate}) ->
-    PropertyInt = ofp_v3_map:queue_property(max_rate),
+    PropertyInt = ofp_v3_enum:to_int(queue_properties, max_rate),
     <<PropertyInt:16, ?QUEUE_PROP_MAX_RATE_SIZE:16, 0:32, Rate:16, 0:48>>;
 encode_struct(#ofp_queue_prop_experimenter{experimenter = Experimenter,
                                            data = Data}) ->
     Length = ?QUEUE_PROP_EXPERIMENTER_SIZE + byte_size(Data),
-    PropertyInt = ofp_v3_map:queue_property(experimenter),
+    PropertyInt = ofp_v3_enum:to_int(queue_properties, experimenter),
     <<PropertyInt:16, Length:16, 0:32, Experimenter:32, 0:32, Data/bytes>>;
 
 encode_struct(#ofp_match{type = Type, oxm_fields = Fields}) ->
-    TypeInt = ofp_v3_map:match_type(Type),
+    TypeInt = ofp_v3_enum:to_int(match_type, Type),
     FieldsBin = encode_list(Fields),
     FieldsLength = size(FieldsBin),
     Length = FieldsLength + ?MATCH_SIZE - 4,
@@ -107,8 +121,9 @@ encode_struct(#ofp_match{type = Type, oxm_fields = Fields}) ->
     <<TypeInt:16, Length:16, FieldsBin/bytes, 0:Padding>>;
 encode_struct(#ofp_field{class = Class, field = Field, has_mask = HasMask,
                          value = Value, mask = Mask}) ->
-    ClassInt = ofp_v3_map:field_class(Class),
-    FieldInt = ofp_v3_map:field_type(Class, Field),
+    ClassInt = ofp_v3_enum:to_int(oxm_class, Class),
+    %% TODO: Handle different classes
+    FieldInt = ofp_v3_enum:to_int(oxm_ofb_match_fields, Field),
     BitLength = ofp_v3_map:tlv_length(Field),
     case Class of
         openflow_basic ->
@@ -135,92 +150,92 @@ encode_struct(#ofp_field{class = Class, field = Field, has_mask = HasMask,
     <<ClassInt:16, FieldInt:7, HasMaskInt:1, Len2:8, Rest/bytes>>;
 
 encode_struct(#ofp_instruction_goto_table{table_id = Table}) ->
-    Type = ofp_v3_map:instruction_type(goto_table),
+    Type = ofp_v3_enum:to_int(instruction_type, goto_table),
     Length = ?INSTRUCTION_GOTO_TABLE_SIZE,
     <<Type:16, Length:16, Table:8, 0:24>>;
 encode_struct(#ofp_instruction_write_metadata{metadata = Metadata,
                                               metadata_mask = MetaMask}) ->
-    Type = ofp_v3_map:instruction_type(write_metadata),
+    Type = ofp_v3_enum:to_int(instruction_type, write_metadata),
     Length = ?INSTRUCTION_WRITE_METADATA_SIZE,
     <<Type:16, Length:16, 0:32, Metadata:8/bytes, MetaMask:8/bytes>>;
 encode_struct(#ofp_instruction_write_actions{actions = Actions}) ->
-    Type = ofp_v3_map:instruction_type(write_actions),
+    Type = ofp_v3_enum:to_int(instruction_type, write_actions),
     ActionsBin = encode_list(Actions),
     Length = ?INSTRUCTION_WRITE_ACTIONS_SIZE + size(ActionsBin),
     <<Type:16, Length:16, 0:32, ActionsBin/bytes>>;
 encode_struct(#ofp_instruction_apply_actions{actions = Actions}) ->
-    Type = ofp_v3_map:instruction_type(apply_actions),
+    Type = ofp_v3_enum:to_int(instruction_type, apply_actions),
     ActionsBin = encode_list(Actions),
     Length = ?INSTRUCTION_APPLY_ACTIONS_SIZE + size(ActionsBin),
     <<Type:16, Length:16, 0:32, ActionsBin/bytes>>;
 encode_struct(#ofp_instruction_clear_actions{}) ->
-    Type = ofp_v3_map:instruction_type(clear_actions),
+    Type = ofp_v3_enum:to_int(instruction_type, clear_actions),
     Length = ?INSTRUCTION_CLEAR_ACTIONS_SIZE,
     <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_instruction_experimenter{experimenter = Experimenter,
                                             data = Data}) ->
-    Type = ofp_v3_map:instruction_type(experimenter),
+    Type = ofp_v3_enum:to_int(instruction_type, experimenter),
     Length = ?INSTRUCTION_EXPERIMENTER_SIZE + byte_size(Data),
     <<Type:16, Length:16, Experimenter:32, Data/bytes>>;
 
 encode_struct(#ofp_action_output{port = Port, max_len = MaxLen}) ->
-    Type = ofp_v3_map:action_type(output),
+    Type = ofp_v3_enum:to_int(action_type, output),
     Length = ?ACTION_OUTPUT_SIZE,
-    PortInt = ofp_v3_map:encode_port_no(Port),
-    MaxLenInt = ofp_v3_map:encode_max_length(MaxLen),
+    PortInt = get_id(port_no, Port),
+    MaxLenInt = get_id(buffer, MaxLen),
     <<Type:16, Length:16, PortInt:32, MaxLenInt:16, 0:48>>;
 encode_struct(#ofp_action_group{group_id = Group}) ->
-    Type = ofp_v3_map:action_type(group),
+    Type = ofp_v3_enum:to_int(action_type, group),
     Length = ?ACTION_GROUP_SIZE,
-    GroupInt = ofp_v3_map:encode_group_id(Group),
+    GroupInt = get_id(group, Group),
     <<Type:16, Length:16, GroupInt:32>>;
 encode_struct(#ofp_action_set_queue{queue_id = Queue}) ->
-    Type = ofp_v3_map:action_type(set_queue),
-    QueueInt = ofp_v3_map:encode_queue_id(Queue),
+    Type = ofp_v3_enum:to_int(action_type, set_queue),
+    QueueInt = get_id(queue, Queue),
     Length = ?ACTION_SET_QUEUE_SIZE,
     <<Type:16, Length:16, QueueInt:32>>;
 encode_struct(#ofp_action_set_mpls_ttl{mpls_ttl = TTL}) ->
-    Type = ofp_v3_map:action_type(set_mpls_ttl),
+    Type = ofp_v3_enum:to_int(action_type, set_mpls_ttl),
     Length = ?ACTION_SET_MPLS_TTL_SIZE,
     <<Type:16, Length:16, TTL:8, 0:24>>;
 encode_struct(#ofp_action_dec_mpls_ttl{}) ->
-    Type = ofp_v3_map:action_type(dec_mpls_ttl),
+    Type = ofp_v3_enum:to_int(action_type, dec_mpls_ttl),
     Length = ?ACTION_DEC_MPLS_TTL_SIZE,
     <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_action_set_nw_ttl{nw_ttl = TTL}) ->
-    Type = ofp_v3_map:action_type(set_nw_ttl),
+    Type = ofp_v3_enum:to_int(action_type, set_nw_ttl),
     Length = ?ACTION_SET_NW_TTL_SIZE,
     <<Type:16, Length:16, TTL:8, 0:24>>;
 encode_struct(#ofp_action_dec_nw_ttl{}) ->
-    Type = ofp_v3_map:action_type(dec_nw_ttl),
+    Type = ofp_v3_enum:to_int(action_type, dec_nw_ttl),
     Length = ?ACTION_DEC_NW_TTL_SIZE,
     <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_action_copy_ttl_out{}) ->
-    Type = ofp_v3_map:action_type(copy_ttl_out),
+    Type = ofp_v3_enum:to_int(action_type, copy_ttl_out),
     Length = ?ACTION_COPY_TTL_OUT_SIZE,
     <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_action_copy_ttl_in{}) ->
-    Type = ofp_v3_map:action_type(copy_ttl_in),
+    Type = ofp_v3_enum:to_int(action_type, copy_ttl_in),
     Length = ?ACTION_COPY_TTL_IN_SIZE,
     <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_action_push_vlan{ethertype = EtherType}) ->
-    Type = ofp_v3_map:action_type(push_vlan),
+    Type = ofp_v3_enum:to_int(action_type, push_vlan),
     Length = ?ACTION_PUSH_VLAN_SIZE,
     <<Type:16, Length:16, EtherType:16, 0:16>>;
 encode_struct(#ofp_action_pop_vlan{}) ->
-    Type = ofp_v3_map:action_type(pop_vlan),
+    Type = ofp_v3_enum:to_int(action_type, pop_vlan),
     Length = ?ACTION_POP_VLAN_SIZE,
     <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_action_push_mpls{ethertype = EtherType}) ->
-    Type = ofp_v3_map:action_type(push_mpls),
+    Type = ofp_v3_enum:to_int(action_type, push_mpls),
     Length = ?ACTION_PUSH_MPLS_SIZE,
     <<Type:16, Length:16, EtherType:16, 0:16>>;
 encode_struct(#ofp_action_pop_mpls{ethertype = EtherType}) ->
-    Type = ofp_v3_map:action_type(pop_mpls),
+    Type = ofp_v3_enum:to_int(action_type, pop_mpls),
     Length = ?ACTION_POP_MPLS_SIZE,
     <<Type:16, Length:16, EtherType:16, 0:16>>;
 encode_struct(#ofp_action_set_field{field = Field}) ->
-    Type = ofp_v3_map:action_type(set_field),
+    Type = ofp_v3_enum:to_int(action_type, set_field),
     FieldBin = encode_struct(Field),
     FieldSize = size(FieldBin),
     Padding = 8 - (?ACTION_SET_FIELD_SIZE - 4 + FieldSize) rem 8,
@@ -228,7 +243,7 @@ encode_struct(#ofp_action_set_field{field = Field}) ->
     <<Type:16, Length:16, FieldBin/bytes, 0:(Padding*8)>>;
 encode_struct(#ofp_action_experimenter{experimenter = Experimenter,
                                        data = Data}) ->
-    Type = ofp_v3_map:action_type(experimenter),
+    Type = ofp_v3_enum:to_int(action_type, experimenter),
     Length = ?ACTION_EXPERIMENTER_SIZE + byte_size(Data),
     <<Type:16, Length:16, Experimenter:32, Data/bytes>>;
 
@@ -262,14 +277,14 @@ encode_struct(#ofp_table_stats{table_id = Table, name = Name,
                                lookup_count = LCount,
                                matched_count = MCount}) ->
     Padding = (?OFP_MAX_TABLE_NAME_LEN - size(Name)) * 8,
-    MatchBin = flags_to_binary(field_type, Match, 8),
-    WildcardsBin = flags_to_binary(field_type, Wildcards, 8),
+    MatchBin = flags_to_binary(oxm_ofb_match_fields, Match, 8),
+    WildcardsBin = flags_to_binary(oxm_ofb_match_fields, Wildcards, 8),
     WriteActionsBin = flags_to_binary(action_type, WriteActions, 4),
     ApplyActionsBin = flags_to_binary(action_type, ApplyActions, 4),
-    WriteSetBin = flags_to_binary(field_type, WriteSet, 8),
-    ApplySetBin = flags_to_binary(field_type, ApplySet, 8),
+    WriteSetBin = flags_to_binary(oxm_ofb_match_fields, WriteSet, 8),
+    ApplySetBin = flags_to_binary(oxm_ofb_match_fields, ApplySet, 8),
     InstructionsBin = flags_to_binary(instruction_type, Instructions, 4),
-    ConfigInt = ofp_v3_map:table_config(Config),
+    ConfigInt = ofp_v3_enum:to_int(table_config, Config),
     <<Table:8, 0:56, Name/bytes, 0:Padding, MatchBin:8/bytes,
       WildcardsBin:8/bytes, WriteActionsBin:4/bytes, ApplyActionsBin:4/bytes,
       WriteSetBin:8/bytes, ApplySetBin/bytes, MetaMatch:8/bytes,
@@ -282,7 +297,7 @@ encode_struct(#ofp_port_stats{port_no = Port,
                               rx_errors = RXErrors, tx_errors = TXErrors,
                               rx_frame_err = FrameErr, rx_over_err = OverErr,
                               rx_crc_err = CRCErr, collisions = Collisions}) ->
-    PortInt = ofp_v3_map:encode_port_no(Port),
+    PortInt = get_id(port_no, Port),
     <<PortInt:32, 0:32, RXPackets:64,
       TXPackets:64, RXBytes:64, TXBytes:64,
       RXDropped:64, TXDropped:64, RXErrors:64,
@@ -295,7 +310,7 @@ encode_struct(#ofp_queue_stats{port_no = Port, queue_id = Queue,
 encode_struct(#ofp_group_stats{group_id = Group, ref_count = RefCount,
                                packet_count = PCount, byte_count = BCount,
                                bucket_stats = Buckets}) ->
-    GroupInt = ofp_v3_map:encode_group_id(Group),
+    GroupInt = get_id(group, Group),
     BucketsBin = encode_list(Buckets),
     Length = ?GROUP_STATS_SIZE + size(BucketsBin),
     <<Length:16, 0:16, GroupInt:32,
@@ -306,8 +321,8 @@ encode_struct(#ofp_bucket_counter{packet_count = PCount,
     <<PCount:64, BCount:64>>;
 encode_struct(#ofp_group_desc_stats{type = Type, group_id = Group,
                                     buckets = Buckets}) ->
-    TypeInt = ofp_v3_map:group_type(Type),
-    GroupInt = ofp_v3_map:encode_group_id(Group),
+    TypeInt = ofp_v3_enum:to_int(group_type, Type),
+    GroupInt = get_id(group, Group),
     BucketsBin = encode_list(Buckets),
     Length = ?GROUP_DESC_STATS_SIZE + size(BucketsBin),
     <<Length:16, TypeInt:8, 0:8, GroupInt:32, BucketsBin/bytes>>.
@@ -317,13 +332,13 @@ encode_struct(#ofp_group_desc_stats{type = Type, group_id = Group,
 encode_body(#ofp_hello{}) ->
     <<>>;
 encode_body(#ofp_error{type = Type, code = Code, data = Data}) ->
-    TypeInt = ofp_v3_map:error_type(Type),
-    CodeInt = ofp_v3_map:Type(Code),
+    TypeInt = ofp_v3_enum:to_int(error_type, Type),
+    CodeInt = ofp_v3_enum:to_int(Type, Code),
     <<TypeInt:16, CodeInt:16, Data/bytes>>;
 encode_body(#ofp_error_experimenter{exp_type = ExpTypeInt,
                                     experimenter = Experimenter,
                                     data = Data}) ->
-    TypeInt = ofp_v3_map:error_type(experimenter),
+    TypeInt = ofp_v3_enum:to_int(error_type, experimenter),
     <<TypeInt:16, ExpTypeInt:16, Experimenter:32, Data/bytes>>;
 encode_body(#ofp_echo_request{data = Data}) ->
     Data;
@@ -339,7 +354,7 @@ encode_body(#ofp_features_reply{datapath_mac = DataPathMac,
                                 n_tables = NTables, capabilities = Capabilities,
                                 ports = Ports}) ->
     PortsBin = encode_list(Ports),
-    CapaBin = flags_to_binary(capability, Capabilities, 4),
+    CapaBin = flags_to_binary(capabilities, Capabilities, 4),
     <<DataPathMac:6/bytes, DataPathID:16, NBuffers:32, NTables:8,
       0:24, CapaBin:4/bytes, 0:32, PortsBin/bytes>>;
 encode_body(#ofp_get_config_request{}) ->
@@ -352,8 +367,8 @@ encode_body(#ofp_set_config{flags = Flags, miss_send_len = Miss}) ->
     <<FlagsBin:2/bytes, Miss:16>>;
 encode_body(#ofp_packet_in{buffer_id = BufferId, reason = Reason,
                            table_id = TableId, match = Match, data = Data}) ->
-    BufferIdInt = ofp_v3_map:encode_buffer_id(BufferId),
-    ReasonInt = ofp_v3_map:reason(Reason),
+    BufferIdInt = get_id(buffer, BufferId),
+    ReasonInt = ofp_v3_enum:to_int(packet_in_reason, Reason),
     MatchBin = encode_struct(Match),
     TotalLen = byte_size(Data),
     <<BufferIdInt:32, TotalLen:16, ReasonInt:8, TableId:8,
@@ -364,25 +379,25 @@ encode_body(#ofp_flow_removed{cookie = Cookie, priority = Priority,
                               idle_timeout = Idle, hard_timeout = Hard,
                               packet_count = PCount, byte_count = BCount,
                               match = Match}) ->
-    ReasonInt = ofp_v3_map:removed_reason(Reason),
+    ReasonInt = ofp_v3_enum:to_int(flow_removed_reason, Reason),
     MatchBin = encode_struct(Match),
     <<Cookie:8/bytes, Priority:16, ReasonInt:8, TableId:8, Sec:32, NSec:32,
       Idle:16, Hard:16, PCount:64, BCount:64, MatchBin/bytes>>;
 encode_body(#ofp_port_status{reason = Reason, desc = Port}) ->
-    ReasonInt = ofp_v3_map:port_reason(Reason),
+    ReasonInt = ofp_v3_enum:to_int(port_reason, Reason),
     PortBin = encode_struct(Port),
     <<ReasonInt:8, 0:56, PortBin/bytes>>;
 encode_body(#ofp_queue_get_config_request{port = Port}) ->
-    PortInt = ofp_v3_map:encode_port_no(Port),
+    PortInt = get_id(port_no, Port),
     <<PortInt:32, 0:32>>;
 encode_body(#ofp_queue_get_config_reply{port = Port, queues = Queues}) ->
-    PortInt = ofp_v3_map:encode_port_no(Port),
+    PortInt = get_id(port_no, Port),
     QueuesBin = encode_list(Queues),
     <<PortInt:32, 0:32, QueuesBin/bytes>>;
 encode_body(#ofp_packet_out{buffer_id = BufferId, in_port = Port,
                             actions = Actions, data = Data}) ->
-    BufferIdInt = ofp_v3_map:encode_buffer_id(BufferId),
-    PortInt = ofp_v3_map:encode_port_no(Port),
+    BufferIdInt = get_id(buffer, BufferId),
+    PortInt = get_id(port_no, Port),
     ActionsBin = encode_list(Actions),
     ActionsLength = size(ActionsBin),
     <<BufferIdInt:32, PortInt:32,
@@ -394,12 +409,12 @@ encode_body(#ofp_flow_mod{cookie = Cookie, cookie_mask = CookieMask,
                           out_port = OutPort, out_group = OutGroup,
                           flags = Flags, match = Match,
                           instructions = Instructions}) ->
-    TableInt = ofp_v3_map:encode_table_id(Table),
-    BufferInt = ofp_v3_map:encode_buffer_id(Buffer),
-    CommandInt = ofp_v3_map:flow_command(Command),
-    OutPortInt = ofp_v3_map:encode_port_no(OutPort),
-    OutGroupInt = ofp_v3_map:encode_group_id(OutGroup),
-    FlagsBin = flags_to_binary(flow_flag, Flags, 2),
+    TableInt = get_id(table, Table),
+    BufferInt = get_id(buffer, Buffer),
+    CommandInt = ofp_v3_enum:to_int(flow_mod_command, Command),
+    OutPortInt = get_id(port_no, OutPort),
+    OutGroupInt = get_id(group, OutGroup),
+    FlagsBin = flags_to_binary(flow_mod_flags, Flags, 2),
     MatchBin = encode_struct(Match),
     InstructionsBin = encode_list(Instructions),
     <<Cookie:8/bytes, CookieMask:8/bytes, TableInt:8, CommandInt:8,
@@ -408,31 +423,31 @@ encode_body(#ofp_flow_mod{cookie = Cookie, cookie_mask = CookieMask,
       InstructionsBin/bytes>>;
 encode_body(#ofp_group_mod{command = Command, type = Type,
                            group_id = Group, buckets = Buckets}) ->
-    CommandInt = ofp_v3_map:group_command(Command),
-    TypeInt = ofp_v3_map:group_type(Type),
-    GroupInt = ofp_v3_map:encode_group_id(Group),
+    CommandInt = ofp_v3_enum:to_int(group_mod_command, Command),
+    TypeInt = ofp_v3_enum:to_int(group_type, Type),
+    GroupInt = get_id(group, Group),
     BucketsBin = encode_list(Buckets),
     <<CommandInt:16, TypeInt:8, 0:8, GroupInt:32, BucketsBin/bytes>>;
 encode_body(#ofp_port_mod{port_no = Port, hw_addr = Addr,
                           config = Config, mask = Mask, advertise = Advertise}) ->
-    PortInt = ofp_v3_map:encode_port_no(Port),
+    PortInt = get_id(port_no, Port),
     ConfigBin = flags_to_binary(port_config, Config, 4),
     MaskBin = flags_to_binary(port_config, Mask, 4),
     AdvertiseBin = flags_to_binary(port_feature, Advertise, 4),
     <<PortInt:32, 0:32, Addr:6/bytes, 0:16, ConfigBin:4/bytes,
       MaskBin:4/bytes, AdvertiseBin:4/bytes, 0:32>>;
 encode_body(#ofp_table_mod{table_id = Table, config = Config}) ->
-    TableInt = ofp_v3_map:encode_table_id(Table),
-    ConfigInt = ofp_v3_map:table_config(Config),
+    TableInt = get_id(table, Table),
+    ConfigInt = ofp_v3_enum:to_int(table_config, Config),
     <<TableInt:8, 0:24, ConfigInt:32>>;
 encode_body(#ofp_desc_stats_request{flags = Flags}) ->
-    TypeInt = ofp_v3_map:stats_type(desc),
-    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
+    TypeInt = ofp_v3_enum:to_int(stats_type, desc),
+    FlagsBin = flags_to_binary(stats_request_flags, Flags, 2),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32>>;
 encode_body(#ofp_desc_stats_reply{flags = Flags, mfr_desc = MFR,
                                   hw_desc = HW, sw_desc = SW,
                                   serial_num = Serial, dp_desc = DP}) ->
-    TypeInt = ofp_v3_map:stats_type(desc),
+    TypeInt = ofp_v3_enum:to_int(stats_type, desc),
     FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
     MFRPad = (?DESC_STR_LEN - size(MFR)) * 8,
     HWPad = (?DESC_STR_LEN - size(HW)) * 8,
@@ -447,18 +462,18 @@ encode_body(#ofp_flow_stats_request{flags = Flags, table_id = Table,
                                     out_port = Port, out_group = Group,
                                     cookie = Cookie, cookie_mask = CookieMask,
                                     match = Match}) ->
-    TypeInt = ofp_v3_map:stats_type(flow),
-    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
-    TableInt = ofp_v3_map:encode_table_id(Table),
-    PortInt = ofp_v3_map:encode_port_no(Port),
-    GroupInt = ofp_v3_map:encode_group_id(Group),
+    TypeInt = ofp_v3_enum:to_int(stats_type, flow),
+    FlagsBin = flags_to_binary(stats_request_flags, Flags, 2),
+    TableInt = get_id(table, Table),
+    PortInt = get_id(port_no, Port),
+    GroupInt = get_id(group, Group),
     MatchBin = encode_struct(Match),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       TableInt:8, 0:24, PortInt:32,
       GroupInt:32, 0:32, Cookie:8/bytes, CookieMask:8/bytes,
       MatchBin/bytes>>;
 encode_body(#ofp_flow_stats_reply{flags = Flags, stats = Stats}) ->
-    TypeInt = ofp_v3_map:stats_type(flow),
+    TypeInt = ofp_v3_enum:to_int(stats_type, flow),
     FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32, StatsBin/bytes>>;
@@ -467,11 +482,11 @@ encode_body(#ofp_aggregate_stats_request{flags = Flags,
                                          out_group = Group, cookie = Cookie,
                                          cookie_mask = CookieMask,
                                          match = Match}) ->
-    TypeInt = ofp_v3_map:stats_type(aggregate),
-    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
-    TableInt = ofp_v3_map:encode_table_id(Table),
-    PortInt = ofp_v3_map:encode_port_no(Port),
-    GroupInt = ofp_v3_map:encode_group_id(Group),
+    TypeInt = ofp_v3_enum:to_int(stats_type, aggregate),
+    FlagsBin = flags_to_binary(stats_request_flags, Flags, 2),
+    TableInt = get_id(table, Table),
+    PortInt = get_id(port_no, Port),
+    GroupInt = get_id(group, Group),
     MatchBin = encode_struct(Match),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       TableInt:8, 0:24, PortInt:32,
@@ -481,72 +496,72 @@ encode_body(#ofp_aggregate_stats_reply{flags = Flags,
                                        packet_count = PCount,
                                        byte_count = BCount,
                                        flow_count = FCount}) ->
-    TypeInt = ofp_v3_map:stats_type(aggregate),
+    TypeInt = ofp_v3_enum:to_int(stats_type, aggregate),
     FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       PCount:64, BCount:64, FCount:32, 0:32>>;
 encode_body(#ofp_table_stats_request{flags = Flags}) ->
-    TypeInt = ofp_v3_map:stats_type(table),
-    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
+    TypeInt = ofp_v3_enum:to_int(stats_type, table),
+    FlagsBin = flags_to_binary(stats_request_flags, Flags, 2),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32>>;
 encode_body(#ofp_table_stats_reply{flags = Flags, stats = Stats}) ->
-    TypeInt = ofp_v3_map:stats_type(table),
+    TypeInt = ofp_v3_enum:to_int(stats_type, table),
     FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       StatsBin/bytes>>;
 encode_body(#ofp_port_stats_request{flags = Flags, port_no = Port}) ->
-    TypeInt = ofp_v3_map:stats_type(port),
-    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
-    PortInt = ofp_v3_map:encode_port_no(Port),
+    TypeInt = ofp_v3_enum:to_int(stats_type, port),
+    FlagsBin = flags_to_binary(stats_request_flags, Flags, 2),
+    PortInt = get_id(port_no, Port),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
       PortInt:32, 0:32>>;
 encode_body(#ofp_port_stats_reply{flags = Flags, stats = Stats}) ->
-    TypeInt = ofp_v3_map:stats_type(port),
+    TypeInt = ofp_v3_enum:to_int(stats_type, port),
     FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       StatsBin/bytes>>;
 encode_body(#ofp_queue_stats_request{flags = Flags,
                                      port_no = Port, queue_id = Queue}) ->
-    TypeInt = ofp_v3_map:stats_type(queue),
-    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
-    PortInt = ofp_v3_map:encode_port_no(Port),
-    QueueInt = ofp_v3_map:encode_queue_id(Queue),
+    TypeInt = ofp_v3_enum:to_int(stats_type, queue),
+    FlagsBin = flags_to_binary(stats_request_flags, Flags, 2),
+    PortInt = get_id(port_no, Port),
+    QueueInt = get_id(queue, Queue),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
       PortInt:32, QueueInt:32>>;
 encode_body(#ofp_queue_stats_reply{flags = Flags, stats = Stats}) ->
-    TypeInt = ofp_v3_map:stats_type(queue),
+    TypeInt = ofp_v3_enum:to_int(stats_type, queue),
     FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       StatsBin/bytes>>;
 encode_body(#ofp_group_stats_request{flags = Flags,
                                      group_id = Group}) ->
-    TypeInt = ofp_v3_map:stats_type(group),
-    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
-    GroupInt = ofp_v3_map:encode_group_id(Group),
+    TypeInt = ofp_v3_enum:to_int(stats_type, group),
+    FlagsBin = flags_to_binary(stats_request_flags, Flags, 2),
+    GroupInt = get_id(group, Group),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
       GroupInt:32, 0:32>>;
 encode_body(#ofp_group_stats_reply{flags = Flags, stats = Stats}) ->
-    TypeInt = ofp_v3_map:stats_type(group),
+    TypeInt = ofp_v3_enum:to_int(stats_type, group),
     FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       StatsBin/bytes>>;
 encode_body(#ofp_group_desc_stats_request{flags = Flags}) ->
-    TypeInt = ofp_v3_map:stats_type(group_desc),
-    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
+    TypeInt = ofp_v3_enum:to_int(stats_type, group_desc),
+    FlagsBin = flags_to_binary(stats_request_flags, Flags, 2),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32>>;
 encode_body(#ofp_group_desc_stats_reply{flags = Flags, stats = Stats}) ->
-    TypeInt = ofp_v3_map:stats_type(group_desc),
+    TypeInt = ofp_v3_enum:to_int(stats_type, group_desc),
     FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       StatsBin/bytes>>;
 encode_body(#ofp_group_features_stats_request{flags = Flags}) ->
-    TypeInt = ofp_v3_map:stats_type(group_features),
-    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
+    TypeInt = ofp_v3_enum:to_int(stats_type, group_features),
+    FlagsBin = flags_to_binary(stats_request_flags, Flags, 2),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32>>;
 encode_body(#ofp_group_features_stats_reply{flags = Flags,
                                             types = Types,
@@ -554,10 +569,10 @@ encode_body(#ofp_group_features_stats_reply{flags = Flags,
                                             max_groups = {Max1, Max2, Max3, Max4},
                                             actions = {Actions1, Actions2,
                                                        Actions3, Actions4}}) ->
-    TypeInt = ofp_v3_map:stats_type(group_features),
+    TypeInt = ofp_v3_enum:to_int(stats_type, group_features),
     FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
     TypesBin = flags_to_binary(group_type, Types, 4),
-    CapabilitiesBin = flags_to_binary(group_capability, Capabilities, 4),
+    CapabilitiesBin = flags_to_binary(group_capabilities, Capabilities, 4),
     Actions1Bin = flags_to_binary(action_type, Actions1, 4),
     Actions2Bin = flags_to_binary(action_type, Actions2, 4),
     Actions3Bin = flags_to_binary(action_type, Actions3, 4),
@@ -570,14 +585,14 @@ encode_body(#ofp_group_features_stats_reply{flags = Flags,
 encode_body(#ofp_experimenter_stats_request{flags = Flags,
                                             experimenter = Experimenter,
                                             exp_type = ExpType, data = Data}) ->
-    TypeInt = ofp_v3_map:stats_type(experimenter),
-    FlagsBin = flags_to_binary(stats_request_flag, Flags, 2),
+    TypeInt = ofp_v3_enum:to_int(stats_type, experimenter),
+    FlagsBin = flags_to_binary(stats_request_flags, Flags, 2),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
       Experimenter:32, ExpType:32, Data/bytes>>;
 encode_body(#ofp_experimenter_stats_reply{flags = Flags,
                                           experimenter = Experimenter,
                                           exp_type = ExpType, data = Data}) ->
-    TypeInt = ofp_v3_map:stats_type(experimenter),
+    TypeInt = ofp_v3_enum:to_int(stats_type, experimenter),
     FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
       Experimenter:32, ExpType:32, Data/bytes>>;
@@ -586,10 +601,10 @@ encode_body(#ofp_barrier_request{}) ->
 encode_body(#ofp_barrier_reply{}) ->
     <<>>;
 encode_body(#ofp_role_request{role = Role, generation_id = Gen}) ->
-    RoleInt = ofp_v3_map:controller_role(Role),
+    RoleInt = ofp_v3_enum:to_int(controller_role, Role),
     <<RoleInt:32, 0:32, Gen:64>>;
 encode_body(#ofp_role_reply{role = Role, generation_id = Gen}) ->
-    RoleInt = ofp_v3_map:controller_role(Role),
+    RoleInt = ofp_v3_enum:to_int(controller_role, Role),
     <<RoleInt:32, 0:32, Gen:64>>;
 encode_body(Other) ->
     throw({bad_message, Other}).
@@ -602,7 +617,7 @@ encode_body(Other) ->
 -spec do_decode(Binary :: binary()) -> ofp_message().
 do_decode(Binary) ->
     <<Version:8, TypeInt:8, _:16, XID:32, BodyBin/bytes >> = Binary,
-    Type = ofp_v3_map:msg_type(TypeInt),
+    Type = ofp_v3_enum:to_atom(type, TypeInt),
     Body = decode_body(Type, BodyBin),
     #ofp_message{version = Version, xid = XID, body = Body}.
 
@@ -614,7 +629,7 @@ decode_port(Binary) ->
       ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
       AdvertisedBin:4/bytes, SupportedBin:4/bytes, PeerBin:4/bytes,
       CurrSpeed:32, MaxSpeed:32>> = Binary,
-    PortNo = ofp_v3_map:decode_port_no(PortNoInt),
+    PortNo = get_id(port_no, PortNoInt),
     Name = ofp_utils:strip_string(NameBin),
     Config = binary_to_flags(port_config, ConfigBin),
     State = binary_to_flags(port_state, StateBin),
@@ -651,7 +666,7 @@ decode_properties(<<>>, Properties) ->
 decode_properties(Binary, Properties) ->
     <<TypeInt:16, Length:16, 0:32,
       Data/bytes>> = Binary,
-    Type = ofp_v3_map:queue_property(TypeInt),
+    Type = ofp_v3_enum:to_atom(queue_properties, TypeInt),
     case Type of
         min_rate ->
             <<Rate:16, 0:48, Rest/bytes>> = Data,
@@ -677,7 +692,7 @@ decode_match(Binary) ->
     Padding = (PadFieldsLength - FieldsBinLength) * 8,
     <<FieldsBin:FieldsBinLength/bytes, 0:Padding>> = PadFieldsBin,
     Fields = decode_match_fields(FieldsBin),
-    Type = ofp_v3_map:match_type(TypeInt),
+    Type = ofp_v3_enum:to_atom(match_type, TypeInt),
     #ofp_match{type = Type, oxm_fields = Fields}.
 
 %% @doc Decode match fields
@@ -695,8 +710,8 @@ decode_match_fields(Binary, Fields) ->
 decode_match_field(<<Header:4/bytes, Binary/bytes>>) ->
     <<ClassInt:16, FieldInt:7, HasMaskInt:1,
       Length:8>> = Header,
-    Class = ofp_v3_map:field_class(ClassInt),
-    Field = ofp_v3_map:field_type(Class, FieldInt),
+    Class = ofp_v3_enum:to_atom(oxm_class, ClassInt),
+    Field = ofp_v3_enum:to_atom(oxm_ofb_match_fields, FieldInt),
     HasMask = (HasMaskInt =:= 1),
     case Class of
         openflow_basic ->
@@ -729,21 +744,21 @@ decode_actions(<<>>, Actions) ->
     lists:reverse(Actions);
 decode_actions(Binary, Actions) ->
     <<TypeInt:16, Length:16, Data/bytes>> = Binary,
-    Type = ofp_v3_map:action_type(TypeInt),
+    Type = ofp_v3_enum:to_atom(action_type, TypeInt),
     case Type of
         output ->
             <<PortInt:32, MaxLenInt:16,
               0:48, Rest/bytes>> = Data,
-            Port = ofp_v3_map:decode_port_no(PortInt),
-            MaxLen = ofp_v3_map:decode_max_length(MaxLenInt),
+            Port = get_id(port_no, PortInt),
+            MaxLen = get_id(buffer, MaxLenInt),
             Action = #ofp_action_output{port = Port, max_len = MaxLen};
         group ->
             <<GroupInt:32, Rest/bytes>> = Data,
-            Group = ofp_v3_map:decode_group_id(GroupInt),
+            Group = get_id(group, GroupInt),
             Action = #ofp_action_group{group_id = Group};
         set_queue ->
             <<QueueInt:32, Rest/bytes>> = Data,
-            Queue = ofp_v3_map:decode_queue_id(QueueInt),
+            Queue = get_id(queue, QueueInt),
             Action = #ofp_action_set_queue{queue_id = Queue};
         set_mpls_ttl ->
             <<TTL:8, 0:24, Rest/bytes>> = Data,
@@ -799,7 +814,7 @@ decode_instructions(<<>>, Instructions) ->
     lists:reverse(Instructions);
 decode_instructions(Binary, Instructions) ->
     <<TypeInt:16, Length:16, Data/bytes>> = Binary,
-    Type = ofp_v3_map:instruction_type(TypeInt),
+    Type = ofp_v3_enum:to_atom(instruction_type, TypeInt),
     case Type of
         goto_table ->
             <<Table:8, 0:24, Rest/bytes>> = Data,
@@ -881,16 +896,16 @@ decode_table_stats(Binary) ->
       MetaMatch:8/bytes, MetaWrite:8/bytes, InstructionsBin:4/bytes,
       ConfigInt:32, Max:32, ACount:32, LCount:64,
       MCount:64>> = Binary,
-    Table = ofp_v3_map:decode_table_id(TableInt),
+    Table = get_id(table, TableInt),
     Name = ofp_utils:strip_string(NameBin),
-    Match = binary_to_flags(field_type, MatchBin),
-    Wildcards = binary_to_flags(field_type, WildcardsBin),
+    Match = binary_to_flags(oxm_ofb_match_fields, MatchBin),
+    Wildcards = binary_to_flags(oxm_ofb_match_fields, WildcardsBin),
     WriteActions = binary_to_flags(action_type, WriteActionsBin),
     ApplyActions = binary_to_flags(action_type, ApplyActionsBin),
-    WriteSet = binary_to_flags(field_type, WriteSetBin),
-    ApplySet = binary_to_flags(field_type, ApplySetBin),
+    WriteSet = binary_to_flags(oxm_ofb_match_fields, WriteSetBin),
+    ApplySet = binary_to_flags(oxm_ofb_match_fields, ApplySetBin),
     Instructions = binary_to_flags(instruction_type, InstructionsBin),
-    Config = ofp_v3_map:table_config(ConfigInt),
+    Config = ofp_v3_enum:to_atom(table_config, ConfigInt),
     #ofp_table_stats{table_id = Table, name = Name, match = Match,
                      wildcards = Wildcards, write_actions = WriteActions,
                      apply_actions = ApplyActions,
@@ -906,7 +921,7 @@ decode_port_stats(Binary) ->
       RXDropped:64, TXDropped:64, RXErrors:64,
       TXErrors:64, FrameErr:64, OverErr:64,
       CRCErr:64, Collisions:64>> = Binary,
-    Port = ofp_v3_map:decode_port_no(PortInt),
+    Port = get_id(port_no, PortInt),
     #ofp_port_stats{port_no = Port,
                     rx_packets = RXPackets, tx_packets = TXPackets,
                     rx_bytes = RXBytes, tx_bytes = TXBytes,
@@ -918,8 +933,8 @@ decode_port_stats(Binary) ->
 decode_queue_stats(Binary) ->
     <<PortInt:32, QueueInt:32, Bytes:64,
       Packets:64, Errors:64>> = Binary,
-    Port = ofp_v3_map:decode_port_no(PortInt),
-    Queue = ofp_v3_map:decode_queue_id(QueueInt),
+    Port = get_id(port_no, PortInt),
+    Queue = get_id(queue, QueueInt),
     #ofp_queue_stats{port_no = Port, queue_id = Queue, tx_bytes = Bytes,
                      tx_packets = Packets, tx_errors = Errors}.
 
@@ -927,7 +942,7 @@ decode_group_stats(Binary) ->
     <<_:16, 0:16, GroupInt:32, RefCount:32,
       0:32, PCount:64, BCount:64,
       BucketsBin/bytes>> = Binary,
-    Group = ofp_v3_map:decode_group_id(GroupInt),
+    Group = get_id(group, GroupInt),
     Buckets = decode_bucket_counters(BucketsBin),
     #ofp_group_stats{group_id = Group, ref_count = RefCount, packet_count = PCount,
                      byte_count = BCount, bucket_stats = Buckets}.
@@ -957,8 +972,8 @@ decode_bucket_counters(<<PCount:64, BCount:64, Rest/bytes>>,
 decode_group_desc_stats(Binary) ->
     <<_:16, TypeInt:8, 0:8,
       GroupInt:32, BucketsBin/bytes>> = Binary,
-    Type = ofp_v3_map:group_type(TypeInt),
-    Group = ofp_v3_map:decode_group_id(GroupInt),
+    Type = ofp_v3_enum:to_atom(group_type, TypeInt),
+    Group = get_id(group, GroupInt),
     Buckets = decode_buckets(BucketsBin),
     #ofp_group_desc_stats{type = Type, group_id = Group,
                           buckets = Buckets}.
@@ -980,7 +995,7 @@ decode_body(hello, _) ->
     #ofp_hello{};
 decode_body(error, Binary) ->
     <<TypeInt:16, More/bytes>> = Binary,
-    Type = ofp_v3_map:error_type(TypeInt),
+    Type = ofp_v3_enum:to_atom(error_type, TypeInt),
     case Type of
         experimenter ->
             DataLength = size(Binary) - ?ERROR_EXPERIMENTER_SIZE + ?OFP_HEADER_SIZE,
@@ -992,7 +1007,7 @@ decode_body(error, Binary) ->
         _ ->
             DataLength = size(Binary) - ?ERROR_SIZE + ?OFP_HEADER_SIZE,
             <<CodeInt:16, Data:DataLength/bytes>> = More,
-            Code = ofp_v3_map:Type(CodeInt),
+            Code = ofp_v3_enum:to_atom(Type, CodeInt),
             #ofp_error{type = Type,
                        code = Code, data = Data}
     end;
@@ -1016,7 +1031,7 @@ decode_body(features_reply, Binary) ->
     <<DataPathMac:6/bytes, DataPathID:16, NBuffers:32,
       NTables:8, 0:24, CapaBin:4/bytes, 0:32,
       PortsBin:PortsLength/bytes>> = Binary,
-    Capabilities = binary_to_flags(capability, CapaBin),
+    Capabilities = binary_to_flags(capabilities, CapaBin),
     Ports = [decode_port(PortBin)
              || PortBin <- ofp_utils:split_binaries(PortsBin, ?PORT_SIZE)],
     #ofp_features_reply{datapath_mac = DataPathMac,
@@ -1040,8 +1055,8 @@ decode_body(packet_in, Binary) ->
     MatchLength = size(Binary) - (?PACKET_IN_SIZE - ?MATCH_SIZE)
         - 2 - TotalLen + ?OFP_HEADER_SIZE,
     <<MatchBin:MatchLength/bytes, 0:16, Payload/bytes>> = Tail,
-    BufferId = ofp_v3_map:decode_buffer_id(BufferIdInt),
-    Reason = ofp_v3_map:reason(ReasonInt),
+    BufferId = get_id(buffer, BufferIdInt),
+    Reason = ofp_v3_enum:to_atom(packet_in_reason, ReasonInt),
     Match = decode_match(MatchBin),
     <<Data:TotalLen/bytes>> = Payload,
     #ofp_packet_in{buffer_id = BufferId, reason = Reason,
@@ -1053,7 +1068,7 @@ decode_body(flow_removed, Binary) ->
       TableId:8, Sec:32, NSec:32, Idle:16,
       Hard:16, PCount:64, BCount:64,
       MatchBin:MatchLength/bytes>> = Binary,
-    Reason = ofp_v3_map:removed_reason(ReasonInt),
+    Reason = ofp_v3_enum:to_atom(flow_removed_reason, ReasonInt),
     Match = decode_match(MatchBin),
     #ofp_flow_removed{cookie = Cookie, priority = Priority,
                       reason = Reason, table_id = TableId, duration_sec = Sec,
@@ -1062,14 +1077,14 @@ decode_body(flow_removed, Binary) ->
                       byte_count = BCount, match = Match};
 decode_body(port_status, Binary) ->
     <<ReasonInt:8, 0:56, PortBin:?PORT_SIZE/bytes>> = Binary,
-    Reason = ofp_v3_map:port_reason(ReasonInt),
+    Reason = ofp_v3_enum:to_atom(port_reason, ReasonInt),
     Port = decode_port(PortBin),
     #ofp_port_status{reason = Reason, desc = Port};
 decode_body(stats_request, Binary) ->
     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
       Data/bytes>> = Binary,
-    Type = ofp_v3_map:stats_type(TypeInt),
-    Flags = binary_to_flags(stats_request_flag, FlagsBin),
+    Type = ofp_v3_enum:to_atom(stats_type, TypeInt),
+    Flags = binary_to_flags(stats_request_flags, FlagsBin),
     case Type of
         desc ->
             #ofp_desc_stats_request{flags = Flags};
@@ -1078,9 +1093,9 @@ decode_body(stats_request, Binary) ->
             <<TableInt:8, 0:24, PortInt:32,
               GroupInt:32, 0:32, Cookie:8/bytes,
               CookieMask:8/bytes, MatchBin:MatchLength/bytes>> = Data,
-            Table = ofp_v3_map:decode_table_id(TableInt),
-            Port = ofp_v3_map:decode_port_no(PortInt),
-            Group = ofp_v3_map:decode_group_id(GroupInt),
+            Table = get_id(table, TableInt),
+            Port = get_id(port_no, PortInt),
+            Group = get_id(group, GroupInt),
             Match = decode_match(MatchBin),
             #ofp_flow_stats_request{flags = Flags,
                                     table_id = Table, out_port = Port,
@@ -1091,9 +1106,9 @@ decode_body(stats_request, Binary) ->
             <<TableInt:8, 0:24, PortInt:32,
               GroupInt:32, 0:32, Cookie:8/bytes,
               CookieMask:8/bytes, MatchBin:MatchLength/bytes>> = Data,
-            Table = ofp_v3_map:decode_table_id(TableInt),
-            Port = ofp_v3_map:decode_port_no(PortInt),
-            Group = ofp_v3_map:decode_group_id(GroupInt),
+            Table = get_id(table, TableInt),
+            Port = get_id(port_no, PortInt),
+            Group = get_id(group, GroupInt),
             Match = decode_match(MatchBin),
             #ofp_aggregate_stats_request{flags = Flags,
                                          table_id = Table, out_port = Port,
@@ -1103,18 +1118,18 @@ decode_body(stats_request, Binary) ->
             #ofp_table_stats_request{flags = Flags};
         port ->
             <<PortInt:32, 0:32>> = Data,
-            Port = ofp_v3_map:decode_port_no(PortInt),
+            Port = get_id(port_no, PortInt),
             #ofp_port_stats_request{flags = Flags,
                                     port_no = Port};
         queue ->
             <<PortInt:32, QueueInt:32>> = Data,
-            Port = ofp_v3_map:decode_port_no(PortInt),
-            Queue = ofp_v3_map:decode_queue_id(QueueInt),
+            Port = get_id(port_no, PortInt),
+            Queue = get_id(queue, QueueInt),
             #ofp_queue_stats_request{flags = Flags,
                                      port_no = Port, queue_id = Queue};
         group ->
             <<GroupInt:32, 0:32>> = Data,
-            Group = ofp_v3_map:decode_group_id(GroupInt),
+            Group = get_id(group, GroupInt),
             #ofp_group_stats_request{flags = Flags,
                                      group_id = Group};
         group_desc ->
@@ -1132,7 +1147,7 @@ decode_body(stats_request, Binary) ->
 decode_body(stats_reply, Binary) ->
     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
       Data/bytes>> = Binary,
-    Type = ofp_v3_map:stats_type(TypeInt),
+    Type = ofp_v3_enum:to_atom(stats_type, TypeInt),
     Flags = binary_to_flags(stats_reply_flag, FlagsBin),
     case Type of
         desc ->
@@ -1206,7 +1221,7 @@ decode_body(stats_reply, Binary) ->
               Actions1Bin:4/bytes, Actions2Bin:4/bytes, Actions3Bin:4/bytes,
               Actions4Bin:4/bytes>> = Data,
             Types = binary_to_flags(group_type, TypesBin),
-            Capabilities = binary_to_flags(group_capability, CapabilitiesBin),
+            Capabilities = binary_to_flags(group_capabilities, CapabilitiesBin),
             Actions1 = binary_to_flags(action_type, Actions1Bin),
             Actions2 = binary_to_flags(action_type, Actions2Bin),
             Actions3 = binary_to_flags(action_type, Actions3Bin),
@@ -1229,13 +1244,13 @@ decode_body(stats_reply, Binary) ->
     end;
 decode_body(queue_get_config_request, Binary) ->
     <<PortInt:32, 0:32>> = Binary,
-    Port = ofp_v3_map:decode_port_no(PortInt),
+    Port = get_id(port_no, PortInt),
     #ofp_queue_get_config_request{port = Port};
 decode_body(queue_get_config_reply, Binary) ->
     QueuesLength = size(Binary) - ?QUEUE_GET_CONFIG_REPLY_SIZE
         + ?OFP_HEADER_SIZE,
     <<PortInt:32, 0:32, QueuesBin:QueuesLength/bytes>> = Binary,
-    Port = ofp_v3_map:decode_port_no(PortInt),
+    Port = get_id(port_no, PortInt),
     Queues = decode_queues(QueuesBin),
     #ofp_queue_get_config_reply{port = Port,
                                 queues = Queues};
@@ -1245,8 +1260,8 @@ decode_body(packet_out, Binary) ->
     DataLength = size(Binary) - ?PACKET_OUT_SIZE + ?OFP_HEADER_SIZE
         - ActionsLength,
     <<ActionsBin:ActionsLength/bytes, Data:DataLength/bytes>> = Binary2,
-    BufferId = ofp_v3_map:encode_buffer_id(BufferIdInt),
-    Port = ofp_v3_map:decode_port_no(PortInt),
+    BufferId = get_id(buffer, BufferIdInt),
+    Port = get_id(port_no, PortInt),
     Actions = decode_actions(ActionsBin),
     #ofp_packet_out{buffer_id = BufferId, in_port = Port,
                     actions = Actions, data = Data};
@@ -1254,12 +1269,12 @@ decode_body(flow_mod, Binary) ->
     <<Cookie:8/bytes, CookieMask:8/bytes, TableInt:8, CommandInt:8,
       Idle:16, Hard:16, Priority:16, BufferInt:32, OutPortInt:32,
       OutGroupInt:32, FlagsBin:2/bytes, 0:16, Data/bytes>> = Binary,
-    Table = ofp_v3_map:decode_table_id(TableInt),
-    Buffer = ofp_v3_map:decode_buffer_id(BufferInt),
-    Command = ofp_v3_map:flow_command(CommandInt),
-    OutPort = ofp_v3_map:decode_port_no(OutPortInt),
-    OutGroup = ofp_v3_map:decode_group_id(OutGroupInt),
-    Flags = binary_to_flags(flow_flag, FlagsBin),
+    Table = get_id(table, TableInt),
+    Buffer = get_id(buffer, BufferInt),
+    Command = ofp_v3_enum:to_atom(flow_mod_command, CommandInt),
+    OutPort = get_id(port_no, OutPortInt),
+    OutGroup = get_id(group, OutGroupInt),
+    Flags = binary_to_flags(flow_mod_flags, FlagsBin),
     <<_:16, MatchLength:16, _/bytes>> = Data,
     MatchLengthPad = MatchLength + (8 - (MatchLength rem 8)),
     <<MatchBin:MatchLengthPad/bytes, InstrBin/bytes>> = Data,
@@ -1274,9 +1289,9 @@ decode_body(group_mod, Binary) ->
     BucketsLength = size(Binary) - ?GROUP_MOD_SIZE + ?OFP_HEADER_SIZE,
     <<CommandInt:16, TypeInt:8, 0:8,
       GroupInt:32, BucketsBin:BucketsLength/bytes>> = Binary,
-    Command = ofp_v3_map:group_command(CommandInt),
-    Type = ofp_v3_map:group_type(TypeInt),
-    Group = ofp_v3_map:decode_group_id(GroupInt),
+    Command = ofp_v3_enum:to_atom(group_mod_command, CommandInt),
+    Type = ofp_v3_enum:to_atom(group_type, TypeInt),
+    Group = get_id(group, GroupInt),
     Buckets = decode_buckets(BucketsBin),
     #ofp_group_mod{command = Command, type = Type,
                    group_id = Group, buckets = Buckets};
@@ -1284,7 +1299,7 @@ decode_body(port_mod, Binary) ->
     <<PortInt:32, 0:32, Addr:6/bytes,
       0:16, ConfigBin:4/bytes, MaskBin:4/bytes,
       AdvertiseBin:4/bytes, 0:32>> = Binary,
-    Port = ofp_v3_map:decode_port_no(PortInt),
+    Port = get_id(port_no, PortInt),
     Config = binary_to_flags(port_config, ConfigBin),
     Mask = binary_to_flags(port_config, MaskBin),
     Advertise = binary_to_flags(port_feature, AdvertiseBin),
@@ -1292,8 +1307,8 @@ decode_body(port_mod, Binary) ->
                   config = Config, mask = Mask, advertise = Advertise};
 decode_body(table_mod, Binary) ->
     <<TableInt:8, 0:24, ConfigInt:32>> = Binary,
-    Table = ofp_v3_map:decode_table_id(TableInt),
-    Config = ofp_v3_map:table_config(ConfigInt),
+    Table = get_id(table, TableInt),
+    Config = ofp_v3_enum:to_atom(table_config, ConfigInt),
     #ofp_table_mod{table_id = Table, config = Config};
 decode_body(barrier_request, _) ->
     #ofp_barrier_request{};
@@ -1301,11 +1316,11 @@ decode_body(barrier_reply, _) ->
     #ofp_barrier_reply{};
 decode_body(role_request, Binary) ->
     <<RoleInt:32, 0:32, Gen:64>> = Binary,
-    Role = ofp_v3_map:controller_role(RoleInt),
+    Role = ofp_v3_enum:to_atom(controller_role, RoleInt),
     #ofp_role_request{role = Role, generation_id = Gen};
 decode_body(role_reply, Binary) ->
     <<RoleInt:32, 0:32, Gen:64>> = Binary,
-    Role = ofp_v3_map:controller_role(RoleInt),
+    Role = ofp_v3_enum:to_atom(controller_role, RoleInt),
     #ofp_role_reply{role = Role, generation_id = Gen}.
 
 %%%-----------------------------------------------------------------------------
@@ -1332,7 +1347,7 @@ flags_to_binary(_, [], Binary, _) ->
     Binary;
 flags_to_binary(Type, [Flag | Rest], Binary, BitSize) ->
     <<Binary2:BitSize>> = Binary,
-    Bit = ofp_v3_map:Type(Flag),
+    Bit = ofp_v3_enum:to_int(Type, Flag),
     NewBinary = (Binary2 bor (1 bsl Bit)),
     flags_to_binary(Type, Rest, <<NewBinary:BitSize>>, BitSize).
 
@@ -1346,7 +1361,7 @@ binary_to_flags(Type, Binary) ->
 binary_to_flags(Type, Integer, Bit, Flags) when Bit >= 0 ->
     case 0 /= (Integer band (1 bsl Bit)) of
         true ->
-            Flag = ofp_v3_map:Type(Bit),
+            Flag = ofp_v3_enum:to_atom(Type, Bit),
             binary_to_flags(Type, Integer, Bit - 1, [Flag | Flags]);
         false ->
             binary_to_flags(Type, Integer, Bit - 1, Flags)
@@ -1356,92 +1371,102 @@ binary_to_flags(_, _, _, Flags) ->
 
 -spec type_int(ofp_message_body()) -> integer().
 type_int(#ofp_hello{}) ->
-    ofp_v3_map:msg_type(hello);
+    ofp_v3_enum:to_int(type, hello);
 type_int(#ofp_error{}) ->
-    ofp_v3_map:msg_type(error);
+    ofp_v3_enum:to_int(type, error);
 type_int(#ofp_error_experimenter{}) ->
-    ofp_v3_map:msg_type(error);
+    ofp_v3_enum:to_int(type, error);
 type_int(#ofp_echo_request{}) ->
-    ofp_v3_map:msg_type(echo_request);
+    ofp_v3_enum:to_int(type, echo_request);
 type_int(#ofp_echo_reply{}) ->
-    ofp_v3_map:msg_type(echo_reply);
+    ofp_v3_enum:to_int(type, echo_reply);
 type_int(#ofp_experimenter{}) ->
-    ofp_v3_map:msg_type(experimenter);
+    ofp_v3_enum:to_int(type, experimenter);
 type_int(#ofp_features_request{}) ->
-    ofp_v3_map:msg_type(features_request);
+    ofp_v3_enum:to_int(type, features_request);
 type_int(#ofp_features_reply{}) ->
-    ofp_v3_map:msg_type(features_reply);
+    ofp_v3_enum:to_int(type, features_reply);
 type_int(#ofp_get_config_request{}) ->
-    ofp_v3_map:msg_type(get_config_request);
+    ofp_v3_enum:to_int(type, get_config_request);
 type_int(#ofp_get_config_reply{}) ->
-    ofp_v3_map:msg_type(get_config_reply);
+    ofp_v3_enum:to_int(type, get_config_reply);
 type_int(#ofp_set_config{}) ->
-    ofp_v3_map:msg_type(set_config);
+    ofp_v3_enum:to_int(type, set_config);
 type_int(#ofp_packet_in{}) ->
-    ofp_v3_map:msg_type(packet_in);
+    ofp_v3_enum:to_int(type, packet_in);
 type_int(#ofp_flow_removed{}) ->
-    ofp_v3_map:msg_type(flow_removed);
+    ofp_v3_enum:to_int(type, flow_removed);
 type_int(#ofp_port_status{}) ->
-    ofp_v3_map:msg_type(port_status);
+    ofp_v3_enum:to_int(type, port_status);
 type_int(#ofp_queue_get_config_request{}) ->
-    ofp_v3_map:msg_type(queue_get_config_request);
+    ofp_v3_enum:to_int(type, queue_get_config_request);
 type_int(#ofp_queue_get_config_reply{}) ->
-    ofp_v3_map:msg_type(queue_get_config_reply);
+    ofp_v3_enum:to_int(type, queue_get_config_reply);
 type_int(#ofp_packet_out{}) ->
-    ofp_v3_map:msg_type(packet_out);
+    ofp_v3_enum:to_int(type, packet_out);
 type_int(#ofp_flow_mod{}) ->
-    ofp_v3_map:msg_type(flow_mod);
+    ofp_v3_enum:to_int(type, flow_mod);
 type_int(#ofp_group_mod{}) ->
-    ofp_v3_map:msg_type(group_mod);
+    ofp_v3_enum:to_int(type, group_mod);
 type_int(#ofp_port_mod{}) ->
-    ofp_v3_map:msg_type(port_mod);
+    ofp_v3_enum:to_int(type, port_mod);
 type_int(#ofp_table_mod{}) ->
-    ofp_v3_map:msg_type(table_mod);
+    ofp_v3_enum:to_int(type, table_mod);
 type_int(#ofp_desc_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v3_enum:to_int(type, stats_request);
 type_int(#ofp_desc_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v3_enum:to_int(type, stats_reply);
 type_int(#ofp_flow_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v3_enum:to_int(type, stats_request);
 type_int(#ofp_flow_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v3_enum:to_int(type, stats_reply);
 type_int(#ofp_aggregate_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v3_enum:to_int(type, stats_request);
 type_int(#ofp_aggregate_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v3_enum:to_int(type, stats_reply);
 type_int(#ofp_table_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v3_enum:to_int(type, stats_request);
 type_int(#ofp_table_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v3_enum:to_int(type, stats_reply);
 type_int(#ofp_port_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v3_enum:to_int(type, stats_request);
 type_int(#ofp_port_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v3_enum:to_int(type, stats_reply);
 type_int(#ofp_queue_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v3_enum:to_int(type, stats_request);
 type_int(#ofp_queue_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v3_enum:to_int(type, stats_reply);
 type_int(#ofp_group_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v3_enum:to_int(type, stats_request);
 type_int(#ofp_group_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v3_enum:to_int(type, stats_reply);
 type_int(#ofp_group_desc_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v3_enum:to_int(type, stats_request);
 type_int(#ofp_group_desc_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v3_enum:to_int(type, stats_reply);
 type_int(#ofp_group_features_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v3_enum:to_int(type, stats_request);
 type_int(#ofp_group_features_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v3_enum:to_int(type, stats_reply);
 type_int(#ofp_experimenter_stats_request{}) ->
-    ofp_v3_map:msg_type(stats_request);
+    ofp_v3_enum:to_int(type, stats_request);
 type_int(#ofp_experimenter_stats_reply{}) ->
-    ofp_v3_map:msg_type(stats_reply);
+    ofp_v3_enum:to_int(type, stats_reply);
 type_int(#ofp_barrier_request{}) ->
-    ofp_v3_map:msg_type(barrier_request);
+    ofp_v3_enum:to_int(type, barrier_request);
 type_int(#ofp_barrier_reply{}) ->
-    ofp_v3_map:msg_type(barrier_reply);
+    ofp_v3_enum:to_int(type, barrier_reply);
 type_int(#ofp_role_request{}) ->
-    ofp_v3_map:msg_type(role_request);
+    ofp_v3_enum:to_int(type, role_request);
 type_int(#ofp_role_reply{}) ->
-    ofp_v3_map:msg_type(role_reply).
+    ofp_v3_enum:to_int(type, role_reply).
+
+get_id(Enum, Int) when is_integer(Int) ->
+    try
+	ofp_v3_enum:to_atom(Enum, Int)
+    catch
+	throw:bad_enum ->
+	    Int
+    end;
+get_id(Enum, Atom) when is_atom(Atom) ->
+    ofp_v3_enum:to_int(Enum, Atom).
