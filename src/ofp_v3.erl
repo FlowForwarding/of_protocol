@@ -98,12 +98,7 @@ encode_struct(#ofp_match{type = Type, oxm_fields = Fields}) ->
     FieldsBin = encode_list(Fields),
     FieldsLength = size(FieldsBin),
     Length = FieldsLength + ?MATCH_SIZE - 4,
-    case FieldsLength of
-        0 ->
-            Padding = 32;
-        _ ->
-            Padding = (8 - (Length rem 8)) * 8
-    end,
+    Padding = padding(Length, 8) * 8,
     <<TypeInt:16, Length:16, FieldsBin/bytes, 0:Padding>>;
 encode_struct(#ofp_field{class = Class, field = Field, has_mask = HasMask,
                          value = Value, mask = Mask}) ->
@@ -1261,7 +1256,7 @@ decode_body(flow_mod, Binary) ->
     OutGroup = ofp_v3_map:decode_group_id(OutGroupInt),
     Flags = binary_to_flags(flow_flag, FlagsBin),
     <<_:16, MatchLength:16, _/bytes>> = Data,
-    MatchLengthPad = MatchLength + (8 - (MatchLength rem 8)),
+    MatchLengthPad = MatchLength + padding(MatchLength, 8),
     <<MatchBin:MatchLengthPad/bytes, InstrBin/bytes>> = Data,
     Match = decode_match(MatchBin),
     Instructions = decode_instructions(InstrBin),
@@ -1445,3 +1440,11 @@ type_int(#ofp_role_request{}) ->
     ofp_v3_map:msg_type(role_request);
 type_int(#ofp_role_reply{}) ->
     ofp_v3_map:msg_type(role_reply).
+
+padding(Length, Padding) ->
+    case 8 - (Length rem Padding) of
+        8 ->
+            0;
+        Pad ->
+            Pad
+    end.
