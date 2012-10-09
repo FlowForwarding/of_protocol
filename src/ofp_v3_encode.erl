@@ -614,7 +614,12 @@ flags_to_binary(_, [], Binary, _) ->
     Binary;
 flags_to_binary(Type, [Flag | Rest], Binary, BitSize) ->
     <<Binary2:BitSize>> = Binary,
-    Bit = ofp_v3_enum:to_int(Type, Flag),
+    Bit = case Flag of
+              experimenter ->
+                  experimenter_bit(Type);
+              Flag ->
+                  ofp_v3_enum:to_int(Type, Flag)
+          end,
     NewBinary = (Binary2 bor (1 bsl Bit)),
     flags_to_binary(Type, Rest, <<NewBinary:BitSize>>, BitSize).
 
@@ -709,3 +714,5 @@ type_int(#ofp_role_request{}) ->
     ofp_v3_enum:to_int(type, role_request);
 type_int(#ofp_role_reply{}) ->
     ofp_v3_enum:to_int(type, role_reply).
+
+experimenter_bit(action_type) -> 31.

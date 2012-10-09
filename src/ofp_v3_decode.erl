@@ -758,7 +758,7 @@ binary_to_flags(Type, Binary) ->
 binary_to_flags(Type, Integer, Bit, Flags) when Bit >= 0 ->
     case 0 /= (Integer band (1 bsl Bit)) of
         true ->
-            Flag = ofp_v3_enum:to_atom(Type, Bit),
+            Flag = experimenter_bit(Type, Bit),
             binary_to_flags(Type, Integer, Bit - 1, [Flag | Flags]);
         false ->
             binary_to_flags(Type, Integer, Bit - 1, Flags)
@@ -774,3 +774,6 @@ get_id(Enum, Int) ->
 	throw:bad_enum ->
 	    Int
     end.
+
+experimenter_bit(action_type, 31) -> experimenter;
+experimenter_bit(Type, Bit) -> ofp_v3_enum:to_atom(Type, Bit).
