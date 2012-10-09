@@ -463,12 +463,12 @@ decode_body(get_config_request, _) ->
     #ofp_get_config_request{};
 decode_body(get_config_reply, Binary) ->
     <<FlagsBin:2/bytes, Miss:16>> = Binary,
-    Flags = binary_to_flags(configuration, FlagsBin),
+    Flags = binary_to_flags(config_flags, FlagsBin),
     #ofp_get_config_reply{flags = Flags,
                           miss_send_len = Miss};
 decode_body(set_config, Binary) ->
     <<FlagsBin:2/bytes, Miss:16>> = Binary,
-    Flags = binary_to_flags(configuration, FlagsBin),
+    Flags = binary_to_flags(config_flags, FlagsBin),
     #ofp_set_config{flags = Flags, miss_send_len = Miss};
 decode_body(packet_in, Binary) ->
     <<BufferIdInt:32, TotalLen:16, ReasonInt:8,

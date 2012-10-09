@@ -334,10 +334,10 @@ encode_body(#ofp_features_reply{datapath_mac = DataPathMac,
 encode_body(#ofp_get_config_request{}) ->
     <<>>;
 encode_body(#ofp_get_config_reply{flags = Flags, miss_send_len = Miss}) ->
-    FlagsBin = flags_to_binary(configuration, Flags, 2),
+    FlagsBin = flags_to_binary(config_flags, Flags, 2),
     <<FlagsBin:2/bytes, Miss:16>>;
 encode_body(#ofp_set_config{flags = Flags, miss_send_len = Miss}) ->
-    FlagsBin = flags_to_binary(configuration, Flags, 2),
+    FlagsBin = flags_to_binary(config_flags, Flags, 2),
     <<FlagsBin:2/bytes, Miss:16>>;
 encode_body(#ofp_packet_in{buffer_id = BufferId, reason = Reason,
                            table_id = TableId, match = Match, data = Data}) ->
