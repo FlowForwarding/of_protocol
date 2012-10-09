@@ -422,7 +422,7 @@ encode_body(#ofp_desc_stats_reply{flags = Flags, mfr_desc = MFR,
                                   hw_desc = HW, sw_desc = SW,
                                   serial_num = Serial, dp_desc = DP}) ->
     TypeInt = ofp_v3_enum:to_int(stats_type, desc),
-    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    FlagsBin = flags_to_binary(stats_reply_flags, Flags, 2),
     MFRPad = (?DESC_STR_LEN - size(MFR)) * 8,
     HWPad = (?DESC_STR_LEN - size(HW)) * 8,
     SWPad = (?DESC_STR_LEN - size(SW)) * 8,
@@ -448,7 +448,7 @@ encode_body(#ofp_flow_stats_request{flags = Flags, table_id = Table,
       MatchBin/bytes>>;
 encode_body(#ofp_flow_stats_reply{flags = Flags, stats = Stats}) ->
     TypeInt = ofp_v3_enum:to_int(stats_type, flow),
-    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    FlagsBin = flags_to_binary(stats_reply_flags, Flags, 2),
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32, StatsBin/bytes>>;
 encode_body(#ofp_aggregate_stats_request{flags = Flags,
@@ -471,7 +471,7 @@ encode_body(#ofp_aggregate_stats_reply{flags = Flags,
                                        byte_count = BCount,
                                        flow_count = FCount}) ->
     TypeInt = ofp_v3_enum:to_int(stats_type, aggregate),
-    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    FlagsBin = flags_to_binary(stats_reply_flags, Flags, 2),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       PCount:64, BCount:64, FCount:32, 0:32>>;
 encode_body(#ofp_table_stats_request{flags = Flags}) ->
@@ -480,7 +480,7 @@ encode_body(#ofp_table_stats_request{flags = Flags}) ->
     <<TypeInt:16, FlagsBin:2/bytes, 0:32>>;
 encode_body(#ofp_table_stats_reply{flags = Flags, stats = Stats}) ->
     TypeInt = ofp_v3_enum:to_int(stats_type, table),
-    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    FlagsBin = flags_to_binary(stats_reply_flags, Flags, 2),
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       StatsBin/bytes>>;
@@ -492,7 +492,7 @@ encode_body(#ofp_port_stats_request{flags = Flags, port_no = Port}) ->
       PortInt:32, 0:32>>;
 encode_body(#ofp_port_stats_reply{flags = Flags, stats = Stats}) ->
     TypeInt = ofp_v3_enum:to_int(stats_type, port),
-    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    FlagsBin = flags_to_binary(stats_reply_flags, Flags, 2),
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       StatsBin/bytes>>;
@@ -506,7 +506,7 @@ encode_body(#ofp_queue_stats_request{flags = Flags,
       PortInt:32, QueueInt:32>>;
 encode_body(#ofp_queue_stats_reply{flags = Flags, stats = Stats}) ->
     TypeInt = ofp_v3_enum:to_int(stats_type, queue),
-    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    FlagsBin = flags_to_binary(stats_reply_flags, Flags, 2),
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       StatsBin/bytes>>;
@@ -519,7 +519,7 @@ encode_body(#ofp_group_stats_request{flags = Flags,
       GroupInt:32, 0:32>>;
 encode_body(#ofp_group_stats_reply{flags = Flags, stats = Stats}) ->
     TypeInt = ofp_v3_enum:to_int(stats_type, group),
-    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    FlagsBin = flags_to_binary(stats_reply_flags, Flags, 2),
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       StatsBin/bytes>>;
@@ -529,7 +529,7 @@ encode_body(#ofp_group_desc_stats_request{flags = Flags}) ->
     <<TypeInt:16, FlagsBin:2/bytes, 0:32>>;
 encode_body(#ofp_group_desc_stats_reply{flags = Flags, stats = Stats}) ->
     TypeInt = ofp_v3_enum:to_int(stats_type, group_desc),
-    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    FlagsBin = flags_to_binary(stats_reply_flags, Flags, 2),
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       StatsBin/bytes>>;
@@ -544,7 +544,7 @@ encode_body(#ofp_group_features_stats_reply{flags = Flags,
                                             actions = {Actions1, Actions2,
                                                        Actions3, Actions4}}) ->
     TypeInt = ofp_v3_enum:to_int(stats_type, group_features),
-    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    FlagsBin = flags_to_binary(stats_reply_flags, Flags, 2),
     TypesBin = flags_to_binary(group_type, Types, 4),
     CapabilitiesBin = flags_to_binary(group_capabilities, Capabilities, 4),
     Actions1Bin = flags_to_binary(action_type, Actions1, 4),
@@ -567,7 +567,7 @@ encode_body(#ofp_experimenter_stats_reply{flags = Flags,
                                           experimenter = Experimenter,
                                           exp_type = ExpType, data = Data}) ->
     TypeInt = ofp_v3_enum:to_int(stats_type, experimenter),
-    FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
+    FlagsBin = flags_to_binary(stats_reply_flags, Flags, 2),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
       Experimenter:32, ExpType:32, Data/bytes>>;
 encode_body(#ofp_barrier_request{}) ->

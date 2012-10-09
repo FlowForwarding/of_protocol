@@ -44,7 +44,7 @@
               port_mod,
               table_mod,
               stats_request,
-              start_reply,
+              stats_reply,
               barrier_request,
               barrier_reply,
               queue_get_config_request,

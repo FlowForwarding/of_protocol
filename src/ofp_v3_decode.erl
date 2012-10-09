@@ -569,7 +569,7 @@ decode_body(stats_reply, Binary) ->
     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
       Data/bytes>> = Binary,
     Type = ofp_v3_enum:to_atom(stats_type, TypeInt),
-    Flags = binary_to_flags(stats_reply_flag, FlagsBin),
+    Flags = binary_to_flags(stats_reply_flags, FlagsBin),
     case Type of
         desc ->
             <<MFR:?DESC_STR_LEN/bytes, HW:?DESC_STR_LEN/bytes,
