@@ -54,10 +54,10 @@ decode_port(Binary) ->
     Name = ofp_utils:strip_string(NameBin),
     Config = binary_to_flags(port_config, ConfigBin),
     State = binary_to_flags(port_state, StateBin),
-    Curr = binary_to_flags(port_feature, CurrBin),
-    Advertised = binary_to_flags(port_feature, AdvertisedBin),
-    Supported = binary_to_flags(port_feature, SupportedBin),
-    Peer = binary_to_flags(port_feature, PeerBin),
+    Curr = binary_to_flags(port_features, CurrBin),
+    Advertised = binary_to_flags(port_features, AdvertisedBin),
+    Supported = binary_to_flags(port_features, SupportedBin),
+    Peer = binary_to_flags(port_features, PeerBin),
     #ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
               config = Config, state = State, curr = Curr,
               advertised = Advertised, supported = Supported,
@@ -723,7 +723,7 @@ decode_body(port_mod, Binary) ->
     Port = get_id(port_no, PortInt),
     Config = binary_to_flags(port_config, ConfigBin),
     Mask = binary_to_flags(port_config, MaskBin),
-    Advertise = binary_to_flags(port_feature, AdvertiseBin),
+    Advertise = binary_to_flags(port_features, AdvertiseBin),
     #ofp_port_mod{port_no = Port, hw_addr = Addr,
                   config = Config, mask = Mask, advertise = Advertise};
 decode_body(table_mod, Binary) ->
