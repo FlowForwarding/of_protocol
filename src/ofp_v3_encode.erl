@@ -715,4 +715,5 @@ type_int(#ofp_role_request{}) ->
 type_int(#ofp_role_reply{}) ->
     ofp_v3_enum:to_int(type, role_reply).
 
-experimenter_bit(action_type) -> 31.
+experimenter_bit(action_type) -> 31;
+experimenter_bit(instruction_type) -> 31.

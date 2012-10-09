@@ -776,4 +776,5 @@ get_id(Enum, Int) ->
     end.
 
 experimenter_bit(action_type, 31) -> experimenter;
+experimenter_bit(instruction_type, 31) -> experimenter;
 experimenter_bit(Type, Bit) -> ofp_v3_enum:to_atom(Type, Bit).
