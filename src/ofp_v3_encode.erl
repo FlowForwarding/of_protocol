@@ -588,8 +588,8 @@ encode_body(Other) ->
 %%------------------------------------------------------------------------------
 
 -spec get_id(atom(), integer() | atom()) -> integer() | atom().
-get_id(Enum, Int) ->
-    ofp_utils:get_id(ofp_v3_enum, Enum, Int).
+get_id(Enum, Value) ->
+    ofp_utils:get_enum_value(ofp_v3_enum, Enum, Value).
 
 -spec encode_list(list()) -> binary().
 encode_list(List) ->

@@ -753,5 +753,5 @@ binary_to_flags(Type, Binary) ->
     ofp_utils:binary_to_flags(ofp_v3_enum, Type, Binary).
 
 -spec get_id(atom(), integer() | atom()) -> integer() | atom().
-get_id(Enum, Int) ->
-    ofp_utils:get_id(ofp_v3_enum, Enum, Int).
+get_id(Enum, Value) ->
+    ofp_utils:get_enum_name(ofp_v3_enum, Enum, Value).

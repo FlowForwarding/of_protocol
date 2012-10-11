@@ -13,7 +13,8 @@
          cut_bits/2,
          binary_to_flags/3,
          flags_to_binary/4, 
-         get_id/3,
+         get_enum_name/3,
+         get_enum_value/3,
          encode_list/3]).
 
 %%%-----------------------------------------------------------------------------
@@ -74,8 +75,8 @@ binary_to_flags(EnumMod, Type, Binary) ->
 flags_to_binary(EnumMod, Type, Flags, Size) ->
     flags_to_binary(EnumMod, Type, Flags, <<0:(Size*8)>>, Size*8).
 
--spec get_id(atom(), atom(), integer() | atom()) -> integer() | atom().
-get_id(EnumMod, Enum, Int) when is_integer(Int) ->
+-spec get_enum_name(atom(), atom(), integer() | atom()) -> integer() | atom().
+get_enum_name(EnumMod, Enum, Int) when is_integer(Int) ->
     %% TODO: Check if it's not larger than max
     try
         EnumMod:to_atom(Enum, Int)
@@ -83,14 +84,20 @@ get_id(EnumMod, Enum, Int) when is_integer(Int) ->
         throw:bad_enum ->
             Int
     end;
-get_id(EnumMod, Enum, Atom) when is_atom(Atom) ->
+get_enum_name(_, _, Atom) when is_atom(Atom)->
+    Atom.
+
+-spec get_enum_value(atom(), atom(), integer() | atom()) -> integer() | atom().
+get_enum_value(EnumMod, Enum, Atom) when is_atom(Atom) ->
     %% TODO: Check if it's not larger than max
     try
         EnumMod:to_int(Enum, Atom)
     catch
         throw:bad_enum ->
             Atom
-    end.
+    end;
+get_enum_value(_, _, Int) when is_integer(Int) ->
+    Int.
 
 -spec encode_list(function(), list(), binary()) -> binary().
 encode_list(_Encoder, [], Binaries) ->
