@@ -123,7 +123,7 @@ flags_to_binary(EnumMod, Type, [Flag | Rest], Binary, BitSize) ->
                   EnumMod:to_int(Type, Flag)
           end,
     NewBinary = (Binary2 bor (1 bsl Bit)),
-    flags_to_binary(Type, Rest, <<NewBinary:BitSize>>, BitSize).
+    flags_to_binary(EnumMod, Type, Rest, <<NewBinary:BitSize>>, BitSize).
 
 %% TODO: Handle error if type is unexpected?
 experimenter_bit(action_type) -> 31;
