@@ -593,7 +593,7 @@ get_id(Enum, Int) ->
 
 -spec encode_list(list()) -> binary().
 encode_list(List) ->
-    ofp_utils:encode_list(fun encode_body/1, List, <<>>).
+    ofp_utils:encode_list(fun encode_struct/1, List, <<>>).
 
 -spec flags_to_binary(atom(), [atom()], integer()) -> binary().
 flags_to_binary(Type, Flags, Size) ->
