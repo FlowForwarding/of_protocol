@@ -10,7 +10,11 @@
 -export([split_binaries/2,
          encode_string/2,
          strip_string/1,
-         cut_bits/2]).
+         cut_bits/2,
+         binary_to_flags/3,
+         flags_to_binary/4, 
+         get_id/3,
+         encode_list/3]).
 
 %%%-----------------------------------------------------------------------------
 %%% Helper functions
@@ -59,3 +63,72 @@ cut_bits(Binary, Bits) ->
     <<Int:BitSize>> = Binary,
     NewInt = Int band round(math:pow(2,Bits) - 1),
     <<NewInt:ByteSize>>.
+
+-spec binary_to_flags(atom(), atom(), binary()) -> [atom()].
+binary_to_flags(EnumMod, Type, Binary) ->
+    BitSize = size(Binary) * 8,
+    <<Integer:BitSize>> = Binary,
+    binary_to_flags(EnumMod, Type, Integer, BitSize-1, []).
+
+-spec flags_to_binary(atom(), atom(), [atom()], integer()) -> binary().
+flags_to_binary(EnumMod, Type, Flags, Size) ->
+    flags_to_binary(EnumMod, Type, Flags, <<0:(Size*8)>>, Size*8).
+
+-spec get_id(atom(), atom(), integer() | atom()) -> integer() | atom().
+get_id(_EnumMod, _Enum, Int) when is_integer(Int) ->
+    %% TODO: Check if it's not larger than max
+    Int;
+get_id(EnumMod, Enum, Int) ->
+    %% TODO: Check if it's not larger than max
+    try
+        EnumMod:to_atom(Enum, Int)
+    catch
+        throw:bad_enum ->
+            Int
+    end.
+
+-spec encode_list(function(), list(), binary()) -> binary().
+encode_list(_Encoder, [], Binaries) ->
+    Binaries;
+encode_list(Encoder, [Struct | Rest], Binaries) ->
+    StructBin = erlang:apply(Encoder, [Struct]),
+    encode_list(Encoder, Rest, <<Binaries/bytes, StructBin/bytes>>).
+
+%%%-----------------------------------------------------------------------------
+%%% Internal functions
+%%%-----------------------------------------------------------------------------
+
+-spec binary_to_flags(atom(), atom(), integer(), integer(), [atom()]) ->
+                             [atom()].
+binary_to_flags(EnumMod, Type, Integer, Bit, Flags) when Bit >= 0 ->
+    case 0 /= (Integer band (1 bsl Bit)) of
+        true ->
+            Flag = experimenter_bit(EnumMod, Type, Bit),
+            binary_to_flags(EnumMod, Type, Integer, Bit - 1, [Flag | Flags]);
+        false ->
+            binary_to_flags(EnumMod, Type, Integer, Bit - 1, Flags)
+    end;
+binary_to_flags(_, _, _, _, Flags) ->
+    lists:reverse(Flags).
+
+-spec flags_to_binary(atom(), atom(), [atom()], binary(), integer()) -> binary().
+flags_to_binary(_, _, [], Binary, _) ->
+    Binary;
+flags_to_binary(EnumMod, Type, [Flag | Rest], Binary, BitSize) ->
+    <<Binary2:BitSize>> = Binary,
+    Bit = case Flag of
+              experimenter ->
+                  experimenter_bit(Type);
+              Flag ->
+                  EnumMod:to_int(Type, Flag)
+          end,
+    NewBinary = (Binary2 bor (1 bsl Bit)),
+    flags_to_binary(Type, Rest, <<NewBinary:BitSize>>, BitSize).
+
+%% TODO: Handle error if type is unexpected?
+experimenter_bit(action_type) -> 31;
+experimenter_bit(instruction_type) -> 31.
+
+experimenter_bit(_, action_type, 31) -> experimenter;
+experimenter_bit(_, instruction_type, 31) -> experimenter;
+experimenter_bit(EnumMod, Type, Bit) -> EnumMod:to_atom(Type, Bit).

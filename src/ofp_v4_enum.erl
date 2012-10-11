@@ -15,42 +15,58 @@
 %%-----------------------------------------------------------------------------
 
 %% @author Erlang Solutions Ltd. <openflow@erlang-solutions.com>
+%% @author Konrad Kaplita <Konrad Kaplita@erlang-solutions.com>
 %% @author Krzysztof Rutka <krzysztof.rutka@erlang-solutions.com>
 %% @copyright 2012 FlowForwarding.org
-%% @doc OpenFlow Protocol 1.2 (3) enumerations.
+%% @doc OpenFlow Protocol 1.3 (4) enumerations.
 %% @private
--module(ofp_v3_enum).
+-module(ofp_v4_enum).
 
 %%------------------------------------------------------------------------------
-%% OpenFlow Header
+%% OpenFlow Header (A.1)
 %%------------------------------------------------------------------------------
 
--enum({type, [hello,
+-enum({type, [%% Immutable messages
+              hello,
               error,
               echo_request,
               echo_reply,
               experimenter,
+              %% Switch configuration messages
               features_request,
               features_reply,
               get_config_request,
               get_config_reply,
               set_config,
+              %% Asynchronous messages
               packet_in,
               flow_removed,
-              port_status,
+              port_status,              
+              %% Controller command messages
               packet_out,
               flow_mod,
               group_mod,
               port_mod,
               table_mod,
-              stats_request,
-              stats_reply,
+              %% Multipart messages
+              multipart_request,
+              multipart_reply,
+              %% Barrier messages
               barrier_request,
               barrier_reply,
+              %% Queue configuration messages
               queue_get_config_request,
               queue_get_config_reply,
+              %% Controller role change request messages
               role_request,
-              role_reply]}).
+              role_reply,
+              %% Asynchronous message configuration
+              get_async_request,
+              get_async_reply,
+              set_async,
+              %% Meters and rate limiters configuration messages
+              meter_mod
+             ]}).
 
 %%------------------------------------------------------------------------------
 %% Common Structures
@@ -203,8 +219,7 @@
 
 -enum({table, [{all, 16#ff}]}).
 
--enum({table_config, [controller,
-                      continue,
+-enum({table_config, [continue,
                       drop]}).
 
 %% Modify State Messages -------------------------------------------------------
@@ -309,109 +324,109 @@
                     role_request_failed,
                     {experimenter, 16#ffff}]}).
 
--enum({hello_failed, [incompatible,
-                            eperm]}).
+-enum({hello_failed_code, [incompatible,
+                           eperm]}).
 
--enum({bad_request, [bad_version,
-                     bad_type,
-                     bad_stat,
-                     bad_experimenter,
-                     bad_exp_type,
-                     eperm,
-                     bad_len,
-                     buffer_empty,
-                     buffer_unknown,
-                     bad_table_id,
-                     is_slave,
-                     bad_port,
-                     bad_packet]}).
+-enum({bad_request_code, [bad_version,
+                          bad_type,
+                          bad_stat,
+                          bad_experimenter,
+                          bad_exp_type,
+                          eperm,
+                          bad_len,
+                          buffer_empty,
+                          buffer_unknown,
+                          bad_table_id,
+                          is_slave,
+                          bad_port,
+                          bad_packet]}).
 
--enum({bad_action, [bad_type,
-                    bad_len,
-                    bad_experimenter,
-                    bad_exp_type,
-                    bad_out_port,
-                    bad_argument,
-                    eperm,
-                    too_many,
-                    bad_queue,
-                    bad_out_group,
-                    match_inconsistent,
-                    unsupported_order,
-                    bad_tag,
-                    bad_set_type,
-                    bad_set_len,
-                    bad_set_argument]}).
-
--enum({bad_instruction, [unknown_inst,
-                         unsup_inst,
-                         bad_table_id,
-                         unsup_metadata,
-                         unsup_metadata_mask,
+-enum({bad_action_code, [bad_type,
+                         bad_len,
                          bad_experimenter,
                          bad_exp_type,
-                         bad_len,
-                         eperm]}).
-
--enum({bad_match, [bad_type,
-                   bad_len,
-                   bad_tag,
-                   bad_dl_addr_mask,
-                   bad_nw_addr_mask,
-                   bad_wildcards,
-                   bad_field,
-                   bad_value,
-                   bad_mask,
-                   bad_prereq,
-                   dup_field,
-                   eperm]}).
-
--enum({flow_mod_failed, [unknown,
-                         table_full,
-                         bad_table_id,
-                         overlap,
+                         bad_out_port,
+                         bad_argument,
                          eperm,
-                         bad_timeout,
-                         bad_command,
-                         bad_flags]}).
-
--enum({group_mod_failed, [group_exists,
-                          invalid_group,
-                          weight_unsupported,
-                          out_of_groups,
-                          out_of_buckets,
-                          chaining_unsupported,
-                          watch_unsupported,
-                          loop,
-                          unknown_group,
-                          chained_group,
-                          bad_type,
-                          bad_command,
-                          bad_bucket,
-                          bad_watch,
-                          eperm]}).
-
--enum({port_mod_failed, [bad_port,
-                         bad_hw_addr,
-                         bad_config,
-                         bad_advertise,
-                         eperm]}).
-
--enum({table_mod_failed, [bad_table,
-                          bad_config,
-                          eperm]}).
-
--enum({queue_op_failed, [bad_port,
+                         too_many,
                          bad_queue,
-                         eperm]}).
+                         bad_out_group,
+                         match_inconsistent,
+                         unsupported_order,
+                         bad_tag,
+                         bad_set_type,
+                         bad_set_len,
+                         bad_set_argument]}).
 
--enum({switch_config_failed, [bad_flags,
+-enum({bad_instruction_code, [unknown_inst,
+                              unsup_inst,
+                              bad_table_id,
+                              unsup_metadata,
+                              unsup_metadata_mask,
+                              bad_experimenter,
+                              bad_exp_type,
                               bad_len,
                               eperm]}).
 
--enum({role_request_failed, [stale,
-                             unsup,
-                             bad_role]}).
+-enum({bad_match_code, [bad_type,
+                        bad_len,
+                        bad_tag,
+                        bad_dl_addr_mask,
+                        bad_nw_addr_mask,
+                        bad_wildcards,
+                        bad_field,
+                        bad_value,
+                        bad_mask,
+                        bad_prereq,
+                        dup_field,
+                        eperm]}).
+
+-enum({flow_mod_failed_code, [unknown,
+                              table_full,
+                              bad_table_id,
+                              overlap,
+                              eperm,
+                              bad_timeout,
+                              bad_command,
+                              bad_flags]}).
+
+-enum({group_mod_failed_code, [group_exists,
+                               invalid_group,
+                               weight_unsupported,
+                               out_of_groups,
+                               out_of_buckets,
+                               chaining_unsupported,
+                               watch_unsupported,
+                               loop,
+                               unknown_group,
+                               chained_group,
+                               bad_type,
+                               bad_command,
+                               bad_bucket,
+                               bad_watch,
+                               eperm]}).
+
+-enum({port_mod_failed_code, [bad_port,
+                              bad_hw_addr,
+                              bad_config,
+                              bad_advertise,
+                              eperm]}).
+
+-enum({table_mod_failed_code, [bad_table,
+                               bad_config,
+                               eperm]}).
+
+-enum({queue_op_failed_code, [bad_port,
+                              bad_queue,
+                              eperm]}).
+
+-enum({switch_config_failed_code, [bad_flags,
+                                   bad_len,
+                                   eperm]}).
+
+-enum({role_request_failed_code, [stale,
+                                  unsup,
+                                  bad_role]}).
 
 %%------------------------------------------------------------------------------
 %% Symmetric Messages

@@ -588,42 +588,17 @@ encode_body(Other) ->
 %%------------------------------------------------------------------------------
 
 -spec get_id(atom(), integer() | atom()) -> integer() | atom().
-get_id(_Enum, Int) when is_integer(Int) ->
-    %% TODO: Check if it's not larger than max
-    Int;
-get_id(Enum, Atom) when is_atom(Atom) ->
-    ofp_v3_enum:to_int(Enum, Atom).
+get_id(Enum, Int) ->
+    ofp_utils:get_id(ofp_v3_enum, Enum, Int).
 
 -spec encode_list(list()) -> binary().
 encode_list(List) ->
-    encode_list(List, <<>>).
-
--spec encode_list(list(), binary()) -> binary().
-encode_list([], Binaries) ->
-    Binaries;
-encode_list([Struct | Rest], Binaries) ->
-    StructBin = encode_struct(Struct),
-    encode_list(Rest, <<Binaries/bytes, StructBin/bytes>>).
+    ofp_utils:encode_list(fun encode_body/1, List, <<>>).
 
 -spec flags_to_binary(atom(), [atom()], integer()) -> binary().
 flags_to_binary(Type, Flags, Size) ->
-    flags_to_binary(Type, Flags, <<0:(Size*8)>>, Size*8).
+    ofp_utils:flags_to_binary(ofp_v3_enum, Type, Flags, Size).
 
--spec flags_to_binary(atom(), [atom()], binary(), integer()) -> binary().
-flags_to_binary(_, [], Binary, _) ->
-    Binary;
-flags_to_binary(Type, [Flag | Rest], Binary, BitSize) ->
-    <<Binary2:BitSize>> = Binary,
-    Bit = case Flag of
-              experimenter ->
-                  experimenter_bit(Type);
-              Flag ->
-                  ofp_v3_enum:to_int(Type, Flag)
-          end,
-    NewBinary = (Binary2 bor (1 bsl Bit)),
-    flags_to_binary(Type, Rest, <<NewBinary:BitSize>>, BitSize).
-
--spec type_int(ofp_message_body()) -> integer().
 type_int(#ofp_hello{}) ->
     ofp_v3_enum:to_int(type, hello);
 type_int(#ofp_error{}) ->
@@ -714,6 +689,3 @@ type_int(#ofp_role_request{}) ->
     ofp_v3_enum:to_int(type, role_request);
 type_int(#ofp_role_reply{}) ->
     ofp_v3_enum:to_int(type, role_reply).
-
-experimenter_bit(action_type) -> 31;
-experimenter_bit(instruction_type) -> 31.

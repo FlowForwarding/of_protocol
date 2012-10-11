@@ -750,31 +750,8 @@ decode_body(role_reply, Binary) ->
 
 -spec binary_to_flags(atom(), binary()) -> [atom()].
 binary_to_flags(Type, Binary) ->
-    BitSize = size(Binary) * 8,
-    <<Integer:BitSize>> = Binary,
-    binary_to_flags(Type, Integer, BitSize-1, []).
+    ofp_util:binary_to_flags(ofp_v3_enum, Type, Binary).
 
--spec binary_to_flags(atom(), integer(), integer(), [atom()]) -> [atom()].
-binary_to_flags(Type, Integer, Bit, Flags) when Bit >= 0 ->
-    case 0 /= (Integer band (1 bsl Bit)) of
-        true ->
-            Flag = experimenter_bit(Type, Bit),
-            binary_to_flags(Type, Integer, Bit - 1, [Flag | Flags]);
-        false ->
-            binary_to_flags(Type, Integer, Bit - 1, Flags)
-    end;
-binary_to_flags(_, _, _, Flags) ->
-    lists:reverse(Flags).
-
+-spec get_id(atom(), integer() | atom()) -> integer() | atom().
 get_id(Enum, Int) ->
-    %% TODO: Check if it's not larger than max
-    try
-	ofp_v3_enum:to_atom(Enum, Int)
-    catch
-	throw:bad_enum ->
-	    Int
-    end.
-
-experimenter_bit(action_type, 31) -> experimenter;
-experimenter_bit(instruction_type, 31) -> experimenter;
-experimenter_bit(Type, Bit) -> ofp_v3_enum:to_atom(Type, Bit).
+    ofp_utils:get_id(ofp_v3_enum, Enum, Int).
