@@ -75,16 +75,21 @@ flags_to_binary(EnumMod, Type, Flags, Size) ->
     flags_to_binary(EnumMod, Type, Flags, <<0:(Size*8)>>, Size*8).
 
 -spec get_id(atom(), atom(), integer() | atom()) -> integer() | atom().
-get_id(_EnumMod, _Enum, Int) when is_integer(Int) ->
-    %% TODO: Check if it's not larger than max
-    Int;
-get_id(EnumMod, Enum, Int) ->
+get_id(EnumMod, Enum, Int) when is_integer(Int) ->
     %% TODO: Check if it's not larger than max
     try
-        EnumMod:to_int(Enum, Int)
+        EnumMod:to_atom(Enum, Int)
     catch
         throw:bad_enum ->
             Int
+    end;
+get_id(EnumMod, Enum, Atom) when is_atom(Atom) ->
+    %% TODO: Check if it's not larger than max
+    try
+        EnumMod:to_int(Enum, Atom)
+    catch
+        throw:bad_enum ->
+            Atom
     end.
 
 -spec encode_list(function(), list(), binary()) -> binary().
