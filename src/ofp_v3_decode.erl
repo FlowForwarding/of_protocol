@@ -750,7 +750,7 @@ decode_body(role_reply, Binary) ->
 
 -spec binary_to_flags(atom(), binary()) -> [atom()].
 binary_to_flags(Type, Binary) ->
-    ofp_util:binary_to_flags(ofp_v3_enum, Type, Binary).
+    ofp_utils:binary_to_flags(ofp_v3_enum, Type, Binary).
 
 -spec get_id(atom(), integer() | atom()) -> integer() | atom().
 get_id(Enum, Int) ->
