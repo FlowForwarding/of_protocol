@@ -81,7 +81,7 @@ get_id(_EnumMod, _Enum, Int) when is_integer(Int) ->
 get_id(EnumMod, Enum, Int) ->
     %% TODO: Check if it's not larger than max
     try
-        EnumMod:to_atom(Enum, Int)
+        EnumMod:to_int(Enum, Int)
     catch
         throw:bad_enum ->
             Int
