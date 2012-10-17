@@ -628,10 +628,7 @@
                       | integer().
 
 -record(ofp_table_mod, {
-          table_id = all :: ofp_table_id(),
-          %% The config field is a bitmap that is reserved for future use,
-          %% OpenFlow Switch Specification Version 1.3.0 - page 54.
-          config = undefined
+          table_id = all :: ofp_table_id()
          }).
 -type ofp_table_mod() :: #ofp_table_mod{}.
 
@@ -900,10 +897,6 @@
 
 %%% Table Features (A 3.5.5) ---------------------------------------------------
 
--type ofp_table_config() :: continue
-                          | drop
-                          | controller.
-
 -record(ofp_table_feature_prop_instructions, {
           type :: instructions | instructions_miss,
           instruction_ids = [] :: [integer()]
@@ -950,7 +943,6 @@
           name :: binary(),
           metadata_match :: binary(),
           metadata_write :: binary(),
-          config :: ofp_table_config(),
           max_entries :: integer(),
           properties = [] :: [ofp_table_feature_property()]
          }).
