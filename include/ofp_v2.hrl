@@ -17,22 +17,22 @@
 %% @author Erlang Solutions Ltd. <openflow@erlang-solutions.com>
 %% @author Krzysztof Rutka <krzysztof.rutka@erlang-solutions.com>
 %% @copyright 2012 FlowForwarding.org
-%% @doc OpenFlow Protocol 1.0 specific header.
+%% @doc OpenFlow Protocol 1.1 specific header.
 
 %%------------------------------------------------------------------------------
-%% 5.1 OpenFlow Header
+%% OpenFlow Header
 %%------------------------------------------------------------------------------
 
 %% Protocol version
--define(VERSION, 1).
+-define(VERSION, 2).
 
 %%------------------------------------------------------------------------------
-%% 5.2 Common Structures
+%% Common Structures
 %%------------------------------------------------------------------------------
 
-%% 5.2.1 Port Structures -------------------------------------------------------
+%% Port Structures -------------------------------------------------------------
 
--record(ofp_phy_port, {
+-record(ofp_port, {
           port_no,
           hw_addr,
           name,
@@ -41,10 +41,12 @@
           curr,
           advertised,
           supported,
-          peer
+          peer,
+          curr_speed,
+          max_speed
          }).
 
-%% 5.2.2 Queue Structures ------------------------------------------------------
+%% Queue Structures ------------------------------------------------------------
 
 -record(ofp_packet_queue, {
           queue_id,
@@ -57,27 +59,59 @@
           rate
          }).
 
-%% 5.2.3 Flow Match Structures -------------------------------------------------
+%% Flow Match Structures -------------------------------------------------------
 
 -record(ofp_match, {
-          wildcards,
-          nw_src_wildcard,
-          nw_dst_wildcard,
           in_port,
+          wildcards,
           dl_src,
+          dl_src_mask,
           dl_dst,
+          dl_dst_mask,
           dl_vlan,
           dl_vlan_pcp,
           dl_type,
           nw_tos,
           nw_proto,
           nw_src,
+          nw_src_mask,
           nw_dst,
+          nw_dst_mask,
           tp_src,
-          tp_dst
+          tp_dst,
+          mpls_label,
+          mpls_tc,
+          metadata,
+          metadata_mask
          }).
 
-%% 5.2.4 Flow Action Structures ------------------------------------------------
+%% Flow Instruction Structures -------------------------------------------------
+
+-record(ofp_instruction_goto_table, {
+          table_id
+         }).
+
+-record(ofp_instruction_write_metadata, {
+          metadata,
+          metadata_mask
+         }).
+
+-record(ofp_instruction_write_actions, {
+          actions
+         }).
+
+-record(ofp_instruction_apply_actions, {
+          actions
+         }).
+
+-record(ofp_instruction_clear_actions, {}).
+
+-record(ofp_instruction_experimenter, {
+          experimenter,
+          data
+         }).
+
+%% Action Structures -----------------------------------------------------------
 
 -record(ofp_action_output, {
           port,
@@ -91,8 +125,6 @@
 -record(ofp_action_set_vlan_pcp, {
           vlan_pcp
          }).
-
--record(ofp_action_strip_vlan, {}).
 
 -record(ofp_action_set_dl_src, {
           dl_src
@@ -114,6 +146,10 @@
           nw_tos
          }).
 
+-record(ofp_action_set_nw_ecn, {
+          nw_ecn
+         }).
+
 -record(ofp_action_set_tp_src, {
           tp_src
          }).
@@ -122,20 +158,62 @@
           tp_dst
          }).
 
--record(ofp_action_enqueue, {
-          port,
+-record(ofp_action_copy_ttl_out, {}).
+
+-record(ofp_action_copy_ttl_in, {}).
+
+-record(ofp_action_set_mpls_label, {
+          mpls_label
+         }).
+
+-record(ofp_action_set_mpls_tc, {
+          mpls_tc
+         }).
+
+-record(ofp_action_set_mpls_ttl, {
+          mpls_ttl
+         }).
+
+-record(ofp_action_dec_mpls_ttl, {}).
+
+-record(ofp_action_push_vlan, {
+          ethertype
+         }).
+
+-record(ofp_action_pop_vlan, {}).
+
+-record(ofp_action_push_mpls, {
+          ethertype
+         }).
+
+-record(ofp_action_pop_mpls, {
+          ethertype
+         }).
+
+-record(ofp_action_set_queue, {
           queue_id
          }).
 
--record(ofp_action_vendor, {
-          vendor
+-record(ofp_action_group, {
+          group_id
+         }).
+
+-record(ofp_action_set_nw_ttl, {
+          nw_ttl
+         }).
+
+-record(ofp_action_dec_nw_ttl, {}).
+
+-record(ofp_action_experimenter, {
+          experimenter,
+          data
          }).
 
 %%------------------------------------------------------------------------------
-%% 5.3 Controller-to-Switch Messages
+%% Controller-to-Switch Messages
 %%------------------------------------------------------------------------------
 
-%% 5.3.1 Handshake -------------------------------------------------------------
+%% Handshake -------------------------------------------------------------------
 
 -record(ofp_features_request, {}).
 
@@ -145,11 +223,10 @@
           n_buffers,
           n_tables,
           capabilities,
-          actions,
           ports
          }).
 
-%% 5.3.2 Switch Configuration --------------------------------------------------
+%% Switch Configuration --------------------------------------------------------
 
 -record(ofp_get_config_request, {}).
 
@@ -163,24 +240,44 @@
           miss_send_len
          }).
 
-%% 5.3.3 Modify State Messages -------------------------------------------------
+%% Flow Table Configuration ----------------------------------------------------
 
-%% Modify Flow Entry Message ---------------------------------------------------
+-record(ofp_table_mod, {
+          table_id,
+          config
+         }).
+
+%% Modify State Messages -------------------------------------------------------
 
 -record(ofp_flow_mod, {
-          match,
           cookie,
+          cookie_mask,
+          table_id,
           command,
           idle_timeout,
           hard_timeout,
           priority,
           buffer_id,
           out_port,
+          out_group,
           flags,
-          actions
+          match,
+          instructions
          }).
 
-%% Port Modification Message ---------------------------------------------------
+-record(ofp_group_mod, {
+          command,
+          type,
+          group_id,
+          buckets
+         }).
+
+-record(ofp_bucket, {
+          weight,
+          watch_port,
+          watch_group,
+          actions
+         }).
 
 -record(ofp_port_mod, {
           port_no,
@@ -190,7 +287,7 @@
           advertise
          }).
 
-%% 5.3.4 Queue Configuration Messages ------------------------------------------
+%% Queue Configuration Messages ------------------------------------------------
 
 -record(ofp_queue_get_config_request, {
           port
@@ -201,13 +298,62 @@
           queues
          }).
 
-%% 5.3.5 Read State Messages ---------------------------------------------------
-
-%% Description Statistics ------------------------------------------------------
+%% Read State Messages ---------------------------------------------------------
 
 -record(ofp_desc_stats_request, {
           flags
          }).
+
+-record(ofp_flow_stats_request, {
+          flags,
+          table_id,
+          out_port,
+          out_group,
+          cookie,
+          cookie_mask,
+          match
+         }).
+
+-record(ofp_aggregate_stats_request, {
+          flags,
+          table_id,
+          out_port,
+          out_group,
+          cookie,
+          cookie_mask,
+          match
+         }).
+
+-record(ofp_table_stats_request, {
+          flags
+         }).
+
+-record(ofp_port_stats_request, {
+          flags,
+          port_no
+         }).
+
+-record(ofp_queue_stats_request, {
+          flags,
+          port_no,
+          queue_id
+         }).
+
+-record(ofp_group_stats_request, {
+          flags,
+          group_id
+         }).
+
+-record(ofp_group_desc_stats_request, {
+          flags
+         }).
+
+-record(ofp_experimenter_stats_request, {
+          flags,
+          experimenter,
+          data
+         }).
+
 
 -record(ofp_desc_stats_reply, {
           flags,
@@ -218,15 +364,6 @@
           dp_desc
          }).
 
-%% Individual Flow Statistics --------------------------------------------------
-
--record(ofp_flow_stats_request, {
-          flags,
-          match,
-          table_id,
-          out_port
-         }).
-
 -record(ofp_flow_stats_reply, {
           flags,
           stats
@@ -234,7 +371,6 @@
 
 -record(ofp_flow_stats, {
           table_id,
-          match,
           duration_sec,
           duration_nsec,
           priority,
@@ -243,16 +379,8 @@
           cookie,
           packet_count,
           byte_count,
-          actions
-         }).
-
-%% Aggregate Flow Statistics ---------------------------------------------------
-
--record(ofp_aggregate_stats_request, {
-          flags,
           match,
-          table_id,
-          out_port
+          instructions
          }).
 
 -record(ofp_aggregate_stats_reply, {
@@ -260,12 +388,6 @@
           packet_count,
           byte_count,
           flow_count
-         }).
-
-%% Table Statistics ------------------------------------------------------------
-
--record(ofp_table_stats_request, {
-          flags
          }).
 
 -record(ofp_table_stats_reply, {
@@ -277,17 +399,15 @@
           table_id,
           name,
           wildcards,
+          match,
+          instructions,
+          write_actions,
+          apply_actions,
+          config,
           max_entries,
           active_count,
           lookup_count,
           matched_count
-         }).
-
-%% Port Statistics -------------------------------------------------------------
-
--record(ofp_port_stats_request, {
-          flags,
-          port_no
          }).
 
 -record(ofp_port_stats_reply, {
@@ -311,14 +431,6 @@
           collisions
          }).
 
-%% Queue Statistics ------------------------------------------------------------
-
--record(ofp_queue_stats_request, {
-          flags,
-          port_no,
-          queue_id
-         }).
-
 -record(ofp_queue_stats_reply, {
           flags,
           stats
@@ -332,21 +444,42 @@
           tx_errors
          }).
 
-%% Vendor Statistics -----------------------------------------------------------
-
--record(ofp_vendor_stats_request, {
+-record(ofp_group_stats_reply, {
           flags,
-          vendor,
+          stats
+         }).
+
+-record(ofp_group_stats, {
+          group_id,
+          ref_count,
+          packet_count,
+          byte_count,
+          bucket_stats
+         }).
+
+-record(ofp_bucket_counter, {
+          packet_count,
+          byte_count
+         }).
+
+-record(ofp_group_desc_stats_reply, {
+          flags,
+          stats
+         }).
+
+-record(ofp_group_desc_stats, {
+          type,
+          group_id,
+          buckets
+         }).
+
+-record(ofp_experimenter_stats_reply, {
+          flags,
+          experimenter,
           data
          }).
 
--record(ofp_vendor_stats_reply, {
-          flags,
-          vendor,
-          data
-         }).
-
-%% 5.3.6 Send Packet Message ---------------------------------------------------
+%% Packet-Out Messages ---------------------------------------------------------
 
 -record(ofp_packet_out, {
           buffer_id,
@@ -355,7 +488,7 @@
           data
          }).
 
-%% 5.3.7 Barrier Messages ------------------------------------------------------
+%% Barrier Messages ------------------------------------------------------------
 
 -record(ofp_barrier_request, {}).
 
@@ -365,37 +498,40 @@
 %% Asynchronous Messages
 %%------------------------------------------------------------------------------
 
-%% 5.4.1 Packet-In Message -----------------------------------------------------
+%% Packet-In Message -----------------------------------------------------------
 
 -record(ofp_packet_in, {
           buffer_id,
           in_port,
+          in_phy_port,
           reason,
+          table_id,
           data
          }).
 
-%% 5.4.2 Flow Removed Message --------------------------------------------------
+%% Flow Removed Message --------------------------------------------------------
 
 -record(ofp_flow_removed, {
-          match,
           cookie,
           priority,
           reason,
+          table_id,
           duration_sec,
           duration_nsec,
           idle_timeout,
           packet_count,
-          byte_count
+          byte_count,
+          match
          }).
 
-%% 5.4.3 Port Status Message ---------------------------------------------------
+%% Port Status Message ---------------------------------------------------------
 
 -record(ofp_port_status, {
           reason,
           desc
          }).
 
-%% 5.4.4 Error Message ---------------------------------------------------------
+%% Error Message ---------------------------------------------------------------
 
 -record(ofp_error_msg, {
           type,
@@ -404,28 +540,28 @@
          }).
 
 %%------------------------------------------------------------------------------
-%% 5.5 Symmetric Messages
+%% Symmetric Messages
 %%------------------------------------------------------------------------------
 
-%% 5.5.1 Hello -----------------------------------------------------------------
+%% Hello -----------------------------------------------------------------------
 
 -record(ofp_hello, {}).
 
-%% 5.5.2 Echo Request ----------------------------------------------------------
+%% Echo Request ----------------------------------------------------------------
 
 -record(ofp_echo_request, {
           data
          }).
 
-%% 5.5.3 Echo Reply ------------------------------------------------------------
+%% Echo Reply ------------------------------------------------------------------
 
 -record(ofp_echo_reply, {
           data
          }).
 
-%% 5.5.4 Vendor ----------------------------------------------------------------
+%% Vendor ----------------------------------------------------------------------
 
--record(ofp_vendor, {
-          vendor,
+-record(ofp_experimenter, {
+          experimenter,
           data
          }).

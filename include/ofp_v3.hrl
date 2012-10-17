@@ -302,20 +302,16 @@
 %% OXM field
 -record(ofp_field, {
           class = openflow_basic :: ofp_field_class(),
-          field :: ofp_field_type(),
+          name :: ofp_field_type(),
           has_mask = false :: boolean(),
           value :: binary(),
           mask :: binary()
          }).
 -type ofp_field() :: #ofp_field{}.
 
--type ofp_match_type() :: standard %% Deprecated
-                        | oxm.
-
 %% Match
 -record(ofp_match, {
-          type       = oxm :: ofp_match_type(),
-          oxm_fields = []  :: [ofp_field()]
+          fields = [] :: [ofp_field()]
          }).
 
 -type ofp_match() :: #ofp_match{}.
@@ -617,7 +613,6 @@
           n_buffers :: integer(),
           n_tables :: integer(),
           capabilities = [] :: [ofp_switch_capability()],
-          actions = [] :: [ofp_action_type()], %% OF Protocol 1.0
           ports = [] :: [ofp_port()]
          }).
 -type ofp_features_reply() :: #ofp_features_reply{}.
@@ -1030,21 +1025,21 @@
 %%                         | ...
 
 %% Error message
--record(ofp_error, {
+-record(ofp_error_msg, {
           type :: atom(),
           code :: atom(),
           data = <<>> :: binary()
          }).
 
 %% Experimenter error message
--record(ofp_error_experimenter, {
+-record(ofp_error_msg_experimenter, {
           exp_type :: integer(),
           experimenter :: integer(),
           data = <<>> :: binary()
          }).
 
--type ofp_error() :: #ofp_error{}
-                   | #ofp_error_experimenter{}.
+-type ofp_error_msg() :: #ofp_error_msg{}
+                       | #ofp_error_msg_experimenter{}.
 
 %%%-----------------------------------------------------------------------------
 %%% Symmetric Messages
@@ -1075,7 +1070,7 @@
 -type ofp_experimenter() :: #ofp_experimenter{}.
 
 -type ofp_message_body() :: ofp_hello()
-                          | ofp_error()
+                          | ofp_error_msg()
                           | ofp_echo_request()
                           | ofp_echo_reply()
                           | ofp_experimenter()

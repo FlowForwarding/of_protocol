@@ -104,9 +104,6 @@
 
 %% Flow Match Structures -------------------------------------------------------
 
--enum({match_type, [standard,
-                    oxm]}).
-
 -enum({oxm_class, [nxm_0,
                    nxm_1,
                    {openflow_basic, 16#8000},

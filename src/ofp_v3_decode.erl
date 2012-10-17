@@ -107,14 +107,12 @@ decode_properties(Binary, Properties) ->
 %% @doc Decode match structure
 decode_match(Binary) ->
     PadFieldsLength = size(Binary) - ?MATCH_SIZE + 4,
-    <<TypeInt:16, NoPadLength:16,
-      PadFieldsBin:PadFieldsLength/bytes>> = Binary,
+    <<1:16, NoPadLength:16, PadFieldsBin:PadFieldsLength/bytes>> = Binary,
     FieldsBinLength = (NoPadLength - 4),
     Padding = (PadFieldsLength - FieldsBinLength) * 8,
     <<FieldsBin:FieldsBinLength/bytes, 0:Padding>> = PadFieldsBin,
     Fields = decode_match_fields(FieldsBin),
-    Type = ofp_v3_enum:to_atom(match_type, TypeInt),
-    #ofp_match{type = Type, oxm_fields = Fields}.
+    #ofp_match{fields = Fields}.
 
 %% @doc Decode match fields
 decode_match_fields(Binary) ->
@@ -152,7 +150,7 @@ decode_match_field(<<Header:4/bytes, Binary/bytes>>) ->
                              mask = ofp_utils:cut_bits(Mask, BitLength)}
     end,
     {TLV#ofp_field{class = Class,
-                   field = Field,
+                   name = Field,
                    has_mask = HasMask}, Rest}.
 
 %% @doc Decode actions
@@ -422,15 +420,15 @@ decode_body(error, Binary) ->
             DataLength = size(Binary) - ?ERROR_EXPERIMENTER_SIZE + ?OFP_HEADER_SIZE,
             <<ExpTypeInt:16, Experimenter:32,
               Data:DataLength/bytes>> = More,
-            #ofp_error_experimenter{exp_type = ExpTypeInt,
-                                    experimenter = Experimenter,
-                                    data = Data};
+            #ofp_error_msg_experimenter{exp_type = ExpTypeInt,
+                                        experimenter = Experimenter,
+                                        data = Data};
         _ ->
             DataLength = size(Binary) - ?ERROR_SIZE + ?OFP_HEADER_SIZE,
             <<CodeInt:16, Data:DataLength/bytes>> = More,
             Code = ofp_v3_enum:to_atom(Type, CodeInt),
-            #ofp_error{type = Type,
-                       code = Code, data = Data}
+            #ofp_error_msg{type = Type,
+                           code = Code, data = Data}
     end;
 decode_body(echo_request, Binary) ->
     DataLength = size(Binary) - ?ECHO_REQUEST_SIZE + ?OFP_HEADER_SIZE,

@@ -81,8 +81,7 @@ encode_struct(#ofp_queue_prop_experimenter{experimenter = Experimenter,
     PropertyInt = ofp_v3_enum:to_int(queue_properties, experimenter),
     <<PropertyInt:16, Length:16, 0:32, Experimenter:32, 0:32, Data/bytes>>;
 
-encode_struct(#ofp_match{type = Type, oxm_fields = Fields}) ->
-    TypeInt = ofp_v3_enum:to_int(match_type, Type),
+encode_struct(#ofp_match{fields = Fields}) ->
     FieldsBin = encode_list(Fields),
     FieldsLength = size(FieldsBin),
     Length = FieldsLength + ?MATCH_SIZE - 4,
@@ -92,8 +91,8 @@ encode_struct(#ofp_match{type = Type, oxm_fields = Fields}) ->
         _ ->
             Padding = (8 - (Length rem 8)) * 8
     end,
-    <<TypeInt:16, Length:16, FieldsBin/bytes, 0:Padding>>;
-encode_struct(#ofp_field{class = Class, field = Field, has_mask = HasMask,
+    <<1:16, Length:16, FieldsBin/bytes, 0:Padding>>;
+encode_struct(#ofp_field{class = Class, name = Field, has_mask = HasMask,
                          value = Value, mask = Mask}) ->
     ClassInt = ofp_v3_enum:to_int(oxm_class, Class),
     %% TODO: Handle different classes
@@ -305,13 +304,13 @@ encode_struct(#ofp_group_desc_stats{type = Type, group_id = Group,
 
 encode_body(#ofp_hello{}) ->
     <<>>;
-encode_body(#ofp_error{type = Type, code = Code, data = Data}) ->
+encode_body(#ofp_error_msg{type = Type, code = Code, data = Data}) ->
     TypeInt = ofp_v3_enum:to_int(error_type, Type),
     CodeInt = ofp_v3_enum:to_int(Type, Code),
     <<TypeInt:16, CodeInt:16, Data/bytes>>;
-encode_body(#ofp_error_experimenter{exp_type = ExpTypeInt,
-                                    experimenter = Experimenter,
-                                    data = Data}) ->
+encode_body(#ofp_error_msg_experimenter{exp_type = ExpTypeInt,
+                                        experimenter = Experimenter,
+                                        data = Data}) ->
     TypeInt = ofp_v3_enum:to_int(error_type, experimenter),
     <<TypeInt:16, ExpTypeInt:16, Experimenter:32, Data/bytes>>;
 encode_body(#ofp_echo_request{data = Data}) ->
@@ -601,9 +600,9 @@ flags_to_binary(Type, Flags, Size) ->
 
 type_int(#ofp_hello{}) ->
     ofp_v3_enum:to_int(type, hello);
-type_int(#ofp_error{}) ->
+type_int(#ofp_error_msg{}) ->
     ofp_v3_enum:to_int(type, error);
-type_int(#ofp_error_experimenter{}) ->
+type_int(#ofp_error_msg_experimenter{}) ->
     ofp_v3_enum:to_int(type, error);
 type_int(#ofp_echo_request{}) ->
     ofp_v3_enum:to_int(type, echo_request);

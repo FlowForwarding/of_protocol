@@ -170,7 +170,7 @@
 -type ofp_message_body() ::
         %% Immutable messages
         ofp_hello()
-      | ofp_error()
+      | ofp_error_msg()
       | ofp_echo_request()
       | ofp_echo_reply()
       | ofp_experimenter()
@@ -386,7 +386,7 @@
 %% OXM field
 -record(ofp_field, {
           class = openflow_basic :: ofp_field_class(),
-          field :: ofp_field_type(),
+          name :: ofp_field_type(),
           has_mask = false :: boolean(),
           value :: binary(),
           mask :: binary()
@@ -894,7 +894,7 @@
 
 -record(ofp_table_stats_reply, {
           flags = [] :: [ofp_multipart_reply_flag()],
-          tables = [] :: [ofp_table_stats()]
+          stats = [] :: [ofp_table_stats()]
          }).
 -type ofp_table_stats_reply() :: #ofp_table_stats_reply{}.
 
@@ -1503,20 +1503,20 @@
                         | table_features_failed
                         | experimenter.
 
--record(ofp_error, {
+-record(ofp_error_msg, {
           type :: ofp_error_type(),
           code :: ofp_error_code(),
           data = <<>> :: binary()
          }).
 
--record(ofp_error_experimenter, {
+-record(ofp_error_msg_experimenter, {
           exp_type :: integer(),
           experimenter :: integer(),
           data = <<>> :: binary()
          }).
 
--type ofp_error() :: #ofp_error{}
-                   | #ofp_error_experimenter{}.
+-type ofp_error_msg() :: #ofp_error_msg{}
+                       | #ofp_error_msg_experimenter{}.
 
 %%%-----------------------------------------------------------------------------
 %%% Symmetric Messages (A 5)
