@@ -62,6 +62,9 @@ encode_body(#ofp_echo_request{data = Data}) ->
     Data;
 encode_body(#ofp_echo_reply{data = Data}) ->
     Data;
+encode_body(#ofp_experimenter{experimenter = Experimenter,
+                              exp_type = Type, data = Data}) ->
+    <<Experimenter:32, Type:32, Data/bytes>>;
 encode_body(#ofp_barrier_request{}) ->
     <<>>;
 encode_body(#ofp_barrier_reply{}) ->
@@ -82,6 +85,8 @@ type_int(#ofp_echo_request{}) ->
     ofp_v4_enum:to_int(type, echo_request);
 type_int(#ofp_echo_reply{}) ->
     ofp_v4_enum:to_int(type, echo_reply);
+type_int(#ofp_experimenter{}) ->
+    ofp_v3_enum:to_int(type, experimenter);
 type_int(#ofp_barrier_request{}) ->
     ofp_v4_enum:to_int(type, barrier_request);
 type_int(#ofp_barrier_reply{}) ->

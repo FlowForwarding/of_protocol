@@ -75,6 +75,11 @@ decode_body(echo_reply, Binary) ->
     DataLength = size(Binary) - ?ECHO_REPLY_SIZE + ?OFP_HEADER_SIZE,
     <<Data:DataLength/bytes>> = Binary,
     #ofp_echo_reply{data = Data};
+decode_body(experimenter, Binary) ->
+    DataLength = size(Binary) - ?EXPERIMENTER_SIZE + ?OFP_HEADER_SIZE,
+    <<Experimenter:32, Type:32, Data:DataLength/bytes>> = Binary,
+    #ofp_experimenter{experimenter = Experimenter,
+                      exp_type = Type, data = Data};
 decode_body(barrier_request, _) ->
     #ofp_barrier_request{};
 decode_body(barrier_reply, _) ->
