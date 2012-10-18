@@ -1061,12 +1061,12 @@
 
 %%% Group Description (A 3.5.10) -----------------------------------------------
 
--record(ofp_group_desc, {
+-record(ofp_group_desc_stats, {
           type :: ofp_group_type(),
           group_id :: ofp_group_id(),
           buckets = [] :: [ofp_bucket()]
          }).
--type ofp_group_desc() :: #ofp_group_desc{}.
+-type ofp_group_desc_stats() :: #ofp_group_desc_stats{}.
 
 -record(ofp_group_desc_request, {
           flags = [] :: [ofp_multipart_request_flag()]
@@ -1075,7 +1075,7 @@
 
 -record(ofp_group_desc_reply, {
           flags = [] :: [ofp_multipart_reply_flag()],
-          descriptions = [] :: [ofp_group_desc()]
+          descriptions = [] :: [ofp_group_desc_stats()]
          }).
 -type ofp_group_desc_reply() :: #ofp_group_desc_reply{}.
 
