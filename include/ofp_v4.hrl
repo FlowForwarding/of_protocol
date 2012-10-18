@@ -845,7 +845,7 @@
 
 -record(ofp_flow_stats_reply, {
           flags = [] :: [ofp_multipart_reply_flag()],
-          stats = [] :: [ofp_flow_stats()]
+          body = [] :: [ofp_flow_stats()]
          }).
 -type ofp_flow_stats_reply() :: #ofp_flow_stats_reply{}.
 
@@ -887,7 +887,7 @@
 
 -record(ofp_table_stats_reply, {
           flags = [] :: [ofp_multipart_reply_flag()],
-          stats = [] :: [ofp_table_stats()]
+          body = [] :: [ofp_table_stats()]
          }).
 -type ofp_table_stats_reply() :: #ofp_table_stats_reply{}.
 
@@ -952,7 +952,7 @@
 
 -record(ofp_table_features_reply, {
           flags = [] :: [ofp_multipart_reply_flag()],
-          tables_features = [] :: [ofp_table_features()]
+          body = [] :: [ofp_table_features()]
          }).
 -type ofp_table_features_reply() :: #ofp_table_features_reply{}.          
 
@@ -985,7 +985,7 @@
 
 -record(ofp_port_stats_reply, {
           flags = [] :: [ofp_multipart_reply_flag()],
-          stats = [] :: [ofp_port_stats()]
+          body = [] :: [ofp_port_stats()]
          }).
 -type ofp_port_stats_reply() :: #ofp_port_stats_reply{}.
 
@@ -998,7 +998,7 @@
 
 -record(ofp_port_desc_reply, {
           flags = [] :: [ofp_multipart_reply_flag()],
-          ports = [] :: [ofp_port()]
+          body = [] :: [ofp_port()]
          }).
 -type ofp_port_desc_reply() :: #ofp_port_desc_reply{}.
 
@@ -1024,7 +1024,7 @@
 
 -record(ofp_queue_stats_reply, {
           flags = [] :: [ofp_multipart_reply_flag()],
-          stats = [] :: [ofp_queue_stats()]
+          body = [] :: [ofp_queue_stats()]
          }).
 -type ofp_queue_stats_reply() :: #ofp_queue_stats_reply{}.
 
@@ -1055,7 +1055,7 @@
 
 -record(ofp_group_stats_reply, {
           flags = [] :: [ofp_multipart_reply_flag()],
-          stats = [] :: [ofp_group_stats()]
+          body = [] :: [ofp_group_stats()]
          }).
 -type ofp_group_stats_reply() :: #ofp_group_stats_reply{}.
 
@@ -1075,7 +1075,7 @@
 
 -record(ofp_group_desc_reply, {
           flags = [] :: [ofp_multipart_reply_flag()],
-          descriptions = [] :: [ofp_group_desc_stats()]
+          body = [] :: [ofp_group_desc_stats()]
          }).
 -type ofp_group_desc_reply() :: #ofp_group_desc_reply{}.
 
@@ -1131,8 +1131,7 @@
 
 -record(ofp_meter_stats_reply, {
           flags = [] :: [ofp_multipart_reply_flag()],
-          meter_id :: meter_id(),
-          meter_stats = [] :: [ofp_meter_stats()]
+          body = [] :: [ofp_meter_stats()]
          }).
 -type ofp_meter_stats_reply() :: #ofp_meter_stats_reply{}.
 
@@ -1153,7 +1152,7 @@
 
 -record(ofp_meter_config_reply, {
           flags = [] :: [ofp_multipart_reply_flag()],
-          config = [] :: [ofp_meter_config()]
+          body = [] :: [ofp_meter_config()]
          }).
 -type ofp_meter_config_reply() :: #ofp_meter_config_reply{}.
 
