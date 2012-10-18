@@ -322,6 +322,8 @@
                     queue_op_failed,
                     switch_config_failed,
                     role_request_failed,
+                    meter_mod_failed,
+                    table_features_failed,
                     {experimenter, 16#ffff}]}).
 
 -enum({hello_failed, [incompatible,
