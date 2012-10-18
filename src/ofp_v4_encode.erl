@@ -129,7 +129,7 @@ encode_body(#ofp_packet_in{buffer_id = BufferId, reason = Reason,
     ReasonInt = ofp_v4_enum:to_int(packet_in_reason, Reason),
     MatchBin = encode_struct(Match),
     TotalLen = byte_size(Data),
-    <<BufferIdInt:32, TotalLen:16, ReasonInt:8, TableId:8, Cookie:64,
+    <<BufferIdInt:32, TotalLen:16, ReasonInt:8, TableId:8, Cookie:64/bits,
       MatchBin/bytes, 0:16, Data/bytes>>;
 encode_body(#ofp_barrier_request{}) ->
     <<>>;

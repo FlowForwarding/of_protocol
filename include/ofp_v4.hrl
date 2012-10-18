@@ -1286,7 +1286,7 @@
           buffer_id = no_buffer :: ofp_buffer_id(),
           reason :: ofp_packet_in_reason(),
           table_id :: integer(),
-          cookie :: integer(),
+          cookie = <<0:64>> :: binary(),
           match :: ofp_match(),
           data = <<>> :: binary()
          }).
