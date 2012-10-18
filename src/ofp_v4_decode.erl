@@ -414,7 +414,7 @@ do(Binary) ->
 %% @doc Actual decoding of the messages
 -spec decode_body(atom(), binary()) -> ofp_message().
 decode_body(hello, _) ->
-    #ofp_hello{}.
+    #ofp_hello{};
 %% decode_body(error, Binary) ->
 %%     <<TypeInt:16, More/bytes>> = Binary,
 %%     Type = ofp_v3_enum:to_atom(error_type, TypeInt),
@@ -433,14 +433,14 @@ decode_body(hello, _) ->
 %%             #ofp_error{type = Type,
 %%                        code = Code, data = Data}
 %%     end;
-%% decode_body(echo_request, Binary) ->
-%%     DataLength = size(Binary) - ?ECHO_REQUEST_SIZE + ?OFP_HEADER_SIZE,
-%%     <<Data:DataLength/bytes>> = Binary,
-%%     #ofp_echo_request{data = Data};
-%% decode_body(echo_reply, Binary) ->
-%%     DataLength = size(Binary) - ?ECHO_REPLY_SIZE + ?OFP_HEADER_SIZE,
-%%     <<Data:DataLength/bytes>> = Binary,
-%%     #ofp_echo_reply{data = Data};
+decode_body(echo_request, Binary) ->
+    DataLength = size(Binary) - ?ECHO_REQUEST_SIZE + ?OFP_HEADER_SIZE,
+    <<Data:DataLength/bytes>> = Binary,
+    #ofp_echo_request{data = Data};
+decode_body(echo_reply, Binary) ->
+    DataLength = size(Binary) - ?ECHO_REPLY_SIZE + ?OFP_HEADER_SIZE,
+    <<Data:DataLength/bytes>> = Binary,
+    #ofp_echo_reply{data = Data};
 %% decode_body(experimenter, Binary) ->
 %%     DataLength = size(Binary) - ?EXPERIMENTER_SIZE + ?OFP_HEADER_SIZE,
 %%     <<Experimenter:32, Type:32, Data:DataLength/bytes>> = Binary,
@@ -732,10 +732,10 @@ decode_body(hello, _) ->
 %%     Table = get_id(table, TableInt),
 %%     Config = ofp_v3_enum:to_atom(table_config, ConfigInt),
 %%     #ofp_table_mod{table_id = Table, config = Config};
-%% decode_body(barrier_request, _) ->
-%%     #ofp_barrier_request{};
-%% decode_body(barrier_reply, _) ->
-%%     #ofp_barrier_reply{};
+decode_body(barrier_request, _) ->
+    #ofp_barrier_request{};
+decode_body(barrier_reply, _) ->
+    #ofp_barrier_reply{}.
 %% decode_body(role_request, Binary) ->
 %%     <<RoleInt:32, 0:32, Gen:64>> = Binary,
 %%     Role = ofp_v3_enum:to_atom(controller_role, RoleInt),

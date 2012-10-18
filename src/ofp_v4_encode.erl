@@ -305,7 +305,7 @@ do(#ofp_message{version = Version, xid = Xid, body = Body}) ->
 %% %%% Messages -------------------------------------------------------------------
 
 encode_body(#ofp_hello{}) ->
-    <<>>.
+    <<>>;
 %% encode_body(#ofp_error{type = Type, code = Code, data = Data}) ->
 %%     TypeInt = ofp_v3_enum:to_int(error_type, Type),
 %%     CodeInt = ofp_v3_enum:to_int(Type, Code),
@@ -315,10 +315,10 @@ encode_body(#ofp_hello{}) ->
 %%                                     data = Data}) ->
 %%     TypeInt = ofp_v3_enum:to_int(error_type, experimenter),
 %%     <<TypeInt:16, ExpTypeInt:16, Experimenter:32, Data/bytes>>;
-%% encode_body(#ofp_echo_request{data = Data}) ->
-%%     Data;
-%% encode_body(#ofp_echo_reply{data = Data}) ->
-%%     Data;
+encode_body(#ofp_echo_request{data = Data}) ->
+    Data;
+encode_body(#ofp_echo_reply{data = Data}) ->
+    Data;
 %% encode_body(#ofp_experimenter{experimenter = Experimenter,
 %%                               exp_type = Type, data = Data}) ->
 %%     <<Experimenter:32, Type:32, Data/bytes>>;
@@ -571,10 +571,10 @@ encode_body(#ofp_hello{}) ->
 %%     FlagsBin = flags_to_binary(stats_reply_flag, Flags, 2),
 %%     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
 %%       Experimenter:32, ExpType:32, Data/bytes>>;
-%% encode_body(#ofp_barrier_request{}) ->
-%%     <<>>;
-%% encode_body(#ofp_barrier_reply{}) ->
-%%     <<>>;
+encode_body(#ofp_barrier_request{}) ->
+    <<>>;
+encode_body(#ofp_barrier_reply{}) ->
+    <<>>.
 %% encode_body(#ofp_role_request{role = Role, generation_id = Gen}) ->
 %%     RoleInt = ofp_v3_enum:to_int(controller_role, Role),
 %%     <<RoleInt:32, 0:32, Gen:64>>;
