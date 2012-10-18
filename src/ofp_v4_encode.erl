@@ -49,6 +49,15 @@ do(#ofp_message{version = Version, xid = Xid, body = Body}) ->
 
 encode_body(#ofp_hello{}) ->
     <<>>;
+encode_body(#ofp_error_msg{type = Type, code = Code, data = Data}) ->
+    TypeInt = ofp_v4_enum:to_int(error_type, Type),
+    CodeInt = ofp_v4_enum:to_int(Type, Code),
+    <<TypeInt:16, CodeInt:16, Data/bytes>>;
+encode_body(#ofp_error_msg_experimenter{exp_type = ExpTypeInt,
+                                        experimenter = Experimenter,
+                                        data = Data}) ->
+    TypeInt = ofp_v4_enum:to_int(error_type, experimenter),
+    <<TypeInt:16, ExpTypeInt:16, Experimenter:32, Data/bytes>>;
 encode_body(#ofp_echo_request{data = Data}) ->
     Data;
 encode_body(#ofp_echo_reply{data = Data}) ->
@@ -64,12 +73,16 @@ encode_body(#ofp_barrier_reply{}) ->
 
 -spec type_int(ofp_message_body()) -> integer().
 type_int(#ofp_hello{}) ->
-    ofp_v3_enum:to_int(type, hello);
+    ofp_v4_enum:to_int(type, hello);
+type_int(#ofp_error_msg{}) ->
+    ofp_v4_enum:to_int(type, error);
+type_int(#ofp_error_msg_experimenter{}) ->
+    ofp_v4_enum:to_int(type, error);
 type_int(#ofp_echo_request{}) ->
-    ofp_v3_enum:to_int(type, echo_request);
+    ofp_v4_enum:to_int(type, echo_request);
 type_int(#ofp_echo_reply{}) ->
-    ofp_v3_enum:to_int(type, echo_reply);
+    ofp_v4_enum:to_int(type, echo_reply);
 type_int(#ofp_barrier_request{}) ->
-    ofp_v3_enum:to_int(type, barrier_request);
+    ofp_v4_enum:to_int(type, barrier_request);
 type_int(#ofp_barrier_reply{}) ->
-    ofp_v3_enum:to_int(type, barrier_reply).
+    ofp_v4_enum:to_int(type, barrier_reply).

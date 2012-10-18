@@ -49,6 +49,24 @@ do(Binary) ->
 -spec decode_body(atom(), binary()) -> ofp_message().
 decode_body(hello, _) ->
     #ofp_hello{};
+decode_body(error, Binary) ->
+    <<TypeInt:16, More/bytes>> = Binary,
+    Type = ofp_v4_enum:to_atom(error_type, TypeInt),
+    case Type of
+        experimenter ->
+            DataLength = size(Binary) - ?ERROR_EXPERIMENTER_SIZE + ?OFP_HEADER_SIZE,
+            <<ExpTypeInt:16, Experimenter:32,
+              Data:DataLength/bytes>> = More,
+            #ofp_error_msg_experimenter{exp_type = ExpTypeInt,
+                                        experimenter = Experimenter,
+                                        data = Data};
+        _ ->
+            DataLength = size(Binary) - ?ERROR_SIZE + ?OFP_HEADER_SIZE,
+            <<CodeInt:16, Data:DataLength/bytes>> = More,
+            Code = ofp_v4_enum:to_atom(Type, CodeInt),
+            #ofp_error_msg{type = Type,
+                           code = Code, data = Data}
+    end;
 decode_body(echo_request, Binary) ->
     DataLength = size(Binary) - ?ECHO_REQUEST_SIZE + ?OFP_HEADER_SIZE,
     <<Data:DataLength/bytes>> = Binary,
