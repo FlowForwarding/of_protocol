@@ -309,12 +309,8 @@
 
 %% Flow Match Header (A 2.3.1) -------------------------------------------------
 
--type ofp_match_type() :: standard %% Deprecated
-                        | oxm.
-
 -record(ofp_match, {
-          type       = oxm :: ofp_match_type(),
-          oxm_fields = []  :: [ofp_field()]
+          fields = []  :: [ofp_field()]
          }).
 -type ofp_match() :: #ofp_match{}.
 
