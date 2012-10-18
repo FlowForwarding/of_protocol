@@ -65,14 +65,26 @@ encode_body(#ofp_echo_reply{data = Data}) ->
 encode_body(#ofp_experimenter{experimenter = Experimenter,
                               exp_type = Type, data = Data}) ->
     <<Experimenter:32, Type:32, Data/bytes>>;
+encode_body(#ofp_features_request{}) ->
+    <<>>;
+encode_body(#ofp_features_reply{datapath_mac = DataPathMac,
+                                datapath_id = DataPathID, n_buffers = NBuffers,
+                                n_tables = NTables, auxiliary_id = AuxId,
+                                capabilities = Capabilities}) ->
+    CapaBin = flags_to_binary(capabilities, Capabilities, 4),
+    <<DataPathMac:6/bytes, DataPathID:16, NBuffers:32, NTables:8, AuxId:8,
+      0:16, CapaBin:4/bytes, 0:32>>;
 encode_body(#ofp_barrier_request{}) ->
     <<>>;
 encode_body(#ofp_barrier_reply{}) ->
     <<>>.
 
-%% %%------------------------------------------------------------------------------
-%% %% Helper functions
-%% %%------------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% Helper functions
+%%------------------------------------------------------------------------------
+
+flags_to_binary(Type, Flags, Size) ->
+    ofp_utils:flags_to_binary(ofp_v4_enum, Type, Flags, Size).
 
 -spec type_int(ofp_message_body()) -> integer().
 type_int(#ofp_hello{}) ->
@@ -86,7 +98,11 @@ type_int(#ofp_echo_request{}) ->
 type_int(#ofp_echo_reply{}) ->
     ofp_v4_enum:to_int(type, echo_reply);
 type_int(#ofp_experimenter{}) ->
-    ofp_v3_enum:to_int(type, experimenter);
+    ofp_v4_enum:to_int(type, experimenter);
+type_int(#ofp_features_request{}) ->
+    ofp_v4_enum:to_int(type, features_request);
+type_int(#ofp_features_reply{}) ->
+    ofp_v4_enum:to_int(type, features_reply);
 type_int(#ofp_barrier_request{}) ->
     ofp_v4_enum:to_int(type, barrier_request);
 type_int(#ofp_barrier_reply{}) ->

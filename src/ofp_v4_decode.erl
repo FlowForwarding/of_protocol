@@ -80,11 +80,24 @@ decode_body(experimenter, Binary) ->
     <<Experimenter:32, Type:32, Data:DataLength/bytes>> = Binary,
     #ofp_experimenter{experimenter = Experimenter,
                       exp_type = Type, data = Data};
+decode_body(features_request, _) ->
+    #ofp_features_request{};
+decode_body(features_reply, Binary) ->
+    <<DataPathMac:6/bytes, DataPathID:16, NBuffers:32,
+      NTables:8, AuxId:8, 0:16, CapaBin:4/bytes, 0:32>> = Binary,
+    Capabilities = binary_to_flags(capabilities, CapaBin),
+    #ofp_features_reply{datapath_mac = DataPathMac,
+                        datapath_id = DataPathID, n_buffers = NBuffers,
+                        n_tables = NTables, auxiliary_id = AuxId,
+                        capabilities = Capabilities};
 decode_body(barrier_request, _) ->
     #ofp_barrier_request{};
 decode_body(barrier_reply, _) ->
     #ofp_barrier_reply{}.
 
-%% %%%-----------------------------------------------------------------------------
-%% %%% Internal functions
-%% %%%-----------------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
+%%% Internal functions
+%%%-----------------------------------------------------------------------------
+
+binary_to_flags(Type, Binary) ->
+    ofp_utils:binary_to_flags(ofp_v4_enum, Type, Binary).
