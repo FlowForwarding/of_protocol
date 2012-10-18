@@ -45,6 +45,46 @@ do(#ofp_message{version = Version, xid = Xid, body = Body}) ->
 
 %% Structures ------------------------------------------------------------------
 
+encode_struct(#ofp_match{fields = Fields}) ->
+    FieldsBin = encode_list(Fields),
+    FieldsLength = size(FieldsBin),
+    Length = FieldsLength + ?MATCH_SIZE - 4,
+    case FieldsLength of
+        0 ->
+            Padding = 32;
+        _ ->
+            Padding = (8 - (Length rem 8)) * 8
+    end,
+    <<1:16, Length:16, FieldsBin/bytes, 0:Padding>>;
+encode_struct(#ofp_field{class = Class, name = Field, has_mask = HasMask,
+                         value = Value, mask = Mask}) ->
+    ClassInt = ofp_v4_enum:to_int(oxm_class, Class),
+    FieldInt = ofp_v4_enum:to_int(oxm_ofb_match_fields, Field),
+    BitLength = ofp_v4_map:tlv_length(Field),
+    case Class of
+        openflow_basic ->
+            Value2 = ofp_utils:cut_bits(Value, BitLength);
+        _ ->
+            Value2 = Value
+    end,
+    case HasMask of
+        true ->
+            HasMaskInt = 1,
+            case Class of
+                openflow_basic ->
+                    Mask2 = ofp_utils:cut_bits(Mask, BitLength);
+                _ ->
+                    Mask2 = Mask
+            end,
+            Rest = <<Value2/bytes, Mask2/bytes>>,
+            Len2 = byte_size(Value2) * 2;
+        false ->
+            HasMaskInt = 0,
+            Rest = <<Value2/bytes>>,
+            Len2 = byte_size(Value2)
+    end,
+    <<ClassInt:16, FieldInt:7, HasMaskInt:1, Len2:8, Rest/bytes>>.
+
 %%% Messages -------------------------------------------------------------------
 
 encode_body(#ofp_hello{}) ->
@@ -82,6 +122,15 @@ encode_body(#ofp_get_config_reply{flags = Flags, miss_send_len = Miss}) ->
 encode_body(#ofp_set_config{flags = Flags, miss_send_len = Miss}) ->
     FlagsBin = flags_to_binary(config_flags, Flags, 2),
     <<FlagsBin:16/bits, Miss:16>>;
+encode_body(#ofp_packet_in{buffer_id = BufferId, reason = Reason,
+                           table_id = TableId, cookie = Cookie,
+                           match = Match, data = Data}) ->
+    BufferIdInt = get_id(buffer, BufferId),
+    ReasonInt = ofp_v4_enum:to_int(packet_in_reason, Reason),
+    MatchBin = encode_struct(Match),
+    TotalLen = byte_size(Data),
+    <<BufferIdInt:32, TotalLen:16, ReasonInt:8, TableId:8, Cookie:64,
+      MatchBin/bytes, 0:16, Data/bytes>>;
 encode_body(#ofp_barrier_request{}) ->
     <<>>;
 encode_body(#ofp_barrier_reply{}) ->
@@ -93,6 +142,13 @@ encode_body(#ofp_barrier_reply{}) ->
 
 flags_to_binary(Type, Flags, Size) ->
     ofp_utils:flags_to_binary(ofp_v4_enum, Type, Flags, Size).
+
+get_id(Enum, Value) ->
+    ofp_utils:get_enum_value(ofp_v4_enum, Enum, Value).
+
+-spec encode_list(list()) -> binary().
+encode_list(List) ->
+    ofp_utils:encode_list(fun encode_struct/1, List, <<>>).
 
 -spec type_int(ofp_message_body()) -> integer().
 type_int(#ofp_hello{}) ->

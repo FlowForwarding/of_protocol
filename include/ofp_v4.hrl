@@ -67,7 +67,7 @@
 -define(BARRIER_REPLY_SIZE, 8).
 -define(ROLE_REQUEST_SIZE, 24).
 -define(ROLE_REPLY_SIZE, 24).
--define(PACKET_IN_SIZE, 24).
+-define(PACKET_IN_SIZE, 32).
 -define(FLOW_REMOVED_SIZE, 56).
 -define(PORT_STATUS_SIZE, 80).
 -define(ERROR_SIZE, 12).

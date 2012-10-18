@@ -45,6 +45,55 @@ do(Binary) ->
 
 %% Structures ------------------------------------------------------------------
 
+%% @doc Decode match structure
+decode_match(Binary) ->
+    PadFieldsLength = size(Binary) - ?MATCH_SIZE + 4,
+    <<1:16, NoPadLength:16, PadFieldsBin:PadFieldsLength/bytes>> = Binary,
+    FieldsBinLength = (NoPadLength - 4),
+    Padding = (PadFieldsLength - FieldsBinLength) * 8,
+    <<FieldsBin:FieldsBinLength/bytes, 0:Padding>> = PadFieldsBin,
+    Fields = decode_match_fields(FieldsBin),
+    #ofp_match{fields = Fields}.
+
+%% @doc Decode match fields
+decode_match_fields(Binary) ->
+    decode_match_fields(Binary, []).
+
+%% @doc Decode match fields
+decode_match_fields(<<>>, Fields) ->
+    lists:reverse(Fields);
+decode_match_fields(Binary, Fields) ->
+    {Field, Rest} = decode_match_field(Binary),
+    decode_match_fields(Rest, [Field | Fields]).
+
+%% @doc Decode single match field
+decode_match_field(<<Header:4/bytes, Binary/bytes>>) ->
+    <<ClassInt:16, FieldInt:7, HasMaskInt:1,
+      Length:8>> = Header,
+    Class = ofp_v4_enum:to_atom(oxm_class, ClassInt),
+    Field = ofp_v4_enum:to_atom(oxm_ofb_match_fields, FieldInt),
+    HasMask = (HasMaskInt =:= 1),
+    case Class of
+        openflow_basic ->
+            BitLength = ofp_v4_map:tlv_length(Field);
+        _ ->
+            BitLength = Length * 4
+    end,
+    case HasMask of
+        false ->
+            <<Value:Length/bytes, Rest/bytes>> = Binary,
+            TLV = #ofp_field{value = ofp_utils:cut_bits(Value, BitLength)};
+        true ->
+            Length2 = (Length div 2),
+            <<Value:Length2/bytes, Mask:Length2/bytes,
+              Rest/bytes>> = Binary,
+            TLV = #ofp_field{value = ofp_utils:cut_bits(Value, BitLength),
+                             mask = ofp_utils:cut_bits(Mask, BitLength)}
+    end,
+    {TLV#ofp_field{class = Class,
+                   name = Field,
+                   has_mask = HasMask}, Rest}.
+
 %% @doc Actual decoding of the messages
 -spec decode_body(atom(), binary()) -> ofp_message().
 decode_body(hello, _) ->
@@ -100,6 +149,19 @@ decode_body(set_config, Binary) ->
     <<FlagsBin:16/bits, Miss:16>> = Binary,
     Flags = binary_to_flags(config_flags, FlagsBin),
     #ofp_set_config{flags = Flags, miss_send_len = Miss};
+decode_body(packet_in, Binary) ->
+    <<BufferIdInt:32, TotalLen:16, ReasonInt:8,
+      TableId:8, Cookie:64, Tail/bytes>> = Binary,
+    MatchLength = size(Binary) - (?PACKET_IN_SIZE - ?MATCH_SIZE)
+        - 2 - TotalLen + ?OFP_HEADER_SIZE,
+    <<MatchBin:MatchLength/bytes, 0:16, Payload/bytes>> = Tail,
+    BufferId = get_id(buffer, BufferIdInt),
+    Reason = ofp_v4_enum:to_atom(packet_in_reason, ReasonInt),
+    Match = decode_match(MatchBin),
+    <<Data:TotalLen/bytes>> = Payload,
+    #ofp_packet_in{buffer_id = BufferId, reason = Reason,
+                   table_id = TableId, cookie = Cookie,
+                   match = Match, data = Data};
 decode_body(barrier_request, _) ->
     #ofp_barrier_request{};
 decode_body(barrier_reply, _) ->
@@ -111,3 +173,6 @@ decode_body(barrier_reply, _) ->
 
 binary_to_flags(Type, Binary) ->
     ofp_utils:binary_to_flags(ofp_v4_enum, Type, Binary).
+
+get_id(Enum, Value) ->
+    ofp_utils:get_enum_name(ofp_v4_enum, Enum, Value).
