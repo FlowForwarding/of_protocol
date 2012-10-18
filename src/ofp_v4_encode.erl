@@ -64,4 +64,12 @@ encode_body(#ofp_barrier_reply{}) ->
 
 -spec type_int(ofp_message_body()) -> integer().
 type_int(#ofp_hello{}) ->
-    ofp_v3_enum:to_int(type, hello).
+    ofp_v3_enum:to_int(type, hello);
+type_int(#ofp_echo_request{}) ->
+    ofp_v3_enum:to_int(type, echo_request);
+type_int(#ofp_echo_reply{}) ->
+    ofp_v3_enum:to_int(type, echo_reply);
+type_int(#ofp_barrier_request{}) ->
+    ofp_v3_enum:to_int(type, barrier_request);
+type_int(#ofp_barrier_reply{}) ->
+    ofp_v3_enum:to_int(type, barrier_reply).
