@@ -45,7 +45,7 @@ do(#ofp_message{version = Version, xid = Xid, body = Body}) ->
 
 %% Structures ------------------------------------------------------------------
 
-%% %%% Messages -------------------------------------------------------------------
+%%% Messages -------------------------------------------------------------------
 
 encode_body(#ofp_hello{}) ->
     <<>>;
@@ -72,8 +72,16 @@ encode_body(#ofp_features_reply{datapath_mac = DataPathMac,
                                 n_tables = NTables, auxiliary_id = AuxId,
                                 capabilities = Capabilities}) ->
     CapaBin = flags_to_binary(capabilities, Capabilities, 4),
-    <<DataPathMac:6/bytes, DataPathID:16, NBuffers:32, NTables:8, AuxId:8,
-      0:16, CapaBin:4/bytes, 0:32>>;
+    <<DataPathMac:48/bits, DataPathID:16, NBuffers:32,
+      NTables:8, AuxId:8, 0:16, CapaBin:32/bits, 0:32>>;
+encode_body(#ofp_get_config_request{}) ->
+    <<>>;
+encode_body(#ofp_get_config_reply{flags = Flags, miss_send_len = Miss}) ->
+    FlagsBin = flags_to_binary(config_flags, Flags, 2),
+    <<FlagsBin:16/bits, Miss:16>>;
+encode_body(#ofp_set_config{flags = Flags, miss_send_len = Miss}) ->
+    FlagsBin = flags_to_binary(config_flags, Flags, 2),
+    <<FlagsBin:16/bits, Miss:16>>;
 encode_body(#ofp_barrier_request{}) ->
     <<>>;
 encode_body(#ofp_barrier_reply{}) ->
@@ -103,6 +111,18 @@ type_int(#ofp_features_request{}) ->
     ofp_v4_enum:to_int(type, features_request);
 type_int(#ofp_features_reply{}) ->
     ofp_v4_enum:to_int(type, features_reply);
+type_int(#ofp_get_config_request{}) ->
+    ofp_v4_enum:to_int(type, get_config_request);
+type_int(#ofp_get_config_reply{}) ->
+    ofp_v4_enum:to_int(type, get_config_reply);
+type_int(#ofp_set_config{}) ->
+    ofp_v4_enum:to_int(type, set_config);
+type_int(#ofp_packet_in{}) ->
+    ofp_v4_enum:to_int(type, packet_in);
+type_int(#ofp_flow_removed{}) ->
+    ofp_v4_enum:to_int(type, flow_removed);
+type_int(#ofp_port_status{}) ->
+    ofp_v4_enum:to_int(type, port_status);
 type_int(#ofp_barrier_request{}) ->
     ofp_v4_enum:to_int(type, barrier_request);
 type_int(#ofp_barrier_reply{}) ->

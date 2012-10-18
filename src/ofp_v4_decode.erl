@@ -55,8 +55,7 @@ decode_body(error, Binary) ->
     case Type of
         experimenter ->
             DataLength = size(Binary) - ?ERROR_EXPERIMENTER_SIZE + ?OFP_HEADER_SIZE,
-            <<ExpTypeInt:16, Experimenter:32,
-              Data:DataLength/bytes>> = More,
+            <<ExpTypeInt:16, Experimenter:32, Data:DataLength/bytes>> = More,
             #ofp_error_msg_experimenter{exp_type = ExpTypeInt,
                                         experimenter = Experimenter,
                                         data = Data};
@@ -83,13 +82,24 @@ decode_body(experimenter, Binary) ->
 decode_body(features_request, _) ->
     #ofp_features_request{};
 decode_body(features_reply, Binary) ->
-    <<DataPathMac:6/bytes, DataPathID:16, NBuffers:32,
-      NTables:8, AuxId:8, 0:16, CapaBin:4/bytes, 0:32>> = Binary,
+    <<DataPathMac:48/bits, DataPathID:16, NBuffers:32,
+      NTables:8, AuxId:8, 0:16, CapaBin:32/bits, 0:32>> = Binary,
     Capabilities = binary_to_flags(capabilities, CapaBin),
     #ofp_features_reply{datapath_mac = DataPathMac,
                         datapath_id = DataPathID, n_buffers = NBuffers,
                         n_tables = NTables, auxiliary_id = AuxId,
                         capabilities = Capabilities};
+decode_body(get_config_request, _) ->
+    #ofp_get_config_request{};
+decode_body(get_config_reply, Binary) ->
+    <<FlagsBin:16/bits, Miss:16>> = Binary,
+    Flags = binary_to_flags(config_flags, FlagsBin),
+    #ofp_get_config_reply{flags = Flags,
+                          miss_send_len = Miss};
+decode_body(set_config, Binary) ->
+    <<FlagsBin:16/bits, Miss:16>> = Binary,
+    Flags = binary_to_flags(config_flags, FlagsBin),
+    #ofp_set_config{flags = Flags, miss_send_len = Miss};
 decode_body(barrier_request, _) ->
     #ofp_barrier_request{};
 decode_body(barrier_reply, _) ->
