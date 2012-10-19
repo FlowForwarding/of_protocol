@@ -156,7 +156,7 @@
                               arp_tha,
                               ipv6_src,
                               ipv6_dst,
-                              ipv6_label,
+                              ipv6_flabel,
                               icmpv6_type,
                               icmpv6_code,
                               ipv6_nd_target,

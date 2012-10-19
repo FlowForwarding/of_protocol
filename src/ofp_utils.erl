@@ -11,6 +11,7 @@
          encode_string/2,
          strip_string/1,
          cut_bits/2,
+         padding/2,
          binary_to_flags/3,
          flags_to_binary/4, 
          get_enum_name/3,
@@ -59,11 +60,20 @@ strip_string(_, _) ->
 
 -spec cut_bits(binary(), integer()) -> binary().
 cut_bits(Binary, Bits) ->
-    BitSize = bit_size(Binary),
     ByteSize = byte_size(Binary) * 8,
-    <<Int:BitSize>> = Binary,
-    NewInt = Int band round(math:pow(2,Bits) - 1),
-    <<NewInt:ByteSize>>.
+    <<Int:ByteSize>> = Binary,
+    TruncBin = <<Int:Bits>>,
+    Padding = ByteSize - Bits,
+    << 0:Padding, TruncBin/bits >>.
+
+-spec padding(integer(), integer()) -> integer().
+padding(Length, Padding) ->
+    case 8 - (Length rem Padding) of
+        8 ->
+            0;
+        Pad ->
+            Pad
+    end.
 
 -spec binary_to_flags(atom(), atom(), binary()) -> [atom()].
 binary_to_flags(EnumMod, Type, Binary) ->
