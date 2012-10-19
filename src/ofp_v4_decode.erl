@@ -151,7 +151,7 @@ decode_body(set_config, Binary) ->
     #ofp_set_config{flags = Flags, miss_send_len = Miss};
 decode_body(packet_in, Binary) ->
     <<BufferIdInt:32, TotalLen:16, ReasonInt:8,
-      TableId:8, Cookie:64, Tail/bytes>> = Binary,
+      TableId:8, Cookie:64/bits, Tail/bytes>> = Binary,
     MatchLength = size(Binary) - (?PACKET_IN_SIZE - ?MATCH_SIZE)
         - 2 - TotalLen + ?OFP_HEADER_SIZE,
     <<MatchBin:MatchLength/bytes, 0:16, Payload/bytes>> = Tail,
