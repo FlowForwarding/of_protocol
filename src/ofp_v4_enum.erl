@@ -156,14 +156,18 @@
                               arp_tha,
                               ipv6_src,
                               ipv6_dst,
-                              ipv6_flabel,
+                              ipv6_label,
                               icmpv6_type,
                               icmpv6_code,
                               ipv6_nd_target,
                               ipv6_nd_sll,
                               ipv6_nd_tll,
                               mpls_label,
-                              mpls_tc]}).
+                              mpls_tc,
+                              mpls_bos,
+                              pbb_isid,
+                              tunnel_id,
+                              ipv6_exthdr]}).
 
 -enum({vlan_id, [none,
                  {present, 16#1000}]}).
