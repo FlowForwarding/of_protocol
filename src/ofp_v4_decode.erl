@@ -113,6 +113,47 @@ decode_port(Binary) ->
               advertised = Advertised, supported = Supported,
               peer = Peer, curr_speed = CurrSpeed, max_speed = MaxSpeed}.
 
+%% @doc Decode queues
+decode_queues(Binary) ->
+    decode_queues(Binary, []).
+
+decode_queues(<<>>, Queues) ->
+    lists:reverse(Queues);
+decode_queues(Binary, Queues) ->
+    <<QueueId:32, Port:32, Length:16, 0:48, Data/bytes>> = Binary,
+    PropsLength = Length - ?PACKET_QUEUE_SIZE,
+    <<PropsBin:PropsLength/bytes, Rest/bytes>> = Data,
+    Props = decode_properties(PropsBin),
+    Queue = #ofp_packet_queue{queue_id = QueueId, port_no = Port,
+                              properties = Props},
+    decode_queues(Rest, [Queue | Queues]).
+
+%% @doc Decode queue properties
+decode_properties(Binary) ->
+    decode_properties(Binary, []).
+
+decode_properties(<<>>, Properties) ->
+    lists:reverse(Properties);
+decode_properties(Binary, Properties) ->
+    <<TypeInt:16, Length:16, 0:32,
+      Data/bytes>> = Binary,
+    Type = ofp_v3_enum:to_atom(queue_properties, TypeInt),
+    case Type of
+        min_rate ->
+            <<Rate:16, 0:48, Rest/bytes>> = Data,
+            Property = #ofp_queue_prop_min_rate{rate = Rate};
+        max_rate ->
+            <<Rate:16, 0:48, Rest/bytes>> = Data,
+            Property = #ofp_queue_prop_max_rate{rate = Rate};
+        experimenter ->
+            DataLength = Length - ?QUEUE_PROP_EXPERIMENTER_SIZE,
+            <<Experimenter:32, 0:32, ExpData:DataLength/bytes,
+              Rest/bytes>> = Data,
+            Property = #ofp_queue_prop_experimenter{experimenter = Experimenter,
+                                                    data = ExpData}
+    end,
+    decode_properties(Rest, [Property | Properties]).
+
 %% @doc Actual decoding of the messages
 -spec decode_body(atom(), binary()) -> ofp_message().
 decode_body(hello, _) ->
@@ -207,6 +248,18 @@ decode_body(barrier_request, _) ->
     #ofp_barrier_request{};
 decode_body(barrier_reply, _) ->
     #ofp_barrier_reply{};
+decode_body(queue_get_config_request, Binary) ->
+    <<PortInt:32, 0:32>> = Binary,
+    Port = get_id(port_no, PortInt),
+    #ofp_queue_get_config_request{port = Port};
+decode_body(queue_get_config_reply, Binary) ->
+    QueuesLength = size(Binary) - ?QUEUE_GET_CONFIG_REPLY_SIZE
+        + ?OFP_HEADER_SIZE,
+    <<PortInt:32, 0:32, QueuesBin:QueuesLength/bytes>> = Binary,
+    Port = get_id(port_no, PortInt),
+    Queues = decode_queues(QueuesBin),
+    #ofp_queue_get_config_reply{port = Port,
+                                queues = Queues};
 decode_body(role_request, Binary) ->
     <<RoleInt:32, 0:32, Gen:64>> = Binary,
     Role = ofp_v4_enum:to_atom(controller_role, RoleInt),

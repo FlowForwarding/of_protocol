@@ -79,6 +79,7 @@ encode_struct(#ofp_field{class = Class, name = Field, has_mask = HasMask,
             Len2 = byte_size(Value2)
     end,
     <<ClassInt:16, FieldInt:7, HasMaskInt:1, Len2:8, Rest/bytes>>;
+
 encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
                         config = Config, state = State, curr = Curr,
                         advertised = Advertised, supported = Supported,
@@ -96,7 +97,24 @@ encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
       NameBin:?OFP_MAX_PORT_NAME_LEN/bytes,
       ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
       AdvertisedBin:4/bytes, SupportedBin:4/bytes,
-      PeerBin:4/bytes, CurrSpeed:32, MaxSpeed:32>>.
+      PeerBin:4/bytes, CurrSpeed:32, MaxSpeed:32>>;
+
+encode_struct(#ofp_packet_queue{queue_id = Queue, port_no = Port,
+                                properties = Props}) ->
+    PropsBin = encode_list(Props),
+    Length = ?PACKET_QUEUE_SIZE + size(PropsBin),
+    <<Queue:32, Port:32, Length:16, 0:48, PropsBin/bytes>>;
+encode_struct(#ofp_queue_prop_min_rate{rate = Rate}) ->
+    PropertyInt = ofp_v4_enum:to_int(queue_properties, min_rate),
+    <<PropertyInt:16, ?QUEUE_PROP_MIN_RATE_SIZE:16, 0:32, Rate:16, 0:48>>;
+encode_struct(#ofp_queue_prop_max_rate{rate = Rate}) ->
+    PropertyInt = ofp_v4_enum:to_int(queue_properties, max_rate),
+    <<PropertyInt:16, ?QUEUE_PROP_MAX_RATE_SIZE:16, 0:32, Rate:16, 0:48>>;
+encode_struct(#ofp_queue_prop_experimenter{experimenter = Experimenter,
+                                           data = Data}) ->
+    Length = ?QUEUE_PROP_EXPERIMENTER_SIZE + byte_size(Data),
+    PropertyInt = ofp_v4_enum:to_int(queue_properties, experimenter),
+    <<PropertyInt:16, Length:16, 0:32, Experimenter:32, 0:32, Data/bytes>>.
 
 %%% Messages -------------------------------------------------------------------
 
@@ -165,6 +183,13 @@ encode_body(#ofp_barrier_request{}) ->
     <<>>;
 encode_body(#ofp_barrier_reply{}) ->
     <<>>;
+encode_body(#ofp_queue_get_config_request{port = Port}) ->
+    PortInt = get_id(port_no, Port),
+    <<PortInt:32, 0:32>>;
+encode_body(#ofp_queue_get_config_reply{port = Port, queues = Queues}) ->
+    PortInt = get_id(port_no, Port),
+    QueuesBin = encode_list(Queues),
+    <<PortInt:32, 0:32, QueuesBin/bytes>>;
 encode_body(#ofp_role_request{role = Role, generation_id = Gen}) ->
     RoleInt = ofp_v4_enum:to_int(controller_role, Role),
     <<RoleInt:32, 0:32, Gen:64>>;
@@ -221,4 +246,12 @@ type_int(#ofp_port_status{}) ->
 type_int(#ofp_barrier_request{}) ->
     ofp_v4_enum:to_int(type, barrier_request);
 type_int(#ofp_barrier_reply{}) ->
-    ofp_v4_enum:to_int(type, barrier_reply).
+    ofp_v4_enum:to_int(type, barrier_reply);
+type_int(#ofp_queue_get_config_request{}) ->
+    ofp_v4_enum:to_int(type, queue_get_config_request);
+type_int(#ofp_queue_get_config_reply{}) ->
+    ofp_v4_enum:to_int(type, queue_get_config_reply);
+type_int(#ofp_role_request{}) ->
+    ofp_v4_enum:to_int(type, role_request);
+type_int(#ofp_role_reply{}) ->
+    ofp_v4_enum:to_int(type, role_reply).
