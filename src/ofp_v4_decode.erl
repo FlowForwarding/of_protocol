@@ -200,10 +200,22 @@ decode_body(port_status, Binary) ->
     Reason = ofp_v4_enum:to_atom(port_reason, ReasonInt),
     Port = decode_port(PortBin),
     #ofp_port_status{reason = Reason, desc = Port};
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 decode_body(barrier_request, _) ->
     #ofp_barrier_request{};
 decode_body(barrier_reply, _) ->
-    #ofp_barrier_reply{}.
+    #ofp_barrier_reply{};
+decode_body(role_request, Binary) ->
+    <<RoleInt:32, 0:32, Gen:64>> = Binary,
+    Role = ofp_v4_enum:to_atom(controller_role, RoleInt),
+    #ofp_role_request{role = Role, generation_id = Gen};
+decode_body(role_reply, Binary) ->
+    <<RoleInt:32, 0:32, Gen:64>> = Binary,
+    Role = ofp_v4_enum:to_atom(controller_role, RoleInt),
+    #ofp_role_reply{role = Role, generation_id = Gen}.
+
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions

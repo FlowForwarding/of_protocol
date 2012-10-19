@@ -158,10 +158,22 @@ encode_body(#ofp_port_status{reason = Reason, desc = Port}) ->
     ReasonInt = ofp_v4_enum:to_int(port_reason, Reason),
     PortBin = encode_struct(Port),
     <<ReasonInt:8, 0:56, PortBin/bytes>>;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 encode_body(#ofp_barrier_request{}) ->
     <<>>;
 encode_body(#ofp_barrier_reply{}) ->
-    <<>>.
+    <<>>;
+encode_body(#ofp_role_request{role = Role, generation_id = Gen}) ->
+    RoleInt = ofp_v4_enum:to_int(controller_role, Role),
+    <<RoleInt:32, 0:32, Gen:64>>;
+encode_body(#ofp_role_reply{role = Role, generation_id = Gen}) ->
+    RoleInt = ofp_v4_enum:to_int(controller_role, Role),
+    <<RoleInt:32, 0:32, Gen:64>>;
+encode_body(Other) ->
+    throw({bad_message, Other}).
+
 
 %%------------------------------------------------------------------------------
 %% Helper functions
