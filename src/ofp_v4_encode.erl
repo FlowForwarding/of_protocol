@@ -78,7 +78,25 @@ encode_struct(#ofp_field{class = Class, name = Field, has_mask = HasMask,
             Rest = <<Value2/bytes>>,
             Len2 = byte_size(Value2)
     end,
-    <<ClassInt:16, FieldInt:7, HasMaskInt:1, Len2:8, Rest/bytes>>.
+    <<ClassInt:16, FieldInt:7, HasMaskInt:1, Len2:8, Rest/bytes>>;
+encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
+                        config = Config, state = State, curr = Curr,
+                        advertised = Advertised, supported = Supported,
+                        peer = Peer, curr_speed = CurrSpeed,
+                        max_speed = MaxSpeed}) ->
+    PortNoInt = get_id(port_no, PortNo),
+    NameBin = ofp_utils:encode_string(Name, ?OFP_MAX_PORT_NAME_LEN),
+    ConfigBin = flags_to_binary(port_config, Config, 4),
+    StateBin = flags_to_binary(port_state, State, 4),
+    CurrBin = flags_to_binary(port_features, Curr, 4),
+    AdvertisedBin = flags_to_binary(port_features, Advertised, 4),
+    SupportedBin = flags_to_binary(port_features, Supported, 4),
+    PeerBin = flags_to_binary(port_features, Peer, 4),
+    <<PortNoInt:32, 0:32, HWAddr:?OFP_ETH_ALEN/bytes, 0:16,
+      NameBin:?OFP_MAX_PORT_NAME_LEN/bytes,
+      ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
+      AdvertisedBin:4/bytes, SupportedBin:4/bytes,
+      PeerBin:4/bytes, CurrSpeed:32, MaxSpeed:32>>.
 
 %%% Messages -------------------------------------------------------------------
 
@@ -126,6 +144,20 @@ encode_body(#ofp_packet_in{buffer_id = BufferId, reason = Reason,
     TotalLen = byte_size(Data),
     <<BufferIdInt:32, TotalLen:16, ReasonInt:8, TableId:8, Cookie:64/bits,
       MatchBin/bytes, 0:16, Data/bytes>>;
+encode_body(#ofp_flow_removed{cookie = Cookie, priority = Priority,
+                              reason = Reason, table_id = TableId,
+                              duration_sec = Sec, duration_nsec = NSec,
+                              idle_timeout = Idle, hard_timeout = Hard,
+                              packet_count = PCount, byte_count = BCount,
+                              match = Match}) ->
+    ReasonInt = ofp_v4_enum:to_int(flow_removed_reason, Reason),
+    MatchBin = encode_struct(Match),
+    <<Cookie:8/bytes, Priority:16, ReasonInt:8, TableId:8, Sec:32, NSec:32,
+      Idle:16, Hard:16, PCount:64, BCount:64, MatchBin/bytes>>;
+encode_body(#ofp_port_status{reason = Reason, desc = Port}) ->
+    ReasonInt = ofp_v4_enum:to_int(port_reason, Reason),
+    PortBin = encode_struct(Port),
+    <<ReasonInt:8, 0:56, PortBin/bytes>>;
 encode_body(#ofp_barrier_request{}) ->
     <<>>;
 encode_body(#ofp_barrier_reply{}) ->

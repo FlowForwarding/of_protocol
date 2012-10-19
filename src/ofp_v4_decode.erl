@@ -94,6 +94,25 @@ decode_match_field(<<Header:4/bytes, Binary/bytes>>) ->
                    name = Field,
                    has_mask = HasMask}, Rest}.
 
+%% @doc Decode port structure.
+decode_port(Binary) ->
+    <<PortNoInt:32, 0:32, HWAddr:6/bytes, 0:16, NameBin:16/bytes,
+      ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
+      AdvertisedBin:4/bytes, SupportedBin:4/bytes, PeerBin:4/bytes,
+      CurrSpeed:32, MaxSpeed:32>> = Binary,
+    PortNo = get_id(port_no, PortNoInt),
+    Name = ofp_utils:strip_string(NameBin),
+    Config = binary_to_flags(port_config, ConfigBin),
+    State = binary_to_flags(port_state, StateBin),
+    Curr = binary_to_flags(port_features, CurrBin),
+    Advertised = binary_to_flags(port_features, AdvertisedBin),
+    Supported = binary_to_flags(port_features, SupportedBin),
+    Peer = binary_to_flags(port_features, PeerBin),
+    #ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
+              config = Config, state = State, curr = Curr,
+              advertised = Advertised, supported = Supported,
+              peer = Peer, curr_speed = CurrSpeed, max_speed = MaxSpeed}.
+
 %% @doc Actual decoding of the messages
 -spec decode_body(atom(), binary()) -> ofp_message().
 decode_body(hello, _) ->
@@ -162,6 +181,25 @@ decode_body(packet_in, Binary) ->
     #ofp_packet_in{buffer_id = BufferId, reason = Reason,
                    table_id = TableId, cookie = Cookie,
                    match = Match, data = Data};
+decode_body(flow_removed, Binary) ->
+    MatchLength = size(Binary) - ?FLOW_REMOVED_SIZE + ?MATCH_SIZE
+        + ?OFP_HEADER_SIZE,
+    <<Cookie:8/bytes, Priority:16, ReasonInt:8,
+      TableId:8, Sec:32, NSec:32, Idle:16,
+      Hard:16, PCount:64, BCount:64,
+      MatchBin:MatchLength/bytes>> = Binary,
+    Reason = ofp_v4_enum:to_atom(flow_removed_reason, ReasonInt),
+    Match = decode_match(MatchBin),
+    #ofp_flow_removed{cookie = Cookie, priority = Priority,
+                      reason = Reason, table_id = TableId, duration_sec = Sec,
+                      duration_nsec = NSec, idle_timeout = Idle,
+                      hard_timeout = Hard, packet_count = PCount,
+                      byte_count = BCount, match = Match};
+decode_body(port_status, Binary) ->
+    <<ReasonInt:8, 0:56, PortBin:?PORT_SIZE/bytes>> = Binary,
+    Reason = ofp_v4_enum:to_atom(port_reason, ReasonInt),
+    Port = decode_port(PortBin),
+    #ofp_port_status{reason = Reason, desc = Port};
 decode_body(barrier_request, _) ->
     #ofp_barrier_request{};
 decode_body(barrier_reply, _) ->
