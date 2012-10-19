@@ -254,6 +254,23 @@
                     indirect,
                     ff]}).
 
+-enum({meter_mod_command, [add,
+                           modify,
+                           delete]}).
+
+-enum({meter_flag, [kbps,
+                    pktps,
+                    burst,
+                    stats]}).
+
+-enum({meter_id, [{slowpath, 16#fffffffd},
+                  {controller, 16#fffffffe},
+                  {all, 16#ffffffff}]}).
+
+-enum({meter_band_type, [drop,
+                         dscp_remark,
+                         {experimenter, 16#ffff}]}).
+
 %% Read State Messages ---------------------------------------------------------
 
 -enum({stats_request_flags, []}).

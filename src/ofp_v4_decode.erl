@@ -170,6 +170,33 @@ decode_async_masks(<<PacketInMaskBin1:32, PacketInMaskBin2:32,
      {PortStatusMask1, PortStatusMask2},
      {FlowRemovedMask1, FlowRemovedMask2}}.
 
+%% @doc Decode meter mod bands
+decode_bands(Binary) ->
+    decode_bands(Binary, []).
+
+decode_bands(<<>>, Bands) ->
+    lists:reverse(Bands);
+decode_bands(Binary, Bands) ->
+    <<TypeInt:16, _Length:16, Rate:32, BurstSize:32, Data/bytes>> = Binary,
+    Type = ofp_v4_enum:to_atom(meter_band_type, TypeInt),
+    case Type of
+        drop ->
+            Rest = Data,
+            Band = #ofp_meter_band_drop{type = drop, rate = Rate,
+                                        burst_size = BurstSize};
+        dscp_remark ->
+            <<PrecLevel:8, Rest/bytes>> = Data,
+            Band = #ofp_meter_band_dscp_remark{type = dscp_remark, rate = Rate,
+                                               burst_size = BurstSize,
+                                               prec_level = PrecLevel};
+        experimenter ->
+            <<Experimenter:32, Rest/bytes>> = Data,
+            Band = #ofp_meter_band_experimenter{type = experimenter, rate = Rate,
+                                                burst_size = BurstSize,
+                                                experimenter = Experimenter}
+    end,
+    decode_bands(Rest, [Band | Bands]).
+
 %% @doc Actual decoding of the messages
 -spec decode_body(atom(), binary()) -> ofp_message().
 decode_body(hello, _) ->
@@ -296,7 +323,15 @@ decode_body(set_async, Binary) ->
     {PacketInMask, PortStatusMask, FlowRemovedMask} = decode_async_masks(Binary),
     #ofp_get_async_reply{packet_in_mask = PacketInMask,
                          port_status_mask = PortStatusMask,
-                         flow_removed_mask = FlowRemovedMask}.
+                         flow_removed_mask = FlowRemovedMask};
+decode_body(meter_mod, Binary) ->
+    <<CommandInt:16, FlagsBin:16, MeterIdInt:32, Bands/bytes>> = Binary,
+    Command = ofp_v4_enum:to_atom(meter_mod_command, CommandInt),
+    Flags = binary_to_flags(meter_flag, FlagsBin),
+    MeterId = ofp_v4_enum:to_atom(meter_id, MeterIdInt),
+    Bands = decode_bands(Bands),
+    #ofp_meter_mod{command = Command, flags = Flags, meter_id = MeterId,
+                   bands = Bands}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions

@@ -115,6 +115,7 @@
 -define(QUEUE_STATS_SIZE, 32).
 -define(GROUP_STATS_SIZE, 32).
 -define(GROUP_DESC_STATS_SIZE, 8).
+-define(METER_BAND_SIZE, 16).
 
 %% Misc sizes (in bytes) -------------------------------------------------------
 

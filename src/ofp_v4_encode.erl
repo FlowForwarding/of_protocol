@@ -114,7 +114,23 @@ encode_struct(#ofp_queue_prop_experimenter{experimenter = Experimenter,
                                            data = Data}) ->
     Length = ?QUEUE_PROP_EXPERIMENTER_SIZE + byte_size(Data),
     PropertyInt = ofp_v4_enum:to_int(queue_properties, experimenter),
-    <<PropertyInt:16, Length:16, 0:32, Experimenter:32, 0:32, Data/bytes>>.
+    <<PropertyInt:16, Length:16, 0:32, Experimenter:32, 0:32, Data/bytes>>;
+
+encode_struct(#ofp_meter_band_drop{type = drop, rate = Rate,
+                                   burst_size = BurstSize}) ->
+    TypeInt = ofp_v4_enum:to_int(meter_band_type, drop),
+    <<TypeInt:16, ?METER_BAND_SIZE:16, Rate:32, BurstSize:32, 0:32>>;
+encode_struct(#ofp_meter_band_dscp_remark{type = dscp_remark, rate = Rate,
+                                          burst_size = BurstSize,
+                                          prec_level = PrecLevel}) ->
+    TypeInt = ofp_v4_enum:to_int(meter_band_type, dscp_remark),
+    <<TypeInt:16, ?METER_BAND_SIZE:16, Rate:32, BurstSize:32,
+      PrecLevel:8, 0:24>>;
+encode_struct(#ofp_meter_band_experimenter{type = experimenter, rate = Rate,
+                                           burst_size = BurstSize,
+                                           experimenter = Experimenter}) ->
+    TypeInt = ofp_v4_enum:to_int(meter_band_type, experimenter),
+    <<TypeInt:16, ?METER_BAND_SIZE:16, Rate:32, BurstSize:32, Experimenter:32>>.
 
 encode_async_masks({PacketInMask1, PacketInMask2},
                    {PortStatusMask1, PortStatusMask2},
@@ -218,6 +234,15 @@ encode_body(#ofp_set_async{packet_in_mask = PacketInMask,
                            port_status_mask = PortStatusMask,
                            flow_removed_mask = FlowRemovedMask}) ->
     encode_async_masks(PacketInMask, PortStatusMask, FlowRemovedMask);
+encode_body(#ofp_meter_mod{command = Command,
+                           flags = Flags,
+                           meter_id = MeterId,
+                           bands = Bands}) ->
+    CommandInt = ofp_v4_enum:to_int(meter_mod_command, Command),
+    FlagsBin = flags_to_binary(meter_flag, Flags, 16),
+    MeterIdInt = ofp_v4_enum:to_int(meter_id, MeterId),
+    BandsBin = encode_list(Bands),
+    <<CommandInt:16, FlagsBin:16, MeterIdInt:32, BandsBin/bytes>>;
 encode_body(Other) ->
     throw({bad_message, Other}).
 
