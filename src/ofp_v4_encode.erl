@@ -116,6 +116,17 @@ encode_struct(#ofp_queue_prop_experimenter{experimenter = Experimenter,
     PropertyInt = ofp_v4_enum:to_int(queue_properties, experimenter),
     <<PropertyInt:16, Length:16, 0:32, Experimenter:32, 0:32, Data/bytes>>.
 
+encode_async_masks({PacketInMask1, PacketInMask2},
+                   {PortStatusMask1, PortStatusMask2},
+                   {FlowRemovedMask1, FlowRemovedMask2}) ->
+    PIn1 = flags_to_binary(packet_in_reason, PacketInMask1, 32),
+    PIn2 = flags_to_binary(packet_in_reason, PacketInMask2, 32),
+    PS1 = flags_to_binary(port_reason, PortStatusMask1, 32),
+    PS2 = flags_to_binary(port_reason, PortStatusMask2, 32),
+    FR1 = flags_to_binary(flow_removed_reason, FlowRemovedMask1, 32),
+    FR2 = flags_to_binary(flow_removed_reason, FlowRemovedMask2, 32),
+    <<PIn1:32, PIn2:32, PS1:32, PS2:32, FR1:32, FR2:32>>.
+
 %%% Messages -------------------------------------------------------------------
 
 encode_body(#ofp_hello{}) ->
@@ -196,9 +207,19 @@ encode_body(#ofp_role_request{role = Role, generation_id = Gen}) ->
 encode_body(#ofp_role_reply{role = Role, generation_id = Gen}) ->
     RoleInt = ofp_v4_enum:to_int(controller_role, Role),
     <<RoleInt:32, 0:32, Gen:64>>;
+
+encode_body(#ofp_get_async_request{}) ->
+    <<>>;
+encode_body(#ofp_get_async_reply{packet_in_mask = PacketInMask,
+                                 port_status_mask = PortStatusMask,
+                                 flow_removed_mask = FlowRemovedMask}) ->
+    encode_async_masks(PacketInMask, PortStatusMask, FlowRemovedMask);
+encode_body(#ofp_set_async{packet_in_mask = PacketInMask,
+                           port_status_mask = PortStatusMask,
+                           flow_removed_mask = FlowRemovedMask}) ->
+    encode_async_masks(PacketInMask, PortStatusMask, FlowRemovedMask);
 encode_body(Other) ->
     throw({bad_message, Other}).
-
 
 %%------------------------------------------------------------------------------
 %% Helper functions
@@ -254,4 +275,11 @@ type_int(#ofp_queue_get_config_reply{}) ->
 type_int(#ofp_role_request{}) ->
     ofp_v4_enum:to_int(type, role_request);
 type_int(#ofp_role_reply{}) ->
-    ofp_v4_enum:to_int(type, role_reply).
+    ofp_v4_enum:to_int(type, role_reply);
+type_int(#ofp_get_async_request{}) ->
+    ofp_v4_enum:to_int(type, get_async_request);
+type_int(#ofp_get_async_reply{}) ->
+    ofp_v4_enum:to_int(type, get_async_reply);
+type_int(#ofp_set_async{}) ->
+    ofp_v4_enum:to_int(type, set_async).
+

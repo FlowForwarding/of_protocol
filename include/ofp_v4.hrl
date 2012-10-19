@@ -1218,16 +1218,22 @@
 -type ofp_get_async_request() :: #ofp_get_async_request{}.
 
 -record(ofp_get_async_reply, {
-          packet_in_mask = [] :: [ofp_packet_in_reason()],
-          port_status_mask = [] :: [ofp_port_status_reason()],
-          flow_removed_mask = [] :: [ofp_flow_removed_reason()]
+          packet_in_mask = {[], []} :: {[ofp_packet_in_reason()],
+                                        [ofp_packet_in_reason()]},
+          port_status_mask = {[], []} :: {[ofp_port_status_reason()],
+                                          [ofp_port_status_reason()]},
+          flow_removed_mask = {[], []} :: {[ofp_flow_removed_reason()],
+                                           [ofp_flow_removed_reason()]}
          }).
 -type ofp_get_async_reply() :: #ofp_get_async_reply{}.
 
 -record(ofp_set_async, {
-          packet_in_mask = [] :: [ofp_packet_in_reason()],
-          port_status_mask = [] :: [ofp_port_status_reason()],
-          flow_removed_mask = [] :: [ofp_flow_removed_reason()]
+          packet_in_mask = {[], []} :: {[ofp_packet_in_reason()],
+                                        [ofp_packet_in_reason()]},
+          port_status_mask = {[], []} :: {[ofp_port_status_reason()],
+                                          [ofp_port_status_reason()]},
+          flow_removed_mask = {[], []} :: {[ofp_flow_removed_reason()],
+                                           [ofp_flow_removed_reason()]}
          }).
 -type ofp_set_async() :: #ofp_set_async{}.
 

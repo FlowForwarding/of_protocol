@@ -154,6 +154,22 @@ decode_properties(Binary, Properties) ->
     end,
     decode_properties(Rest, [Property | Properties]).
 
+%% @doc Decode bitmasks in async messages.
+decode_async_masks(<<PacketInMaskBin1:32, PacketInMaskBin2:32,
+                     PortReasonMaskBin1:32, PortReasonMaskBin2:32,
+                     FlowRemovedMaskBin1:32, FlowRemovedMaskBin2:32>>) ->
+    PacketInMask1 = binary_to_flags(packet_in_reason, PacketInMaskBin1),
+    PacketInMask2 = binary_to_flags(packet_in_reason, PacketInMaskBin2),
+    PortStatusMask1 = binary_to_flags(port_reason, PortReasonMaskBin1),
+    PortStatusMask2 = binary_to_flags(port_reason, PortReasonMaskBin2),
+    FlowRemovedMask1 = binary_to_flags(flow_removed_reason,
+                                       FlowRemovedMaskBin1),
+    FlowRemovedMask2 = binary_to_flags(flow_removed_reason,
+                                       FlowRemovedMaskBin2),
+    {{PacketInMask1, PacketInMask2},
+     {PortStatusMask1, PortStatusMask2},
+     {FlowRemovedMask1, FlowRemovedMask2}}.
+
 %% @doc Actual decoding of the messages
 -spec decode_body(atom(), binary()) -> ofp_message().
 decode_body(hello, _) ->
@@ -267,8 +283,20 @@ decode_body(role_request, Binary) ->
 decode_body(role_reply, Binary) ->
     <<RoleInt:32, 0:32, Gen:64>> = Binary,
     Role = ofp_v4_enum:to_atom(controller_role, RoleInt),
-    #ofp_role_reply{role = Role, generation_id = Gen}.
+    #ofp_role_reply{role = Role, generation_id = Gen};
 
+decode_body(get_async_request, _) ->
+    #ofp_get_async_request{};
+decode_body(get_async_reply, Binary) ->
+    {PacketInMask, PortStatusMask, FlowRemovedMask} = decode_async_masks(Binary),
+    #ofp_get_async_reply{packet_in_mask = PacketInMask,
+                         port_status_mask = PortStatusMask,
+                         flow_removed_mask = FlowRemovedMask};
+decode_body(set_async, Binary) ->
+    {PacketInMask, PortStatusMask, FlowRemovedMask} = decode_async_masks(Binary),
+    #ofp_get_async_reply{packet_in_mask = PacketInMask,
+                         port_status_mask = PortStatusMask,
+                         flow_removed_mask = FlowRemovedMask}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions
