@@ -181,11 +181,11 @@ decode_bands(Binary, Bands) ->
     Type = ofp_v4_enum:to_atom(meter_band_type, TypeInt),
     case Type of
         drop ->
-            Rest = Data,
+            <<_Pad:32, Rest/bytes>> = Data,
             Band = #ofp_meter_band_drop{type = drop, rate = Rate,
                                         burst_size = BurstSize};
         dscp_remark ->
-            <<PrecLevel:8, Rest/bytes>> = Data,
+            <<PrecLevel:8, _Pad:24, Rest/bytes>> = Data,
             Band = #ofp_meter_band_dscp_remark{type = dscp_remark, rate = Rate,
                                                burst_size = BurstSize,
                                                prec_level = PrecLevel};
