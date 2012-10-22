@@ -204,6 +204,14 @@ encode_body(#ofp_port_status{reason = Reason, desc = Port}) ->
     ReasonInt = ofp_v4_enum:to_int(port_reason, Reason),
     PortBin = encode_struct(Port),
     <<ReasonInt:8, 0:56, PortBin/bytes>>;
+encode_body(#ofp_packet_out{buffer_id = BufferId, in_port = Port,
+                            actions = Actions, data = Data}) ->
+    BufferIdInt = get_id(buffer, BufferId),
+    PortInt = get_id(port_no, Port),
+    ActionsBin = encode_list(Actions),
+    ActionsLength = size(ActionsBin),
+    <<BufferIdInt:32, PortInt:32,
+      ActionsLength:16, 0:48, ActionsBin/bytes, Data/bytes>>;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -309,6 +317,8 @@ type_int(#ofp_get_async_reply{}) ->
 type_int(#ofp_set_async{}) ->
     ofp_v4_enum:to_int(type, set_async);
 type_int(#ofp_meter_mod{}) ->
-    ofp_v4_enum:to_int(type, meter_mod).
+    ofp_v4_enum:to_int(type, meter_mod);
+type_int(#ofp_packet_out{}) ->
+    ofp_v3_enum:to_int(type, packet_out).
 
 

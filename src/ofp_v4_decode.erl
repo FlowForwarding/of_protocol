@@ -137,7 +137,7 @@ decode_properties(<<>>, Properties) ->
 decode_properties(Binary, Properties) ->
     <<TypeInt:16, Length:16, 0:32,
       Data/bytes>> = Binary,
-    Type = ofp_v3_enum:to_atom(queue_properties, TypeInt),
+    Type = ofp_v4_enum:to_atom(queue_properties, TypeInt),
     case Type of
         min_rate ->
             <<Rate:16, 0:48, Rest/bytes>> = Data,
@@ -196,6 +196,75 @@ decode_bands(Binary, Bands) ->
                                                 experimenter = Experimenter}
     end,
     decode_bands(Rest, [Band | Bands]).
+
+%% @doc Decode actions
+-spec decode_actions(binary()) -> [ofp_action()].
+decode_actions(Binary) ->
+    decode_actions(Binary, []).
+
+-spec decode_actions(binary(), [ofp_action()]) -> [ofp_action()].
+decode_actions(<<>>, Actions) ->
+    lists:reverse(Actions);
+decode_actions(Binary, Actions) ->
+    <<TypeInt:16, Length:16, Data/bytes>> = Binary,
+    Type = ofp_v4_enum:to_atom(action_type, TypeInt),
+    case Type of
+        output ->
+            <<PortInt:32, MaxLenInt:16,
+              0:48, Rest/bytes>> = Data,
+            Port = get_id(port_no, PortInt),
+            MaxLen = get_id(buffer, MaxLenInt),
+            Action = #ofp_action_output{port = Port, max_len = MaxLen};
+        group ->
+            <<GroupInt:32, Rest/bytes>> = Data,
+            Group = get_id(group, GroupInt),
+            Action = #ofp_action_group{group_id = Group};
+        set_queue ->
+            <<QueueInt:32, Rest/bytes>> = Data,
+            Queue = get_id(queue, QueueInt),
+            Action = #ofp_action_set_queue{queue_id = Queue};
+        set_mpls_ttl ->
+            <<TTL:8, 0:24, Rest/bytes>> = Data,
+            Action = #ofp_action_set_mpls_ttl{mpls_ttl = TTL};
+        dec_mpls_ttl ->
+            <<0:32, Rest/bytes>> = Data,
+            Action = #ofp_action_dec_mpls_ttl{};
+        set_nw_ttl ->
+            <<TTL:8, 0:24, Rest/bytes>> = Data,
+            Action = #ofp_action_set_nw_ttl{nw_ttl = TTL};
+        dec_nw_ttl ->
+            <<0:32, Rest/bytes>> = Data,
+            Action = #ofp_action_dec_nw_ttl{};
+        copy_ttl_out ->
+            <<0:32, Rest/bytes>> = Data,
+            Action = #ofp_action_copy_ttl_out{};
+        copy_ttl_in ->
+            <<0:32, Rest/bytes>> = Data,
+            Action = #ofp_action_copy_ttl_in{};
+        push_vlan ->
+            <<EtherType:16, 0:16, Rest/bytes>> = Data,
+            Action = #ofp_action_push_vlan{ethertype = EtherType};
+        pop_vlan ->
+            <<0:32, Rest/bytes>> = Data,
+            Action = #ofp_action_pop_vlan{};
+        push_mpls ->
+            <<EtherType:16, 0:16, Rest/bytes>> = Data,
+            Action = #ofp_action_push_mpls{ethertype = EtherType};
+        pop_mpls ->
+            <<EtherType:16, 0:16, Rest/bytes>> = Data,
+            Action = #ofp_action_pop_mpls{ethertype = EtherType};
+        set_field ->
+            FieldLength = Length - 4,
+            <<FieldBin:FieldLength/bytes, Rest/bytes>> = Data,
+            {Field, _Padding} = decode_match_field(FieldBin),
+            Action = #ofp_action_set_field{field = Field};
+        experimenter ->
+            DataLength = Length - ?ACTION_EXPERIMENTER_SIZE,
+            <<Experimenter:32, ExpData:DataLength/bytes, Rest/bytes>> = Data,
+            Action = #ofp_action_experimenter{experimenter = Experimenter,
+                                              data = ExpData}
+    end,
+    decode_actions(Rest, [Action | Actions]).
 
 %% @doc Actual decoding of the messages
 -spec decode_body(atom(), binary()) -> ofp_message().
@@ -284,6 +353,17 @@ decode_body(port_status, Binary) ->
     Reason = ofp_v4_enum:to_atom(port_reason, ReasonInt),
     Port = decode_port(PortBin),
     #ofp_port_status{reason = Reason, desc = Port};
+decode_body(packet_out, Binary) ->
+    <<BufferIdInt:32, PortInt:32, ActionsLength:16,
+      0:48, Binary2/bytes>> = Binary,
+    DataLength = size(Binary) - ?PACKET_OUT_SIZE + ?OFP_HEADER_SIZE
+        - ActionsLength,
+    <<ActionsBin:ActionsLength/bytes, Data:DataLength/bytes>> = Binary2,
+    BufferId = get_id(buffer, BufferIdInt),
+    Port = get_id(port_no, PortInt),
+    Actions = decode_actions(ActionsBin),
+    #ofp_packet_out{buffer_id = BufferId, in_port = Port,
+                    actions = Actions, data = Data};
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
