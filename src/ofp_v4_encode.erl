@@ -133,63 +133,71 @@ encode_struct(#ofp_meter_band_experimenter{type = experimenter, rate = Rate,
     <<TypeInt:16, ?METER_BAND_SIZE:16, Rate:32, BurstSize:32, Experimenter:32>>;
 
 encode_struct(#ofp_action_output{port = Port, max_len = MaxLen}) ->
-    Type = ofp_v3_enum:to_int(action_type, output),
+    Type = ofp_v4_enum:to_int(action_type, output),
     Length = ?ACTION_OUTPUT_SIZE,
     PortInt = get_id(port_no, Port),
     MaxLenInt = get_id(buffer, MaxLen),
     <<Type:16, Length:16, PortInt:32, MaxLenInt:16, 0:48>>;
 encode_struct(#ofp_action_group{group_id = Group}) ->
-    Type = ofp_v3_enum:to_int(action_type, group),
+    Type = ofp_v4_enum:to_int(action_type, group),
     Length = ?ACTION_GROUP_SIZE,
     GroupInt = get_id(group, Group),
     <<Type:16, Length:16, GroupInt:32>>;
 encode_struct(#ofp_action_set_queue{queue_id = Queue}) ->
-    Type = ofp_v3_enum:to_int(action_type, set_queue),
+    Type = ofp_v4_enum:to_int(action_type, set_queue),
     QueueInt = get_id(queue, Queue),
     Length = ?ACTION_SET_QUEUE_SIZE,
     <<Type:16, Length:16, QueueInt:32>>;
 encode_struct(#ofp_action_set_mpls_ttl{mpls_ttl = TTL}) ->
-    Type = ofp_v3_enum:to_int(action_type, set_mpls_ttl),
+    Type = ofp_v4_enum:to_int(action_type, set_mpls_ttl),
     Length = ?ACTION_SET_MPLS_TTL_SIZE,
     <<Type:16, Length:16, TTL:8, 0:24>>;
 encode_struct(#ofp_action_dec_mpls_ttl{}) ->
-    Type = ofp_v3_enum:to_int(action_type, dec_mpls_ttl),
+    Type = ofp_v4_enum:to_int(action_type, dec_mpls_ttl),
     Length = ?ACTION_DEC_MPLS_TTL_SIZE,
     <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_action_set_nw_ttl{nw_ttl = TTL}) ->
-    Type = ofp_v3_enum:to_int(action_type, set_nw_ttl),
+    Type = ofp_v4_enum:to_int(action_type, set_nw_ttl),
     Length = ?ACTION_SET_NW_TTL_SIZE,
     <<Type:16, Length:16, TTL:8, 0:24>>;
 encode_struct(#ofp_action_dec_nw_ttl{}) ->
-    Type = ofp_v3_enum:to_int(action_type, dec_nw_ttl),
+    Type = ofp_v4_enum:to_int(action_type, dec_nw_ttl),
     Length = ?ACTION_DEC_NW_TTL_SIZE,
     <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_action_copy_ttl_out{}) ->
-    Type = ofp_v3_enum:to_int(action_type, copy_ttl_out),
+    Type = ofp_v4_enum:to_int(action_type, copy_ttl_out),
     Length = ?ACTION_COPY_TTL_OUT_SIZE,
     <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_action_copy_ttl_in{}) ->
-    Type = ofp_v3_enum:to_int(action_type, copy_ttl_in),
+    Type = ofp_v4_enum:to_int(action_type, copy_ttl_in),
     Length = ?ACTION_COPY_TTL_IN_SIZE,
     <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_action_push_vlan{ethertype = EtherType}) ->
-    Type = ofp_v3_enum:to_int(action_type, push_vlan),
+    Type = ofp_v4_enum:to_int(action_type, push_vlan),
     Length = ?ACTION_PUSH_VLAN_SIZE,
     <<Type:16, Length:16, EtherType:16, 0:16>>;
 encode_struct(#ofp_action_pop_vlan{}) ->
-    Type = ofp_v3_enum:to_int(action_type, pop_vlan),
+    Type = ofp_v4_enum:to_int(action_type, pop_vlan),
     Length = ?ACTION_POP_VLAN_SIZE,
     <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_action_push_mpls{ethertype = EtherType}) ->
-    Type = ofp_v3_enum:to_int(action_type, push_mpls),
+    Type = ofp_v4_enum:to_int(action_type, push_mpls),
     Length = ?ACTION_PUSH_MPLS_SIZE,
     <<Type:16, Length:16, EtherType:16, 0:16>>;
 encode_struct(#ofp_action_pop_mpls{ethertype = EtherType}) ->
-    Type = ofp_v3_enum:to_int(action_type, pop_mpls),
+    Type = ofp_v4_enum:to_int(action_type, pop_mpls),
     Length = ?ACTION_POP_MPLS_SIZE,
     <<Type:16, Length:16, EtherType:16, 0:16>>;
+encode_struct(#ofp_action_push_pbb{ethertype = EtherType}) ->
+    Type = ofp_v4_enum:to_int(action_type, push_pbb),
+    Length = ?ACTION_PUSH_PBB_SIZE,
+    <<Type:16, Length:16, EtherType:16, 0:16>>;
+encode_struct(#ofp_action_pop_pbb{}) ->
+    Type = ofp_v4_enum:to_int(action_type, pop_pbb),
+    Length = ?ACTION_POP_PBB_SIZE,
+    <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_action_set_field{field = Field}) ->
-    Type = ofp_v3_enum:to_int(action_type, set_field),
+    Type = ofp_v4_enum:to_int(action_type, set_field),
     FieldBin = encode_struct(Field),
     FieldSize = size(FieldBin),
     Padding = 8 - (?ACTION_SET_FIELD_SIZE - 4 + FieldSize) rem 8,
@@ -197,7 +205,7 @@ encode_struct(#ofp_action_set_field{field = Field}) ->
     <<Type:16, Length:16, FieldBin/bytes, 0:(Padding*8)>>;
 encode_struct(#ofp_action_experimenter{experimenter = Experimenter,
                                        data = Data}) ->
-    Type = ofp_v3_enum:to_int(action_type, experimenter),
+    Type = ofp_v4_enum:to_int(action_type, experimenter),
     Length = ?ACTION_EXPERIMENTER_SIZE + byte_size(Data),
     <<Type:16, Length:16, Experimenter:32, Data/bytes>>.
 
@@ -388,6 +396,6 @@ type_int(#ofp_set_async{}) ->
 type_int(#ofp_meter_mod{}) ->
     ofp_v4_enum:to_int(type, meter_mod);
 type_int(#ofp_packet_out{}) ->
-    ofp_v3_enum:to_int(type, packet_out).
+    ofp_v4_enum:to_int(type, packet_out).
 
 

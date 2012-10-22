@@ -95,8 +95,10 @@
 -define(ACTION_COPY_TTL_IN_SIZE, 8).
 -define(ACTION_POP_MPLS_SIZE, 8).
 -define(ACTION_POP_VLAN_SIZE, 8).
+-define(ACTION_POP_PBB_SIZE, 8).
 -define(ACTION_PUSH_MPLS_SIZE, 8).
 -define(ACTION_PUSH_VLAN_SIZE, 8).
+-define(ACTION_PUSH_PBB_SIZE, 8).
 -define(ACTION_COPY_TTL_OUT_SIZE, 8).
 -define(ACTION_DEC_MPLS_TTL_SIZE, 8).
 -define(ACTION_DEC_NW_TTL_SIZE, 8).
@@ -413,8 +415,7 @@
          }).
 
 -record(ofp_action_pop_pbb, {
-          seq = 3,
-          ethertype :: integer()
+          seq = 3
          }).
 
 -record(ofp_action_pop_vlan, {

@@ -192,6 +192,8 @@
                      pop_vlan,
                      push_mpls,
                      pop_mpls,
+                     push_pbb,
+                     pop_pbb,
                      set_queue,
                      group,
                      set_nw_ttl,
