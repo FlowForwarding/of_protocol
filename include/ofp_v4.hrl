@@ -91,6 +91,7 @@
 -define(INSTRUCTION_WRITE_ACTIONS_SIZE, 8).
 -define(INSTRUCTION_APPLY_ACTIONS_SIZE, 8).
 -define(INSTRUCTION_CLEAR_ACTIONS_SIZE, 8).
+-define(INSTRUCTION_METER_SIZE, 8).
 -define(INSTRUCTION_EXPERIMENTER_SIZE, 8).
 -define(ACTION_COPY_TTL_IN_SIZE, 8).
 -define(ACTION_POP_MPLS_SIZE, 8).
@@ -394,12 +395,12 @@
          }).
 
 -type ofp_instruction() :: #ofp_instruction_meter{}
-                         | #ofp_instruction_apply_actions{}
-                         | #ofp_instruction_clear_actions{}
-                         | #ofp_instruction_write_actions{}
-                         | #ofp_instruction_write_metadata{}
-                         | #ofp_instruction_goto_table{}
-                         | #ofp_instruction_experimenter{}.
+                          | #ofp_instruction_apply_actions{}
+                          | #ofp_instruction_clear_actions{}
+                          | #ofp_instruction_write_actions{}
+                          | #ofp_instruction_write_metadata{}
+                          | #ofp_instruction_goto_table{}
+                          | #ofp_instruction_experimenter{}.
 
 %%%-----------------------------------------------------------------------------
 %%% Action Structures (A 2.5)

@@ -208,6 +208,39 @@ encode_struct(#ofp_action_experimenter{experimenter = Experimenter,
                                        data = Data}) ->
     Type = ofp_v4_enum:to_int(action_type, experimenter),
     Length = ?ACTION_EXPERIMENTER_SIZE + byte_size(Data),
+    <<Type:16, Length:16, Experimenter:32, Data/bytes>>;
+
+encode_struct(#ofp_instruction_goto_table{table_id = Table}) ->
+    Type = ofp_v4_enum:to_int(instruction_type, goto_table),
+    Length = ?INSTRUCTION_GOTO_TABLE_SIZE,
+    <<Type:16, Length:16, Table:8, 0:24>>;
+encode_struct(#ofp_instruction_write_metadata{metadata = Metadata,
+                                              metadata_mask = MetaMask}) ->
+    Type = ofp_v4_enum:to_int(instruction_type, write_metadata),
+    Length = ?INSTRUCTION_WRITE_METADATA_SIZE,
+    <<Type:16, Length:16, 0:32, Metadata:8/bytes, MetaMask:8/bytes>>;
+encode_struct(#ofp_instruction_write_actions{actions = Actions}) ->
+    Type = ofp_v4_enum:to_int(instruction_type, write_actions),
+    ActionsBin = encode_list(Actions),
+    Length = ?INSTRUCTION_WRITE_ACTIONS_SIZE + size(ActionsBin),
+    <<Type:16, Length:16, 0:32, ActionsBin/bytes>>;
+encode_struct(#ofp_instruction_apply_actions{actions = Actions}) ->
+    Type = ofp_v4_enum:to_int(instruction_type, apply_actions),
+    ActionsBin = encode_list(Actions),
+    Length = ?INSTRUCTION_APPLY_ACTIONS_SIZE + size(ActionsBin),
+    <<Type:16, Length:16, 0:32, ActionsBin/bytes>>;
+encode_struct(#ofp_instruction_clear_actions{}) ->
+    Type = ofp_v4_enum:to_int(instruction_type, clear_actions),
+    Length = ?INSTRUCTION_CLEAR_ACTIONS_SIZE,
+    <<Type:16, Length:16, 0:32>>;
+encode_struct(#ofp_instruction_meter{meter_id = MeterId}) ->
+    Type = ofp_v4_enum:to_int(instruction_type, meter),
+    Length = ?INSTRUCTION_METER_SIZE,
+    <<Type:16, Length:16, MeterId:32>>;
+encode_struct(#ofp_instruction_experimenter{experimenter = Experimenter,
+                                            data = Data}) ->
+    Type = ofp_v4_enum:to_int(instruction_type, experimenter),
+    Length = ?INSTRUCTION_EXPERIMENTER_SIZE + byte_size(Data),
     <<Type:16, Length:16, Experimenter:32, Data/bytes>>.
 
 encode_async_masks({PacketInMask1, PacketInMask2},
@@ -290,6 +323,25 @@ encode_body(#ofp_packet_out{buffer_id = BufferId, in_port = Port,
     ActionsLength = size(ActionsBin),
     <<BufferIdInt:32, PortInt:32,
       ActionsLength:16, 0:48, ActionsBin/bytes, Data/bytes>>;
+encode_body(#ofp_flow_mod{cookie = Cookie, cookie_mask = CookieMask,
+                          table_id = Table, command = Command,
+                          idle_timeout = Idle, hard_timeout = Hard,
+                          priority = Priority, buffer_id = Buffer,
+                          out_port = OutPort, out_group = OutGroup,
+                          flags = Flags, match = Match,
+                          instructions = Instructions}) ->
+    TableInt = get_id(table, Table),
+    BufferInt = get_id(buffer, Buffer),
+    CommandInt = ofp_v4_enum:to_int(flow_mod_command, Command),
+    OutPortInt = get_id(port_no, OutPort),
+    OutGroupInt = get_id(group, OutGroup),
+    FlagsBin = flags_to_binary(flow_mod_flags, Flags, 2),
+    MatchBin = encode_struct(Match),
+    InstructionsBin = encode_list(Instructions),
+    <<Cookie:8/bytes, CookieMask:8/bytes, TableInt:8, CommandInt:8,
+      Idle:16, Hard:16, Priority:16, BufferInt:32, OutPortInt:32,
+      OutGroupInt:32, FlagsBin:2/bytes, 0:16, MatchBin/bytes,
+      InstructionsBin/bytes>>;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -376,6 +428,11 @@ type_int(#ofp_flow_removed{}) ->
     ofp_v4_enum:to_int(type, flow_removed);
 type_int(#ofp_port_status{}) ->
     ofp_v4_enum:to_int(type, port_status);
+type_int(#ofp_packet_out{}) ->
+    ofp_v4_enum:to_int(type, packet_out);
+type_int(#ofp_flow_mod{}) ->
+    ofp_v4_enum:to_int(type, flow_mod);
+
 type_int(#ofp_barrier_request{}) ->
     ofp_v4_enum:to_int(type, barrier_request);
 type_int(#ofp_barrier_reply{}) ->
@@ -395,8 +452,6 @@ type_int(#ofp_get_async_reply{}) ->
 type_int(#ofp_set_async{}) ->
     ofp_v4_enum:to_int(type, set_async);
 type_int(#ofp_meter_mod{}) ->
-    ofp_v4_enum:to_int(type, meter_mod);
-type_int(#ofp_packet_out{}) ->
-    ofp_v4_enum:to_int(type, packet_out).
+    ofp_v4_enum:to_int(type, meter_mod).
 
 

@@ -272,6 +272,54 @@ decode_actions(Binary, Actions) ->
     end,
     decode_actions(Rest, [Action | Actions]).
 
+%% @doc Decode instructions
+-spec decode_instructions(binary()) -> [ofp_instruction()].
+decode_instructions(Binary) ->
+    decode_instructions(Binary, []).
+
+-spec decode_instructions(binary(), [ofp_instruction()]) ->
+                                 [ofp_instruction()].
+decode_instructions(<<>>, Instructions) ->
+    lists:reverse(Instructions);
+decode_instructions(Binary, Instructions) ->
+    <<TypeInt:16, Length:16, Data/bytes>> = Binary,
+    Type = ofp_v4_enum:to_atom(instruction_type, TypeInt),
+    case Type of
+        goto_table ->
+            <<Table:8, 0:24, Rest/bytes>> = Data,
+            Instruction = #ofp_instruction_goto_table{table_id = Table};
+        write_metadata ->
+            <<0:32, Metadata:8/bytes, MetaMask:8/bytes,
+              Rest/bytes>> = Data,
+            Instruction = #ofp_instruction_write_metadata{
+              metadata = Metadata,
+              metadata_mask = MetaMask};
+        write_actions ->
+            ActionsLength = Length - ?INSTRUCTION_WRITE_ACTIONS_SIZE,
+            <<0:32, ActionsBin:ActionsLength/bytes,
+              Rest/bytes>> = Data,
+            Actions = decode_actions(ActionsBin),
+            Instruction = #ofp_instruction_write_actions{actions = Actions};
+        apply_actions ->
+            ActionsLength = Length - ?INSTRUCTION_APPLY_ACTIONS_SIZE,
+            <<0:32, ActionsBin:ActionsLength/bytes,
+              Rest/bytes>> = Data,
+            Actions = decode_actions(ActionsBin),
+            Instruction = #ofp_instruction_apply_actions{actions = Actions};
+        clear_actions ->
+            <<0:32, Rest/bytes>> = Data,
+            Instruction = #ofp_instruction_clear_actions{};
+        meter ->
+            <<MeterId:32, Rest/bytes>> = Data,
+            Instruction = #ofp_instruction_meter{meter_id = MeterId};
+        experimenter ->
+            DataLength = Length - ?INSTRUCTION_EXPERIMENTER_SIZE,
+            <<Experimenter:32, ExpData:DataLength/bytes, Rest/bytes>> = Data,
+            Instruction = #ofp_instruction_experimenter{
+              experimenter = Experimenter, data = ExpData}
+    end,
+    decode_instructions(Rest, [Instruction | Instructions]).
+
 %% @doc Actual decoding of the messages
 -spec decode_body(atom(), binary()) -> ofp_message().
 decode_body(hello, _) ->
@@ -370,6 +418,26 @@ decode_body(packet_out, Binary) ->
     Actions = decode_actions(ActionsBin),
     #ofp_packet_out{buffer_id = BufferId, in_port = Port,
                     actions = Actions, data = Data};
+decode_body(flow_mod, Binary) ->
+    <<Cookie:8/bytes, CookieMask:8/bytes, TableInt:8, CommandInt:8,
+      Idle:16, Hard:16, Priority:16, BufferInt:32, OutPortInt:32,
+      OutGroupInt:32, FlagsBin:2/bytes, 0:16, Data/bytes>> = Binary,
+    Table = get_id(table, TableInt),
+    Buffer = get_id(buffer, BufferInt),
+    Command = ofp_v4_enum:to_atom(flow_mod_command, CommandInt),
+    OutPort = get_id(port_no, OutPortInt),
+    OutGroup = get_id(group, OutGroupInt),
+    Flags = binary_to_flags(flow_mod_flags, FlagsBin),
+    <<_:16, MatchLength:16, _/bytes>> = Data,
+    MatchLengthPad = MatchLength + (8 - (MatchLength rem 8)),
+    <<MatchBin:MatchLengthPad/bytes, InstrBin/bytes>> = Data,
+    Match = decode_match(MatchBin),
+    Instructions = decode_instructions(InstrBin),
+    #ofp_flow_mod{cookie = Cookie, cookie_mask = CookieMask,
+                  table_id = Table, command = Command, idle_timeout = Idle,
+                  hard_timeout = Hard, priority = Priority, buffer_id = Buffer,
+                  out_port = OutPort, out_group = OutGroup, flags = Flags,
+                  match = Match, instructions = Instructions};
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

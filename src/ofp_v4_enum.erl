@@ -179,6 +179,7 @@
                           write_actions,
                           apply_actions,
                           clear_actions,
+                          meter,
                           {experimenter, 16#ffff}]}).
 
 %% Action Structures -----------------------------------------------------------
