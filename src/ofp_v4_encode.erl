@@ -235,14 +235,14 @@ encode_body(#ofp_set_async{packet_in_mask = PacketInMask,
                            flow_removed_mask = FlowRemovedMask}) ->
     encode_async_masks(PacketInMask, PortStatusMask, FlowRemovedMask);
 encode_body(#ofp_meter_mod{command = Command,
-                           flags = Flags,
+                           flags = Flag,
                            meter_id = MeterId,
                            bands = Bands}) ->
-    CommandInt = ofp_v4_enum:to_int(meter_mod_command, Command),
-    FlagsBin = flags_to_binary(meter_flag, Flags, 16),
-    MeterIdInt = ofp_v4_enum:to_int(meter_id, MeterId),
+    CommandInt = get_id(meter_mod_command, Command),
+    FlagsInt = get_id(meter_flag, Flag),
+    MeterIdInt = get_id(meter_id, MeterId),
     BandsBin = encode_list(Bands),
-    <<CommandInt:16, FlagsBin:16, MeterIdInt:32, BandsBin/bytes>>;
+    <<CommandInt:16, FlagsInt:16, MeterIdInt:32, BandsBin/bytes>>;
 encode_body(Other) ->
     throw({bad_message, Other}).
 
@@ -306,5 +306,8 @@ type_int(#ofp_get_async_request{}) ->
 type_int(#ofp_get_async_reply{}) ->
     ofp_v4_enum:to_int(type, get_async_reply);
 type_int(#ofp_set_async{}) ->
-    ofp_v4_enum:to_int(type, set_async).
+    ofp_v4_enum:to_int(type, set_async);
+type_int(#ofp_meter_mod{}) ->
+    ofp_v4_enum:to_int(type, meter_mod).
+
 

@@ -713,7 +713,9 @@
 
 -record(ofp_meter_mod, {
           command :: ofp_meter_mod_command(),
-          flags = [] :: [ofp_meter_flag()],
+          %% Warning: OpenFlow 1.3.0 spec defines flags field as a field that
+          %% contains only one value. Page 58 section A.3.4.4.
+          flags :: ofp_meter_flag(),
           meter_id :: meter_id(),
           bands :: [ofp_meter_band()]
          }).
