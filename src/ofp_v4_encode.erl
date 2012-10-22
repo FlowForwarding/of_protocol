@@ -135,13 +135,14 @@ encode_struct(#ofp_meter_band_experimenter{type = experimenter, rate = Rate,
 encode_async_masks({PacketInMask1, PacketInMask2},
                    {PortStatusMask1, PortStatusMask2},
                    {FlowRemovedMask1, FlowRemovedMask2}) ->
-    PIn1 = flags_to_binary(packet_in_reason, PacketInMask1, 32),
-    PIn2 = flags_to_binary(packet_in_reason, PacketInMask2, 32),
-    PS1 = flags_to_binary(port_reason, PortStatusMask1, 32),
-    PS2 = flags_to_binary(port_reason, PortStatusMask2, 32),
-    FR1 = flags_to_binary(flow_removed_reason, FlowRemovedMask1, 32),
-    FR2 = flags_to_binary(flow_removed_reason, FlowRemovedMask2, 32),
-    <<PIn1:32, PIn2:32, PS1:32, PS2:32, FR1:32, FR2:32>>.
+    PIn1 = flags_to_binary(packet_in_reason, PacketInMask1, 4),
+    PIn2 = flags_to_binary(packet_in_reason, PacketInMask2, 4),
+    PS1 = flags_to_binary(port_reason, PortStatusMask1, 4),
+    PS2 = flags_to_binary(port_reason, PortStatusMask2, 4),
+    FR1 = flags_to_binary(flow_removed_reason, FlowRemovedMask1, 4),
+    FR2 = flags_to_binary(flow_removed_reason, FlowRemovedMask2, 4),
+    <<PIn1:32/bits, PIn2:32/bits, PS1:32/bits, PS2:32/bits,
+      FR1:32/bits, FR2:32/bits>>.
 
 %%% Messages -------------------------------------------------------------------
 

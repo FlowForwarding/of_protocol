@@ -155,9 +155,9 @@ decode_properties(Binary, Properties) ->
     decode_properties(Rest, [Property | Properties]).
 
 %% @doc Decode bitmasks in async messages.
-decode_async_masks(<<PacketInMaskBin1:32, PacketInMaskBin2:32,
-                     PortReasonMaskBin1:32, PortReasonMaskBin2:32,
-                     FlowRemovedMaskBin1:32, FlowRemovedMaskBin2:32>>) ->
+decode_async_masks(<<PacketInMaskBin1:32/bits, PacketInMaskBin2:32/bits,
+                     PortReasonMaskBin1:32/bits, PortReasonMaskBin2:32/bits,
+                     FlowRemovedMaskBin1:32/bits, FlowRemovedMaskBin2:32/bits>>) ->
     PacketInMask1 = binary_to_flags(packet_in_reason, PacketInMaskBin1),
     PacketInMask2 = binary_to_flags(packet_in_reason, PacketInMaskBin2),
     PortStatusMask1 = binary_to_flags(port_reason, PortReasonMaskBin1),
@@ -321,9 +321,9 @@ decode_body(get_async_reply, Binary) ->
                          flow_removed_mask = FlowRemovedMask};
 decode_body(set_async, Binary) ->
     {PacketInMask, PortStatusMask, FlowRemovedMask} = decode_async_masks(Binary),
-    #ofp_get_async_reply{packet_in_mask = PacketInMask,
-                         port_status_mask = PortStatusMask,
-                         flow_removed_mask = FlowRemovedMask};
+    #ofp_set_async{packet_in_mask = PacketInMask,
+                   port_status_mask = PortStatusMask,
+                   flow_removed_mask = FlowRemovedMask};
 decode_body(meter_mod, Binary) ->
     <<CommandInt:16, FlagsInt:16, MeterIdInt:32, BandsBin/bytes>> = Binary,
     Command = get_id(meter_mod_command, CommandInt),
