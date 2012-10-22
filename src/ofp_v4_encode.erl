@@ -242,7 +242,12 @@ encode_struct(#ofp_instruction_experimenter{experimenter = Experimenter,
                                             data = Data}) ->
     Type = ofp_v4_enum:to_int(instruction_type, experimenter),
     Length = ?INSTRUCTION_EXPERIMENTER_SIZE + byte_size(Data),
-    <<Type:16, Length:16, Experimenter:32, Data/bytes>>.
+    <<Type:16, Length:16, Experimenter:32, Data/bytes>>;
+encode_struct(#ofp_bucket{weight = Weight, watch_port = Port,
+                          watch_group = Group, actions = Actions}) ->
+    ActionsBin = encode_list(Actions),
+    Length = ?BUCKET_SIZE + size(ActionsBin),
+    <<Length:16, Weight:16, Port:32, Group:32, 0:32, ActionsBin/bytes>>.
 
 encode_async_masks({PacketInMask1, PacketInMask2},
                    {PortStatusMask1, PortStatusMask2},
@@ -343,6 +348,13 @@ encode_body(#ofp_flow_mod{cookie = Cookie, cookie_mask = CookieMask,
       Idle:16, Hard:16, Priority:16, BufferInt:32, OutPortInt:32,
       OutGroupInt:32, FlagsBin:2/bytes, 0:16, MatchBin/bytes,
       InstructionsBin/bytes>>;
+encode_body(#ofp_group_mod{command = Command, type = Type,
+                           group_id = Group, buckets = Buckets}) ->
+    CommandInt = ofp_v4_enum:to_int(group_mod_command, Command),
+    TypeInt = ofp_v4_enum:to_int(group_type, Type),
+    GroupInt = get_id(group, Group),
+    BucketsBin = encode_list(Buckets),
+    <<CommandInt:16, TypeInt:8, 0:8, GroupInt:32, BucketsBin/bytes>>;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -433,6 +445,8 @@ type_int(#ofp_packet_out{}) ->
     ofp_v4_enum:to_int(type, packet_out);
 type_int(#ofp_flow_mod{}) ->
     ofp_v4_enum:to_int(type, flow_mod);
+type_int(#ofp_group_mod{}) ->
+    ofp_v3_enum:to_int(type, group_mod);
 
 type_int(#ofp_barrier_request{}) ->
     ofp_v4_enum:to_int(type, barrier_request);

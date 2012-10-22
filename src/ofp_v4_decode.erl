@@ -321,6 +321,22 @@ decode_instructions(Binary, Instructions) ->
     end,
     decode_instructions(Rest, [Instruction | Instructions]).
 
+%% @doc Decode buckets
+decode_buckets(Binary) ->
+    decode_buckets(Binary, []).
+
+decode_buckets(<<>>, Buckets) ->
+    lists:reverse(Buckets);
+decode_buckets(Binary, Buckets) ->
+    <<Length:16, Weight:16, Port:32, Group:32,
+      0:32, Data/bytes>> = Binary,
+    ActionsLength = Length - ?BUCKET_SIZE,
+    <<ActionsBin:ActionsLength/bytes, Rest/bytes>> = Data,
+    Actions = decode_actions(ActionsBin),
+    Bucket = #ofp_bucket{weight = Weight, watch_port = Port, watch_group = Group,
+                         actions = Actions},
+    decode_buckets(Rest, [Bucket | Buckets]).
+
 %% @doc Actual decoding of the messages
 -spec decode_body(atom(), binary()) -> ofp_message().
 decode_body(hello, _) ->
@@ -440,6 +456,16 @@ decode_body(flow_mod, Binary) ->
                   hard_timeout = Hard, priority = Priority, buffer_id = Buffer,
                   out_port = OutPort, out_group = OutGroup, flags = Flags,
                   match = Match, instructions = Instructions};
+decode_body(group_mod, Binary) ->
+    BucketsLength = size(Binary) - ?GROUP_MOD_SIZE + ?OFP_HEADER_SIZE,
+    <<CommandInt:16, TypeInt:8, 0:8,
+      GroupInt:32, BucketsBin:BucketsLength/bytes>> = Binary,
+    Command = ofp_v4_enum:to_atom(group_mod_command, CommandInt),
+    Type = ofp_v4_enum:to_atom(group_type, TypeInt),
+    Group = get_id(group, GroupInt),
+    Buckets = decode_buckets(BucketsBin),
+    #ofp_group_mod{command = Command, type = Type,
+                   group_id = Group, buckets = Buckets};
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
