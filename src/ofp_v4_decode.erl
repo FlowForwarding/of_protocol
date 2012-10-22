@@ -466,6 +466,20 @@ decode_body(group_mod, Binary) ->
     Buckets = decode_buckets(BucketsBin),
     #ofp_group_mod{command = Command, type = Type,
                    group_id = Group, buckets = Buckets};
+decode_body(port_mod, Binary) ->
+    <<PortInt:32, 0:32, Addr:6/bytes,
+      0:16, ConfigBin:4/bytes, MaskBin:4/bytes,
+      AdvertiseBin:4/bytes, 0:32>> = Binary,
+    Port = get_id(port_no, PortInt),
+    Config = binary_to_flags(port_config, ConfigBin),
+    Mask = binary_to_flags(port_config, MaskBin),
+    Advertise = binary_to_flags(port_features, AdvertiseBin),
+    #ofp_port_mod{port_no = Port, hw_addr = Addr,
+                  config = Config, mask = Mask, advertise = Advertise};
+decode_body(table_mod, Binary) ->
+    <<TableInt:8, 0:24, _ConfigInt:32>> = Binary,
+    Table = get_id(table, TableInt),
+    #ofp_table_mod{table_id = Table};
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

@@ -355,6 +355,17 @@ encode_body(#ofp_group_mod{command = Command, type = Type,
     GroupInt = get_id(group, Group),
     BucketsBin = encode_list(Buckets),
     <<CommandInt:16, TypeInt:8, 0:8, GroupInt:32, BucketsBin/bytes>>;
+encode_body(#ofp_port_mod{port_no = Port, hw_addr = Addr,
+                          config = Config, mask = Mask, advertise = Advertise}) ->
+    PortInt = get_id(port_no, Port),
+    ConfigBin = flags_to_binary(port_config, Config, 4),
+    MaskBin = flags_to_binary(port_config, Mask, 4),
+    AdvertiseBin = flags_to_binary(port_features, Advertise, 4),
+    <<PortInt:32, 0:32, Addr:6/bytes, 0:16, ConfigBin:4/bytes,
+      MaskBin:4/bytes, AdvertiseBin:4/bytes, 0:32>>;
+encode_body(#ofp_table_mod{table_id = Table}) ->
+    TableInt = get_id(table, Table),
+    <<TableInt:8, 0:24, 0:32>>;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -446,7 +457,11 @@ type_int(#ofp_packet_out{}) ->
 type_int(#ofp_flow_mod{}) ->
     ofp_v4_enum:to_int(type, flow_mod);
 type_int(#ofp_group_mod{}) ->
-    ofp_v3_enum:to_int(type, group_mod);
+    ofp_v4_enum:to_int(type, group_mod);
+type_int(#ofp_port_mod{}) ->
+    ofp_v4_enum:to_int(type, port_mod);
+type_int(#ofp_table_mod{}) ->
+    ofp_v4_enum:to_int(type, table_mod);
 
 type_int(#ofp_barrier_request{}) ->
     ofp_v4_enum:to_int(type, barrier_request);
