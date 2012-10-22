@@ -211,8 +211,9 @@ encode_struct(#ofp_action_set_field{field = Field}) ->
     Type = ofp_v3_enum:to_int(action_type, set_field),
     FieldBin = encode_struct(Field),
     FieldSize = size(FieldBin),
-    Padding = 8 - (?ACTION_SET_FIELD_SIZE - 4 + FieldSize) rem 8,
-    Length = ?ACTION_SET_FIELD_SIZE - 4 + FieldSize + Padding,
+    PartialLength = ?ACTION_SET_FIELD_SIZE - 4 + FieldSize,
+    Padding = ofp_utils:padding(PartialLength, 8),
+    Length = PartialLength + Padding,
     <<Type:16, Length:16, FieldBin/bytes, 0:(Padding*8)>>;
 encode_struct(#ofp_action_experimenter{experimenter = Experimenter,
                                        data = Data}) ->
