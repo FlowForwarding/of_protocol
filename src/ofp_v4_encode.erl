@@ -235,8 +235,9 @@ encode_struct(#ofp_instruction_clear_actions{}) ->
     <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_instruction_meter{meter_id = MeterId}) ->
     Type = ofp_v4_enum:to_int(instruction_type, meter),
+    MeterIdInt = get_id(meter_id, MeterId),
     Length = ?INSTRUCTION_METER_SIZE,
-    <<Type:16, Length:16, MeterId:32>>;
+    <<Type:16, Length:16, MeterIdInt:32>>;
 encode_struct(#ofp_instruction_experimenter{experimenter = Experimenter,
                                             data = Data}) ->
     Type = ofp_v4_enum:to_int(instruction_type, experimenter),

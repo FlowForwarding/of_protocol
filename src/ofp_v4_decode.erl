@@ -310,7 +310,8 @@ decode_instructions(Binary, Instructions) ->
             <<0:32, Rest/bytes>> = Data,
             Instruction = #ofp_instruction_clear_actions{};
         meter ->
-            <<MeterId:32, Rest/bytes>> = Data,
+            <<MeterIdInt:32, Rest/bytes>> = Data,
+            MeterId = get_id(meter_id, MeterIdInt),
             Instruction = #ofp_instruction_meter{meter_id = MeterId};
         experimenter ->
             DataLength = Length - ?INSTRUCTION_EXPERIMENTER_SIZE,
