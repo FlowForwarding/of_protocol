@@ -242,7 +242,9 @@
 
 -enum({flow_mod_flags, [send_flow_rem,
                         check_overlap,
-                        reset_counts]}).
+                        reset_counts,
+                        no_pkt_counts,
+                        no_byt_counts]}).
 
 %% Note: Not in the specification
 -enum({group, [{any, 16#fffffffe},
