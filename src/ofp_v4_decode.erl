@@ -253,6 +253,12 @@ decode_actions(Binary, Actions) ->
         pop_mpls ->
             <<EtherType:16, 0:16, Rest/bytes>> = Data,
             Action = #ofp_action_pop_mpls{ethertype = EtherType};
+        push_pbb ->
+            <<EtherType:16, 0:16, Rest/bytes>> = Data,
+            Action = #ofp_action_push_pbb{ethertype = EtherType};
+        pop_pbb ->
+            <<0:32, Rest/bytes>> = Data,
+            Action = #ofp_action_pop_pbb{};
         set_field ->
             FieldLength = Length - 4,
             <<FieldBin:FieldLength/bytes, Rest/bytes>> = Data,
