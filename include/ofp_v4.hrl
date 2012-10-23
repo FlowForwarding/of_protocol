@@ -759,9 +759,9 @@
                              | ofp_meter_features_reply()
                              | ofp_experimenter_reply().
 
--type ofp_multipart_request_flag() :: req_more.
+-type ofp_multipart_request_flag() :: more.
 
--type ofp_multipart_reply_flag() :: reply_more.
+-type ofp_multipart_reply_flag() :: more.
 
 %%% Description (A 3.5.1) ------------------------------------------------------
 

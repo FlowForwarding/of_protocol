@@ -278,25 +278,32 @@
 
 %% Read State Messages ---------------------------------------------------------
 
--enum({stats_request_flags, []}).
-
--enum({stats_reply_flags, [{more, 1}]}).
-
--enum({stats_type, [desc,
-                    flow,
-                    aggregate,
-                    table,
-                    port,
-                    queue,
-                    group,
-                    group_desc,
-                    group_features,
-                    {experimenter, 16#ffff}]}).
-
 -enum({group_capabilities, [select_weight,
                             select_liveness,
                             chaining,
                             chaining_checks]}).
+
+%% Multipart Messages ----------------------------------------------------------
+
+-enum({multipart_request_flags, [{more, 1}]}).
+
+-enum({multipart_reply_flags, [{more, 1}]}).
+
+-enum({multipart_type, [desc,
+                        flow_stats,
+                        aggregate_stats,
+                        table_stats,
+                        table_features,
+                        port_desc,
+                        port_stats,
+                        queue_stats,
+                        group_stats,
+                        group_desc,
+                        group_features,
+                        meter_stats,
+                        meter_config,
+                        meter_features,
+                        {experimenter, 16#ffff}]}).
 
 %% Queue Configuration Messages ------------------------------------------------
 

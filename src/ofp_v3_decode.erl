@@ -287,7 +287,7 @@ decode_flow_stats(Binary) ->
     <<_:16, Table:8, _:8, Sec:32, NSec:32, Priority:16, Idle:16, Hard:16,
       _:48, Cookie:8/bytes, PCount:64, BCount:64, Data/bytes>> = Binary,
     <<_:16, MatchLength:16, _/bytes>> = Data,
-    MatchLengthPad = MatchLength + (8 - (MatchLength rem 8)),
+    MatchLengthPad = MatchLength + ofp_utils:padding(MatchLength, 8),
     <<MatchBin:MatchLengthPad/bytes, InstrsBin/bytes>> = Data,
     Match = decode_match(MatchBin),
     Instrs = decode_instructions(InstrsBin),
