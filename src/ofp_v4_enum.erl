@@ -83,8 +83,8 @@
                     blocked,
                     live]}).
 
--enum({port_no, [{in_port, 16#ffffff00},
-                 {table, 16#fffffff8},
+-enum({port_no, [{in_port, 16#fffffff8},
+                 {table, 16#fffffff9},
                  normal,
                  flood,
                  all,
