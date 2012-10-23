@@ -85,12 +85,7 @@ encode_struct(#ofp_match{fields = Fields}) ->
     FieldsBin = encode_list(Fields),
     FieldsLength = size(FieldsBin),
     Length = FieldsLength + ?MATCH_SIZE - 4,
-    case FieldsLength of
-        0 ->
-            Padding = 32;
-        _ ->
-            Padding = (8 - (Length rem 8)) * 8
-    end,
+    Padding = ofp_utils:padding(Length, 8) * 8,
     <<1:16, Length:16, FieldsBin/bytes, 0:Padding>>;
 encode_struct(#ofp_field{class = Class, name = Field, has_mask = HasMask,
                          value = Value, mask = Mask}) ->
