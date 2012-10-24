@@ -370,13 +370,74 @@ decode_table_stats(Binary) ->
     #ofp_table_stats{table_id = Table, active_count = ACount,
                      lookup_count = LCount, matched_count = MCount}.
 
-decode_table_features_list(Binary) ->
-    decode_table_features(Binary, []).
+%% A.3.5.5 Table Features ------------------------------------------------------
 
-decode_table_features(<<>>, TableFeaturesList) ->
-    lists:reverse(TableFeaturesList);
-decode_table_features(_Binary, _TableFeaturesList) ->
-    unimplemented.
+table_features(<<>>, TableFeatures) ->
+    lists:reverse(TableFeatures);
+table_features(Binary, TableFeatures) ->
+    <<Length:16, _/bytes>> = Binary,
+    PropsLength = Length - ?OFP_TABLE_FEATURES_SIZE,
+    <<_:16, TableIdInt:8, _:40, Name:?OFP_MAX_TABLE_NAME_LEN/bytes,
+      MetadataMatch:8/bytes, MetadataWrite:8/bytes, _:32, MaxEntries:32,
+      PropertiesBin:PropsLength/bytes, Rest/bytes>> = Binary,
+    TableId = get_id(table, TableIdInt),
+    StrippedName = ofp_utils:strip_string(Name),
+    Properties = table_feature_prop(PropertiesBin, []),
+    TableFeature = #ofp_table_features{table_id = TableId,
+                                       name = StrippedName,
+                                       metadata_match = MetadataMatch,
+                                       metadata_write = MetadataWrite,
+                                       max_entries = MaxEntries,
+                                       properties = Properties},
+    table_features(Rest, [TableFeature | TableFeatures]).
+
+table_feature_prop(<<>>, Properties) ->
+    lists:reverse(Properties);
+table_feature_prop(Binary, Properties) ->
+    <<TypeInt:16, Length:16, _/bytes>> = Binary,
+    Type = ofp_v4_enum:to_atom(table_feature_prop_type, TypeInt),
+    IdsLength = Length - 4,
+    Padding = ofp_utils:padding(Length, 8) * 8,
+    <<_:16, _:16, IdsBin:IdsLength/bytes, _:Padding, Rest/bytes>> = Binary,
+    Property = case Type of
+                   instructions ->
+                       table_feature_prop_instructions(IdsBin, []);
+                   instructions_miss ->
+                       table_feature_prop_instructions_miss(IdsBin, [])
+               end,
+    table_feature_prop(Rest, [Property | Properties]).
+
+table_feature_prop_instructions(<<>>, Ids) ->
+    #ofp_table_feature_prop_instructions{instruction_ids = lists:reverse(Ids)};
+table_feature_prop_instructions(Binary, Ids) ->
+    <<TypeInt:16, _:16, _/bytes>> = Binary,
+    Type = ofp_v4_enum:to_atom(instruction_type, TypeInt),
+    case Type of
+        experimenter ->
+            <<_:16, _:16, Id:32, Rest/bytes>> = Binary,
+            table_feature_prop_instructions(Rest, [{experimenter, Id} | Ids]);
+        _ ->
+            <<_:16, _:16, Rest/bytes>> = Binary,
+            table_feature_prop_instructions(Rest, [Type | Ids])
+    end.
+
+table_feature_prop_instructions_miss(<<>>, Ids) ->
+    #ofp_table_feature_prop_instructions_miss{
+                                 instruction_ids = lists:reverse(Ids)};
+table_feature_prop_instructions_miss(Binary, Ids) ->
+    <<TypeInt:16, _:16, _/bytes>> = Binary,
+    Type = ofp_v4_enum:to_atom(instruction_type, TypeInt),
+    case Type of
+        experimenter ->
+            <<_:16, _:16, Id:32, Rest/bytes>> = Binary,
+            table_feature_prop_instructions_miss(Rest,
+                                                [{experimenter, Id} | Ids]);
+        _ ->
+            <<_:16, _:16, Rest/bytes>> = Binary,
+            table_feature_prop_instructions_miss(Rest, [Type | Ids])
+    end.
+
+%% ---
 
 decode_port_stats(Binary) ->
     <<PortInt:32, 0:32, RXPackets:64, TXPackets:64, RXBytes:64, TXBytes:64,
@@ -633,8 +694,9 @@ decode_body(multipart_request, Binary) ->
         table_stats ->
             #ofp_table_stats_request{flags = Flags};
         table_features ->
-            TableFeatures = decode_table_features_list(Data),
-            #ofp_table_features_request{flags = Flags, body = TableFeatures};
+            Features = table_features(Data, []),
+            #ofp_table_features_request{flags = Flags,
+                                        body = Features};
         port_desc ->
             #ofp_port_desc_request{flags = Flags};
         port_stats ->
@@ -710,7 +772,9 @@ decode_body(multipart_reply, Binary) ->
             #ofp_table_stats_reply{flags = Flags,
                                    body = Stats};
         table_features ->
-            #ofp_table_features_reply{flags = Flags};
+            Features = table_features(Data, []),
+            #ofp_table_features_reply{flags = Flags,
+                                      body = Features};
         port_desc ->
             #ofp_port_desc_reply{flags = Flags};
         port_stats ->

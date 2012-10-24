@@ -493,6 +493,10 @@ encode_body(#ofp_table_stats_reply{flags = Flags, body = Stats}) ->
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       StatsBin/bytes>>;
+encode_body(#ofp_table_features_request{} = Request) ->
+    table_features_request(Request);
+encode_body(#ofp_table_features_reply{} = Reply) ->
+    table_features_reply(Reply);
 encode_body(#ofp_port_stats_request{flags = Flags, port_no = Port}) ->
     TypeInt = ofp_v4_enum:to_int(multipart_type, port_stats),
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
@@ -618,6 +622,83 @@ encode_body(#ofp_meter_mod{command = Command,
 encode_body(Other) ->
     throw({bad_message, Other}).
 
+%% A.3.5.5 Table Features ------------------------------------------------------
+
+table_features_request(#ofp_table_features_request{flags = Flags,
+                                                   body = Features}) ->
+    TypeInt = ofp_v4_enum:to_int(multipart_type, table_features),
+    FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
+    BodyBin = list_to_binary([table_features(Feature) || Feature <- Features]),
+    <<TypeInt:16, FlagsBin:2/bytes, 0:32, BodyBin/bytes>>.
+
+table_features_reply(#ofp_table_features_reply{flags = Flags,
+                                               body = Features}) ->
+    TypeInt = ofp_v4_enum:to_int(multipart_type, table_features),
+    FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
+    BodyBin = list_to_binary([table_features(Feature) || Feature <- Features]),
+    <<TypeInt:16, FlagsBin:2/bytes, 0:32, BodyBin/bytes>>.
+
+table_features(#ofp_table_features{table_id = TableId,
+                                   name = Name,
+                                   metadata_match = MetadataMatch,
+                                   metadata_write = MetadataWrite,
+                                   max_entries = MaxEntries,
+                                   properties = Properties}) ->
+    TableIdInt = get_id(table, TableId),
+    NamePadding = ofp_utils:padding(byte_size(Name),
+                                    ?OFP_MAX_TABLE_NAME_LEN) * 8,
+    PropertiesBin = list_to_binary([table_feature_prop(Property)
+                                    || Property <- Properties]),
+    Length = 64 + byte_size(PropertiesBin),
+    <<Length:16, TableIdInt:8, 0:40, Name/bytes, 0:NamePadding,
+      MetadataMatch:8/bytes, MetadataWrite:8/bytes, 0:32, MaxEntries:32,
+      PropertiesBin/bytes>>.
+
+table_feature_prop(#ofp_table_feature_prop_instructions{} = Prop) ->
+    table_feature_prop_instructions(Prop);
+table_feature_prop(#ofp_table_feature_prop_instructions_miss{} = Prop) ->
+    table_feature_prop_instructions_miss(Prop).
+
+table_feature_prop_instructions(#ofp_table_feature_prop_instructions{
+                                   instruction_ids = Ids}) ->
+    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, instructions),
+    IdsBin = list_to_binary([table_feature_prop_instruction_id(Id)
+                             || Id <- Ids]),
+    Length = 4 + byte_size(IdsBin),
+    Padding = ofp_utils:padding(Length, 8) * 8,
+    <<TypeInt:16, Length:16, IdsBin/bytes, 0:Padding>>.
+
+table_feature_prop_instructions_miss(#ofp_table_feature_prop_instructions_miss{
+                                        instruction_ids = Ids}) ->
+    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, instructions_miss),
+    IdsBin = list_to_binary([table_feature_prop_instruction_id(Id)
+                             || Id <- Ids]),
+    Length = 4 + byte_size(IdsBin),
+    Padding = ofp_utils:padding(Length, 8) * 8,
+    <<TypeInt:16, Length:16, IdsBin/bytes, 0:Padding>>.
+
+table_feature_prop_instruction_id({experimenter, Id}) when is_integer(Id) ->
+    ExperimenterInt = ofp_v4_enum:to_int(instruction_type, experimenter),
+    <<ExperimenterInt:16, 8:16, Id:32>>;
+table_feature_prop_instruction_id(Id) when is_atom(Id) ->
+    IdInt = ofp_v4_enum:to_int(instruction_type, Id),
+    <<IdInt:16, 4:16>>.
+
+table_feature_prop_action_id({experimenter, Id}) when is_integer(Id) ->
+    ExperimenterInt = ofp_v4_enum:to_int(action_type, experimenter),
+    <<ExperimenterInt:16, 8:16, Id:32>>;
+table_feature_prop_action_id(Id) when is_atom(Id) ->
+    IdInt = ofp_v4_enum:to_int(action_type, Id),
+    <<IdInt:16, 4:16>>.
+
+table_feature_prop_field_id({experimenter, Id}) when is_integer(Id) ->
+    ExperimenterInt = ofp_v4_enum:to_int(oxm_class, experimenter),
+    <<ExperimenterInt:16, 0:7, 0:1, 4:8, Id:32>>;
+table_feature_prop_field_id(Id) when is_atom(Id) ->
+    ClassInt = ofp_v4_enum:to_int(oxm_class, openflow_basic),
+    IdInt = ofp_v4_enum:to_int(oxm_ofb_match_fields, Id),
+    <<ClassInt:16, IdInt:7, 0:1, 0:8>>.
+
 %%------------------------------------------------------------------------------
 %% Helper functions
 %%------------------------------------------------------------------------------
@@ -686,6 +767,10 @@ type_int(#ofp_aggregate_stats_reply{}) ->
 type_int(#ofp_table_stats_request{}) ->
     ofp_v4_enum:to_int(type, multipart_request);
 type_int(#ofp_table_stats_reply{}) ->
+    ofp_v4_enum:to_int(type, multipart_reply);
+type_int(#ofp_table_features_request{}) ->
+    ofp_v4_enum:to_int(type, multipart_request);
+type_int(#ofp_table_features_reply{}) ->
     ofp_v4_enum:to_int(type, multipart_reply);
 type_int(#ofp_port_stats_request{}) ->
     ofp_v4_enum:to_int(type, multipart_request);

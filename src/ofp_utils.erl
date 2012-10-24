@@ -68,11 +68,11 @@ cut_bits(Binary, Bits) ->
 
 -spec padding(integer(), integer()) -> integer().
 padding(Length, Padding) ->
-    case 8 - (Length rem Padding) of
-        8 ->
+    case Padding - (Length rem Padding) of
+        Padding ->
             0;
-        Pad ->
-            Pad
+        Else ->
+            Else
     end.
 
 -spec binary_to_flags(atom(), atom(), binary()) -> [atom()].
