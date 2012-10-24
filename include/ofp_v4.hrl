@@ -727,38 +727,6 @@
 %%% Multipart Messages (A 3.5)
 %%%-----------------------------------------------------------------------------
 
--type ofp_multipart_request() :: ofp_desc_request()
-                               | ofp_flow_stats_request()
-                               | ofp_aggregate_stats_request()
-                               | ofp_table_stats_request()
-                               | ofp_table_features_request()
-                               | ofp_port_desc_request()
-                               | ofp_port_stats_request()
-                               | ofp_queue_stats_request()
-                               | ofp_group_stats_request()
-                               | ofp_group_desc_request()
-                               | ofp_group_features_request()
-                               | ofp_meter_stats_request()
-                               | ofp_meter_config_request()
-                               | ofp_meter_features_request()
-                               | ofp_experimenter_request().
-
--type ofp_multipart_reply() :: ofp_desc_reply()
-                             | ofp_flow_stats_reply()
-                             | ofp_aggregate_stats_reply()
-                             | ofp_table_stats_reply()
-                             | ofp_table_features_reply()
-                             | ofp_port_stats_reply()
-                             | ofp_port_desc_reply()
-                             | ofp_queue_stats_reply()
-                             | ofp_group_stats_reply()
-                             | ofp_group_desc_reply()
-                             | ofp_group_features_reply()
-                             | ofp_meter_stats_reply()
-                             | ofp_meter_config_reply()
-                             | ofp_meter_features_reply()
-                             | ofp_experimenter_reply().
-
 -type ofp_multipart_request_flag() :: more.
 
 -type ofp_multipart_reply_flag() :: more.
@@ -857,70 +825,112 @@
          }).
 -type ofp_table_stats_reply() :: #ofp_table_stats_reply{}.
 
-%%% Table Features (A 3.5.5) ---------------------------------------------------
+%% A.3.5.5 Table Features ------------------------------------------------------
 
 -record(ofp_table_feature_prop_instructions, {
-          type :: instructions | instructions_miss,
-          instruction_ids = [] :: [integer()]
+          instruction_ids = [] :: [atom() | {experimenter, integer()}]
          }).
--type ofp_table_feature_prop_instructions() ::
-        #ofp_table_feature_prop_instructions{}.
+
+-record(ofp_table_feature_prop_instructions_miss, {
+          instruction_ids = [] :: [atom() | {experimenter, integer()}]
+         }).
 
 -record(ofp_table_feature_prop_next_tables, {
-          type :: next_tables | next_tables_miss,
           next_table_ids = [] :: [integer()]
          }).
--type ofp_table_feature_prop_next_tables() ::
-        #ofp_table_feature_prop_next_tables{}.
 
--record(ofp_table_feature_prop_actions, {
-          type :: write_actions
-                | write_actions_miss
-                | apply_actions
-                | apply_actions_miss,
-          action_ids = [] :: [integer()]
+-record(ofp_table_feature_prop_next_tables_miss, {
+          next_table_ids = [] :: [integer()]
          }).
--type ofp_table_feature_prop_actions() ::
-        #ofp_table_feature_prop_actions{}.
 
--record(ofp_table_feature_prop_oxm, {
-          type :: match
-                | wildcards
-                | write_setfield
-                | write_setfield_miss
-                | apply_setfield
-                | apply_setfield_miss,
-          oxm_ids = [] :: [integer()]
+-record(ofp_table_feature_prop_write_actions, {
+          action_ids = [] :: [atom() | {experimenter, integer()}]
          }).
--type ofp_table_feature_prop_oxm() ::
-        #ofp_table_feature_prop_oxm{}.
 
--type ofp_table_feature_property() :: ofp_table_feature_prop_instructions()
-                                    | ofp_table_feature_prop_next_tables()
-                                    | ofp_table_feature_prop_actions()
-                                    | ofp_table_feature_prop_oxm().
+-record(ofp_table_feature_prop_write_actions_miss, {
+          action_ids = [] :: [atom() | {experimenter, integer()}]
+         }).
+
+-record(ofp_table_feature_prop_apply_actions, {
+          action_ids = [] :: [atom() | {experimenter, integer()}]
+         }).
+
+-record(ofp_table_feature_prop_apply_actions_miss, {
+          action_ids = [] :: [atom() | {experimenter, integer()}]
+         }).
+
+-record(ofp_table_feature_prop_match, {
+          oxm_ids = [] :: [atom() | {experimenter, integer()}]
+         }).
+
+-record(ofp_table_feature_prop_wildcards, {
+          oxm_ids = [] :: [atom() | {experimenter, integer()}]
+         }).
+
+-record(ofp_table_feature_prop_write_setfield, {
+          oxm_ids = [] :: [atom() | {experimenter, integer()}]
+         }).
+
+-record(ofp_table_feature_prop_write_setfield_miss, {
+          oxm_ids = [] :: [atom() | {experimenter, integer()}]
+         }).
+
+-record(ofp_table_feature_prop_apply_setfield, {
+          oxm_ids = [] :: [atom() | {experimenter, integer()}]
+         }).
+
+-record(ofp_table_feature_prop_apply_setfield_miss, {
+          oxm_ids = [] :: [atom() | {experimenter, integer()}]
+         }).
+
+-record(ofp_table_feature_prop_experimenter, {
+          experimenter :: integer(),
+          exp_type :: integer(),
+          data = <<>> :: binary()
+         }).
+
+-record(ofp_table_feature_prop_experimenter_miss, {
+          experimenter :: integer(),
+          exp_type :: integer(),
+          data = <<>> :: binary()
+         }).
+
+-type ofp_table_feature_property() ::
+        #ofp_table_feature_prop_instructions{}
+      | #ofp_table_feature_prop_instructions_miss{}
+      | #ofp_table_feature_prop_next_tables{}
+      | #ofp_table_feature_prop_next_tables_miss{}
+      | #ofp_table_feature_prop_write_actions{}
+      | #ofp_table_feature_prop_write_actions_miss{}
+      | #ofp_table_feature_prop_apply_actions{}
+      | #ofp_table_feature_prop_apply_actions_miss{}
+      | #ofp_table_feature_prop_match{}
+      | #ofp_table_feature_prop_wildcards{}
+      | #ofp_table_feature_prop_write_setfield{}
+      | #ofp_table_feature_prop_write_setfield_miss{}
+      | #ofp_table_feature_prop_apply_setfield{}
+      | #ofp_table_feature_prop_apply_setfield_miss{}
+      | #ofp_table_feature_prop_experimenter{}
+      | #ofp_table_feature_prop_experimenter_miss{}.
 
 -record(ofp_table_features, {
           table_id :: ofp_table_id(),
-          name :: binary(),
+          name :: bitstring(),
           metadata_match :: binary(),
           metadata_write :: binary(),
           max_entries :: integer(),
           properties = [] :: [ofp_table_feature_property()]
          }).
--type ofp_table_features() :: #ofp_table_features{}.
 
 -record(ofp_table_features_request, {
           flags = [] :: [ofp_multipart_request_flag()],
-          body = [] :: [ofp_table_features()]
+          body = [] :: [#ofp_table_features{}]
          }).
--type ofp_table_features_request() :: #ofp_table_features_request{}.
 
 -record(ofp_table_features_reply, {
           flags = [] :: [ofp_multipart_reply_flag()],
-          body = [] :: [ofp_table_features()]
+          body = [] :: [#ofp_table_features{}]
          }).
--type ofp_table_features_reply() :: #ofp_table_features_reply{}.          
 
 %%% Port Statistics (A 3.5.6) --------------------------------------------------
 
@@ -1156,6 +1166,38 @@
           data = <<>> :: binary()
          }).
 -type ofp_experimenter_reply() :: #ofp_experimenter_reply{}.
+
+-type ofp_multipart_request() :: ofp_desc_request()
+                               | ofp_flow_stats_request()
+                               | ofp_aggregate_stats_request()
+                               | ofp_table_stats_request()
+                               | #ofp_table_features_request{}
+                               | ofp_port_desc_request()
+                               | ofp_port_stats_request()
+                               | ofp_queue_stats_request()
+                               | ofp_group_stats_request()
+                               | ofp_group_desc_request()
+                               | ofp_group_features_request()
+                               | ofp_meter_stats_request()
+                               | ofp_meter_config_request()
+                               | ofp_meter_features_request()
+                               | ofp_experimenter_request().
+
+-type ofp_multipart_reply() :: ofp_desc_reply()
+                             | ofp_flow_stats_reply()
+                             | ofp_aggregate_stats_reply()
+                             | ofp_table_stats_reply()
+                             | #ofp_table_features_reply{}
+                             | ofp_port_stats_reply()
+                             | ofp_port_desc_reply()
+                             | ofp_queue_stats_reply()
+                             | ofp_group_stats_reply()
+                             | ofp_group_desc_reply()
+                             | ofp_group_features_reply()
+                             | ofp_meter_stats_reply()
+                             | ofp_meter_config_reply()
+                             | ofp_meter_features_reply()
+                             | ofp_experimenter_reply().
 
 %%%-----------------------------------------------------------------------------
 %%% Queue Configuration Messages (A 3.6)
