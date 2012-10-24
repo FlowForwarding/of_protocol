@@ -302,7 +302,26 @@ encode_struct(#ofp_group_desc_stats{type = Type, group_id = Group,
     GroupInt = get_id(group, Group),
     BucketsBin = encode_list(Buckets),
     Length = ?GROUP_DESC_STATS_SIZE + size(BucketsBin),
-    <<Length:16, TypeInt:8, 0:8, GroupInt:32, BucketsBin/bytes>>.
+    <<Length:16, TypeInt:8, 0:8, GroupInt:32, BucketsBin/bytes>>;
+encode_struct(#ofp_meter_stats{meter_id = MeterId, flow_count = FlowCount,
+                               packet_in_count = PacketInCount,
+                               byte_in_count = ByteInCount,
+                               duration_sec = DSec, duration_nsec = DNSec,
+                               band_stats = BandStats}) ->
+    BandStatsBin = encode_list(BandStats),
+    Length = ?METER_STATS_SIZE + byte_size(BandStatsBin),
+    <<MeterId:32, Length:16, 0:48, FlowCount:32, PacketInCount:64,
+      ByteInCount:64, DSec:32, DNSec:32, BandStatsBin/bytes>>;
+encode_struct(#ofp_meter_band_stats{packet_band_count = PBC,
+                                    byte_band_count = BBC}) ->
+    <<PBC:64, BBC:64>>;
+encode_struct(#ofp_meter_config{flags = Flags, meter_id = MeterId,
+                                bands = Bands}) ->
+    MeterIdInt = get_id(meter_id, MeterId),
+    FlagsBin = flags_to_binary(meter_mod_command, Flags, 2),
+    BandsBin = encode_list(Bands),
+    Length = ?METER_CONFIG_SIZE + byte_size(BandsBin),
+    <<Length:16, FlagsBin:16/bits, MeterIdInt:32, BandsBin/bytes>>.
 
 encode_async_masks({PacketInMask1, PacketInMask2},
                    {PortStatusMask1, PortStatusMask2},
@@ -575,6 +594,42 @@ encode_body(#ofp_group_features_reply{flags = Flags, types = Types,
       Max1:32, Max2:32, Max3:32, Max4:32,
       Actions1Bin/bytes, Actions2Bin/bytes, Actions3Bin/bytes,
       Actions4Bin/bytes>>;
+
+encode_body(#ofp_meter_stats_request{flags = Flags, meter_id = MeterId}) ->
+    TypeInt = ofp_v4_enum:to_int(multipart_type, meter_stats),
+    FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
+    MeterIdInt = get_id(meter_id, MeterId),
+    <<TypeInt:16, FlagsBin/bytes, 0:32, MeterIdInt:32, 0:32>>;
+encode_body(#ofp_meter_stats_reply{flags = Flags, body = MeterStats}) ->
+    TypeInt = ofp_v4_enum:to_int(multipart_type, meter_stats),
+    FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
+    StatsBin = encode_list(MeterStats),
+    <<TypeInt:16, FlagsBin/bytes, 0:32, StatsBin/bytes>>;
+encode_body(#ofp_meter_config_request{flags = Flags, meter_id = MeterId}) ->
+    TypeInt = ofp_v4_enum:to_int(multipart_type, meter_config),
+    FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
+    MeterIdInt = get_id(meter_id, MeterId),
+    <<TypeInt:16, FlagsBin/bytes, 0:32, MeterIdInt:32, 0:32>>;
+encode_body(#ofp_meter_config_reply{flags = Flags, body = MeterConfigs}) ->
+    TypeInt = ofp_v4_enum:to_int(multipart_type, meter_config),
+    FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
+    MeterConfigsBin = encode_list(MeterConfigs),
+    <<TypeInt:16, FlagsBin/bytes, 0:32, MeterConfigsBin/bytes>>;
+encode_body(#ofp_meter_features_request{flags = Flags}) ->
+    TypeInt = ofp_v4_enum:to_int(multipart_type, meter_features),
+    FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
+    <<TypeInt:16, FlagsBin/bytes, 0:32>>;
+encode_body(#ofp_meter_features_reply{flags = Flags, max_meter = MaxMeter,
+                                      band_types = BandTypes,
+                                      capabilities = Capabilities,
+                                      max_bands = MaxBands,
+                                      max_color = MaxColor}) ->
+    TypeInt = ofp_v4_enum:to_int(multipart_type, meter_features),
+    FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
+    BandTypesBin = flags_to_binary(meter_band_type, BandTypes, 4),
+    CapabilitiesBin = flags_to_binary(meter_flag, Capabilities, 4),
+    <<TypeInt:16, FlagsBin/bytes, 0:32, MaxMeter:32, BandTypesBin:32/bits,
+      CapabilitiesBin:32/bits, MaxBands:8, MaxColor:8, 0:16>>;
 encode_body(#ofp_experimenter_request{flags = Flags,
                                       experimenter = Experimenter,
                                       exp_type = ExpType, data = Data}) ->
@@ -725,6 +780,18 @@ type_int(#ofp_group_desc_reply{}) ->
 type_int(#ofp_group_features_request{}) ->
     ofp_v4_enum:to_int(type, multipart_request);
 type_int(#ofp_group_features_reply{}) ->
+    ofp_v4_enum:to_int(type, multipart_reply);
+type_int(#ofp_meter_stats_request{}) ->
+    ofp_v4_enum:to_int(type, multipart_request);
+type_int(#ofp_meter_stats_reply{}) ->
+    ofp_v4_enum:to_int(type, multipart_reply);
+type_int(#ofp_meter_config_request{}) ->
+    ofp_v4_enum:to_int(type, multipart_request);
+type_int(#ofp_meter_config_reply{}) ->
+    ofp_v4_enum:to_int(type, multipart_reply);
+type_int(#ofp_meter_features_request{}) ->
+    ofp_v4_enum:to_int(type, multipart_request);
+type_int(#ofp_meter_features_reply{}) ->
     ofp_v4_enum:to_int(type, multipart_reply);
 type_int(#ofp_experimenter_request{}) ->
     ofp_v4_enum:to_int(type, multipart_request);

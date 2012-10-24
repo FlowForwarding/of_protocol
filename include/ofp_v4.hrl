@@ -119,6 +119,8 @@
 -define(GROUP_STATS_SIZE, 40).
 -define(GROUP_DESC_STATS_SIZE, 8).
 -define(METER_BAND_SIZE, 16).
+-define(METER_STATS_SIZE, 40).
+-define(METER_CONFIG_SIZE, 8).
 
 %% Misc sizes (in bytes) -------------------------------------------------------
 
