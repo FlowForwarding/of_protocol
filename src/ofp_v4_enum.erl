@@ -305,6 +305,25 @@
                         meter_features,
                         {experimenter, 16#ffff}]}).
 
+%% A.3.5.5 Table Features ------------------------------------------------------
+
+-enum({table_feature_prop_type, [instructions,
+                                 instructions_miss,
+                                 next_table,
+                                 next_table_miss,
+                                 write_actions,
+                                 write_actions_miss,
+                                 apply_actions,
+                                 apply_actions_miss,
+                                 match,
+                                 wildcards,
+                                 write_setfield,
+                                 write_setfield_miss,
+                                 apply_setfield,
+                                 apply_setfield_miss,
+                                 {experimenter, 16#fffe},
+                                 experimenter_miss]}).
+
 %% Queue Configuration Messages ------------------------------------------------
 
 %% Packet-Out Messages ---------------------------------------------------------
