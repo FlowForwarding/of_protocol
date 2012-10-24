@@ -113,10 +113,10 @@
 -define(BUCKET_SIZE, 16).
 -define(BUCKET_COUNTER_SIZE, 16).
 -define(FLOW_STATS_SIZE, 56).
--define(TABLE_STATS_SIZE, 128).
--define(PORT_STATS_SIZE, 104).
--define(QUEUE_STATS_SIZE, 32).
--define(GROUP_STATS_SIZE, 32).
+-define(TABLE_STATS_SIZE, 24).
+-define(PORT_STATS_SIZE, 112).
+-define(QUEUE_STATS_SIZE, 40).
+-define(GROUP_STATS_SIZE, 40).
 -define(GROUP_DESC_STATS_SIZE, 8).
 -define(METER_BAND_SIZE, 16).
 
@@ -912,7 +912,7 @@
 
 -record(ofp_table_features_request, {
           flags = [] :: [ofp_multipart_request_flag()],
-          table_features = [] :: [ofp_table_features()]
+          body = [] :: [ofp_table_features()]
          }).
 -type ofp_table_features_request() :: #ofp_table_features_request{}.
 
@@ -939,7 +939,7 @@
           rx_crc_err    = 0 :: integer(),
           collisions    = 0 :: integer(),
           duration_sec  = 0 :: integer(),
-          duration_nsec = 0 :: integer()          
+          duration_nsec = 0 :: integer()
          }).
 -type ofp_port_stats() :: #ofp_port_stats{}.
 

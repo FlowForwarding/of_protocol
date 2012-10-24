@@ -370,6 +370,90 @@ decode_table_stats(Binary) ->
     #ofp_table_stats{table_id = Table, active_count = ACount,
                      lookup_count = LCount, matched_count = MCount}.
 
+decode_table_features_list(Binary) ->
+    decode_table_features(Binary, []).
+
+decode_table_features(<<>>, TableFeaturesList) ->
+    lists:reverse(TableFeaturesList);
+decode_table_features(_Binary, _TableFeaturesList) ->
+    unimplemented.
+
+decode_port_stats(Binary) ->
+    <<PortInt:32, 0:32, RXPackets:64, TXPackets:64, RXBytes:64, TXBytes:64,
+      RXDropped:64, TXDropped:64, RXErrors:64, TXErrors:64, FrameErr:64,
+      OverErr:64, CRCErr:64, Collisions:64, DSec:32, DNSec:32>> = Binary,
+    Port = get_id(port_no, PortInt),
+    #ofp_port_stats{port_no = Port,
+                    rx_packets = RXPackets, tx_packets = TXPackets,
+                    rx_bytes = RXBytes, tx_bytes = TXBytes,
+                    rx_dropped = RXDropped, tx_dropped = TXDropped,
+                    rx_errors = RXErrors, tx_errors = TXErrors,
+                    rx_frame_err = FrameErr, rx_over_err = OverErr,
+                    rx_crc_err = CRCErr, collisions = Collisions,
+                    duration_sec = DSec, duration_nsec = DNSec}.
+
+decode_queue_stats(Binary) ->
+    <<PortInt:32, QueueInt:32, Bytes:64,
+      Packets:64, Errors:64, DSec:32, DNSec:32>> = Binary,
+    Port = get_id(port_no, PortInt),
+    Queue = get_id(queue, QueueInt),
+    #ofp_queue_stats{port_no = Port, queue_id = Queue, tx_bytes = Bytes,
+                     tx_packets = Packets, tx_errors = Errors,
+                     duration_sec = DSec, duration_nsec = DNSec}.
+
+decode_group_stats(Binary) ->
+    <<_:16, 0:16, GroupInt:32, RefCount:32,
+      0:32, PCount:64, BCount:64, DSec:32, DNSec:32,
+      BucketsBin/bytes>> = Binary,
+    Group = get_id(group, GroupInt),
+    Buckets = decode_bucket_counters(BucketsBin),
+    #ofp_group_stats{group_id = Group, ref_count = RefCount,
+                     packet_count = PCount, byte_count = BCount,
+                     duration_sec = DSec, duration_nsec = DNSec,
+                     bucket_stats = Buckets}.
+
+decode_group_stats_list(Binary) ->
+    decode_group_stats_list(Binary, []).
+
+decode_group_stats_list(<<>>, StatsList) ->
+    lists:reverse(StatsList);
+decode_group_stats_list(Binary, StatsList) ->
+    <<Length:16, _/bytes>> = Binary,
+    <<StatsBin:Length/bytes, Rest/bytes>> = Binary,
+    Stats = decode_group_stats(StatsBin),
+    decode_group_stats_list(Rest, [Stats | StatsList]).
+
+decode_bucket_counters(Binary) ->
+    decode_bucket_counters(Binary, []).
+
+decode_bucket_counters(<<>>, Buckets) ->
+    lists:reverse(Buckets);
+decode_bucket_counters(<<PCount:64, BCount:64, Rest/bytes>>,
+                       Buckets) ->
+    decode_bucket_counters(Rest,
+                           [#ofp_bucket_counter{packet_count = PCount,
+                                                byte_count = BCount} | Buckets]).
+
+decode_group_desc_stats(Binary) ->
+    <<_:16, TypeInt:8, 0:8,
+      GroupInt:32, BucketsBin/bytes>> = Binary,
+    Type = ofp_v4_enum:to_atom(group_type, TypeInt),
+    Group = get_id(group_desc, GroupInt),
+    Buckets = decode_buckets(BucketsBin),
+    #ofp_group_desc_stats{type = Type, group_id = Group,
+                          buckets = Buckets}.
+
+decode_group_desc_stats_list(Binary) ->
+    decode_group_desc_stats_list(Binary, []).
+
+decode_group_desc_stats_list(<<>>, StatsList) ->
+    lists:reverse(StatsList);
+decode_group_desc_stats_list(Binary, StatsList) ->
+    <<Length:16, _/bytes>> = Binary,
+    <<StatsBin:Length/bytes, Rest/bytes>> = Binary,
+    Stats = decode_group_desc_stats(StatsBin),
+    decode_group_desc_stats_list(Rest, [Stats | StatsList]).
+
 %% @doc Actual decoding of the messages
 -spec decode_body(atom(), binary()) -> ofp_message().
 decode_body(hello, _) ->
@@ -549,7 +633,8 @@ decode_body(multipart_request, Binary) ->
         table_stats ->
             #ofp_table_stats_request{flags = Flags};
         table_features ->
-            #ofp_table_features_request{flags = Flags};
+            TableFeatures = decode_table_features_list(Data),
+            #ofp_table_features_request{flags = Flags, body = TableFeatures};
         port_desc ->
             #ofp_port_desc_request{flags = Flags};
         port_stats ->
@@ -561,8 +646,8 @@ decode_body(multipart_request, Binary) ->
             <<PortInt:32, QueueInt:32>> = Data,
             Port = get_id(port_no, PortInt),
             Queue = get_id(queue, QueueInt),
-            #ofp_queue_stats_request{flags = Flags,
-                                     port_no = Port, queue_id = Queue};
+            #ofp_queue_stats_request{flags = Flags, port_no = Port,
+                                     queue_id = Queue};
         group_stats ->
             <<GroupInt:32, 0:32>> = Data,
             Group = get_id(group, GroupInt),
@@ -625,42 +710,60 @@ decode_body(multipart_reply, Binary) ->
             #ofp_table_stats_reply{flags = Flags,
                                    body = Stats};
         table_features ->
-            #ofp_table_features_request{flags = Flags};
+            #ofp_table_features_reply{flags = Flags};
         port_desc ->
-            #ofp_port_desc_request{flags = Flags};
+            #ofp_port_desc_reply{flags = Flags};
         port_stats ->
-            <<PortInt:32, 0:32>> = Data,
-            Port = get_id(port_no, PortInt),
-            #ofp_port_stats_request{flags = Flags,
-                                    port_no = Port};
+            StatsLength = size(Binary) - ?PORT_STATS_REPLY_SIZE +
+                ?OFP_HEADER_SIZE,
+            <<StatsBin:StatsLength/bytes>> = Data,
+            Stats = [decode_port_stats(PStats)
+                     || PStats <- ofp_utils:split_binaries(StatsBin,
+                                                           ?PORT_STATS_SIZE)],
+            #ofp_port_stats_reply{flags = Flags, body = Stats};
         queue_stats ->
-            <<PortInt:32, QueueInt:32>> = Data,
-            Port = get_id(port_no, PortInt),
-            Queue = get_id(queue, QueueInt),
-            #ofp_queue_stats_request{flags = Flags,
-                                     port_no = Port, queue_id = Queue};
+            StatsLength = size(Binary) - ?QUEUE_STATS_REPLY_SIZE +
+                ?OFP_HEADER_SIZE,
+            <<StatsBin:StatsLength/bytes>> = Data,
+            Stats = [decode_queue_stats(QStats)
+                     || QStats <- ofp_utils:split_binaries(StatsBin,
+                                                           ?QUEUE_STATS_SIZE)],
+            #ofp_queue_stats_reply{flags = Flags, body = Stats};
         group_stats ->
-            <<GroupInt:32, 0:32>> = Data,
-            Group = get_id(group, GroupInt),
-            #ofp_group_stats_request{flags = Flags,
-                                     group_id = Group};
+            StatsLength = size(Binary) - ?GROUP_STATS_REPLY_SIZE +
+                ?OFP_HEADER_SIZE,
+            <<StatsBin:StatsLength/bytes>> = Data,
+            Stats = decode_group_stats_list(StatsBin),
+            #ofp_group_stats_reply{flags = Flags, body = Stats};
         group_desc ->
-            #ofp_group_desc_request{flags = Flags};
+            StatsLength = size(Binary) - ?GROUP_DESC_STATS_REPLY_SIZE +
+                ?OFP_HEADER_SIZE,
+            <<StatsBin:StatsLength/bytes>> = Data,
+            Stats = decode_group_desc_stats_list(StatsBin),
+            #ofp_group_desc_reply{flags = Flags, body = Stats};
         group_features ->
-            #ofp_group_features_request{flags = Flags};
-        meter_stats ->
-            #ofp_meter_stats_request{flags = Flags};
-        meter_config ->
-            #ofp_meter_config_request{flags = Flags};
-        meter_features ->
-            #ofp_meter_features_request{flags = Flags};
+            <<TypesBin:4/bytes, CapabilitiesBin:4/bytes, Max1:32,
+              Max2:32, Max3:32, Max4:32,
+              Actions1Bin:4/bytes, Actions2Bin:4/bytes, Actions3Bin:4/bytes,
+              Actions4Bin:4/bytes>> = Data,
+            Types = binary_to_flags(group_type, TypesBin),
+            Capabilities = binary_to_flags(group_capabilities, CapabilitiesBin),
+            Actions1 = binary_to_flags(action_type, Actions1Bin),
+            Actions2 = binary_to_flags(action_type, Actions2Bin),
+            Actions3 = binary_to_flags(action_type, Actions3Bin),
+            Actions4 = binary_to_flags(action_type, Actions4Bin),
+            #ofp_group_features_reply{flags = Flags, types = Types,
+                                      capabilities = Capabilities,
+                                      max_groups = {Max1, Max2, Max3, Max4},
+                                      actions = {Actions1, Actions2,
+                                                 Actions3, Actions4}};
         experimenter ->
-            DataLength = size(Binary) - ?EXPERIMENTER_STATS_REQUEST_SIZE + ?OFP_HEADER_SIZE,
+            DataLength = size(Binary) - ?EXPERIMENTER_STATS_REPLY_SIZE +
+                ?OFP_HEADER_SIZE,
             <<Experimenter:32, ExpType:32,
               ExpData:DataLength/bytes>> = Data,
-            #ofp_experimenter_request{flags = Flags,
-                                      experimenter = Experimenter,
-                                      exp_type = ExpType, data = ExpData}
+            #ofp_experimenter_reply{flags = Flags, experimenter = Experimenter,
+                                    exp_type = ExpType, data = ExpData}
     end;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
