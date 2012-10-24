@@ -113,6 +113,16 @@ decode_port(Binary) ->
               advertised = Advertised, supported = Supported,
               peer = Peer, curr_speed = CurrSpeed, max_speed = MaxSpeed}.
 
+decode_port_list(Binary) ->
+    decode_port_list(Binary, []).
+
+decode_port_list(<<>>, Ports) ->
+    lists:reverse(Ports);
+decode_port_list(Binary, Ports) ->
+    <<PortBin:?PORT_SIZE/bytes, Rest/bytes>> = Binary,
+    Port = decode_port(PortBin),
+    decode_port_list(Rest, [Port | Ports]).
+
 %% @doc Decode queues
 decode_queues(Binary) ->
     decode_queues(Binary, []).
@@ -776,7 +786,8 @@ decode_body(multipart_reply, Binary) ->
             #ofp_table_features_reply{flags = Flags,
                                       body = Features};
         port_desc ->
-            #ofp_port_desc_reply{flags = Flags};
+            Ports = decode_port_list(Data),
+            #ofp_port_desc_reply{flags = Flags, body = Ports};
         port_stats ->
             StatsLength = size(Binary) - ?PORT_STATS_REPLY_SIZE +
                 ?OFP_HEADER_SIZE,

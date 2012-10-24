@@ -509,6 +509,15 @@ encode_body(#ofp_port_stats_reply{flags = Flags, body = Stats}) ->
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       StatsBin/bytes>>;
+encode_body(#ofp_port_desc_request{flags = Flags}) ->
+    TypeInt = ofp_v4_enum:to_int(multipart_type, port_desc),
+    FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
+    <<TypeInt:16, FlagsBin/bytes, 0:32>>;
+encode_body(#ofp_port_desc_reply{flags = Flags, body = Ports}) ->
+    TypeInt = ofp_v4_enum:to_int(multipart_type, port_desc),
+    FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
+    PortsBin = encode_list(Ports),
+    <<TypeInt:16, FlagsBin/bytes, 0:32, PortsBin/bytes>>;
 encode_body(#ofp_queue_stats_request{flags = Flags,
                                      port_no = Port, queue_id = Queue}) ->
     TypeInt = ofp_v4_enum:to_int(multipart_type, queue_stats),
@@ -775,6 +784,10 @@ type_int(#ofp_table_features_reply{}) ->
 type_int(#ofp_port_stats_request{}) ->
     ofp_v4_enum:to_int(type, multipart_request);
 type_int(#ofp_port_stats_reply{}) ->
+    ofp_v4_enum:to_int(type, multipart_reply);
+type_int(#ofp_port_desc_request{}) ->
+    ofp_v4_enum:to_int(type, multipart_request);
+type_int(#ofp_port_desc_reply{}) ->
     ofp_v4_enum:to_int(type, multipart_reply);
 type_int(#ofp_queue_stats_request{}) ->
     ofp_v4_enum:to_int(type, multipart_request);
