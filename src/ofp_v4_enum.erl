@@ -309,8 +309,8 @@
 
 -enum({table_feature_prop_type, [instructions,
                                  instructions_miss,
-                                 next_table,
-                                 next_table_miss,
+                                 next_tables,
+                                 next_tables_miss,
                                  write_actions,
                                  write_actions_miss,
                                  apply_actions,

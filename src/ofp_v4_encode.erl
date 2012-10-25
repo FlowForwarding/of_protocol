@@ -666,7 +666,11 @@ table_features(#ofp_table_features{table_id = TableId,
 table_feature_prop(#ofp_table_feature_prop_instructions{} = Prop) ->
     table_feature_prop_instructions(Prop);
 table_feature_prop(#ofp_table_feature_prop_instructions_miss{} = Prop) ->
-    table_feature_prop_instructions_miss(Prop).
+    table_feature_prop_instructions_miss(Prop);
+table_feature_prop(#ofp_table_feature_prop_next_tables{} = Prop) ->
+    table_feature_prop_next_tables(Prop);
+table_feature_prop(#ofp_table_feature_prop_next_tables_miss{} = Prop) ->
+    table_feature_prop_next_tables_miss(Prop).
 
 table_feature_prop_instructions(#ofp_table_feature_prop_instructions{
                                    instruction_ids = Ids}) ->
@@ -682,6 +686,22 @@ table_feature_prop_instructions_miss(#ofp_table_feature_prop_instructions_miss{
     TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, instructions_miss),
     IdsBin = list_to_binary([table_feature_prop_instruction_id(Id)
                              || Id <- Ids]),
+    Length = 4 + byte_size(IdsBin),
+    Padding = ofp_utils:padding(Length, 8) * 8,
+    <<TypeInt:16, Length:16, IdsBin/bytes, 0:Padding>>.
+
+table_feature_prop_next_tables(#ofp_table_feature_prop_next_tables{
+                                  next_table_ids = Ids}) ->
+    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, next_tables),
+    IdsBin = list_to_binary([<<Id:8>> || Id <- Ids]),
+    Length = 4 + byte_size(IdsBin),
+    Padding = ofp_utils:padding(Length, 8) * 8,
+    <<TypeInt:16, Length:16, IdsBin/bytes, 0:Padding>>.
+
+table_feature_prop_next_tables_miss(#ofp_table_feature_prop_next_tables_miss{
+                                       next_table_ids = Ids}) ->
+    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, next_tables_miss),
+    IdsBin = list_to_binary([<<Id:8>> || Id <- Ids]),
     Length = 4 + byte_size(IdsBin),
     Padding = ofp_utils:padding(Length, 8) * 8,
     <<TypeInt:16, Length:16, IdsBin/bytes, 0:Padding>>.

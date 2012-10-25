@@ -413,7 +413,11 @@ table_feature_prop(Binary, Properties) ->
                    instructions ->
                        table_feature_prop_instructions(IdsBin, []);
                    instructions_miss ->
-                       table_feature_prop_instructions_miss(IdsBin, [])
+                       table_feature_prop_instructions_miss(IdsBin, []);
+                   next_tables ->
+                       table_feature_prop_next_tables(IdsBin, []);
+                   next_tables_miss ->
+                       table_feature_prop_next_tables_miss(IdsBin, [])
                end,
     table_feature_prop(Rest, [Property | Properties]).
 
@@ -446,6 +450,17 @@ table_feature_prop_instructions_miss(Binary, Ids) ->
             <<_:16, _:16, Rest/bytes>> = Binary,
             table_feature_prop_instructions_miss(Rest, [Type | Ids])
     end.
+
+table_feature_prop_next_tables(<<>>, Ids) ->
+    #ofp_table_feature_prop_next_tables{next_table_ids = lists:reverse(Ids)};
+table_feature_prop_next_tables(<<Id:8, Rest/bytes>>, Ids) ->
+    table_feature_prop_next_tables(Rest, [Id | Ids]).
+
+table_feature_prop_next_tables_miss(<<>>, Ids) ->
+    #ofp_table_feature_prop_next_tables_miss{
+                                     next_table_ids = lists:reverse(Ids)};
+table_feature_prop_next_tables_miss(<<Id:8, Rest/bytes>>, Ids) ->
+    table_feature_prop_next_tables_miss(Rest, [Id | Ids]).
 
 %% ---
 
