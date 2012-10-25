@@ -678,7 +678,19 @@ table_feature_prop(#ofp_table_feature_prop_write_actions_miss{} = Prop) ->
 table_feature_prop(#ofp_table_feature_prop_apply_actions{} = Prop) ->
     table_feature_prop_apply_actions(Prop);
 table_feature_prop(#ofp_table_feature_prop_apply_actions_miss{} = Prop) ->
-    table_feature_prop_apply_actions_miss(Prop).
+    table_feature_prop_apply_actions_miss(Prop);
+table_feature_prop(#ofp_table_feature_prop_match{} = Prop) ->
+    table_feature_prop_match(Prop);
+table_feature_prop(#ofp_table_feature_prop_wildcards{} = Prop) ->
+    table_feature_prop_wildcards(Prop);
+table_feature_prop(#ofp_table_feature_prop_write_setfield{} = Prop) ->
+    table_feature_prop_write_setfield(Prop);
+table_feature_prop(#ofp_table_feature_prop_write_setfield_miss{} = Prop) ->
+    table_feature_prop_write_setfield_miss(Prop);
+table_feature_prop(#ofp_table_feature_prop_apply_setfield{} = Prop) ->
+    table_feature_prop_apply_setfield(Prop);
+table_feature_prop(#ofp_table_feature_prop_apply_setfield_miss{} = Prop) ->
+    table_feature_prop_apply_setfield_miss(Prop).
 
 table_feature_prop_instructions(#ofp_table_feature_prop_instructions{
                                    instruction_ids = Ids}) ->
@@ -742,6 +754,54 @@ table_feature_prop_apply_actions_miss(
   #ofp_table_feature_prop_apply_actions_miss{action_ids = Ids}) ->
     TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, apply_actions_miss),
     IdsBin = list_to_binary([table_feature_prop_action_id(Id) || Id <- Ids]),
+    Length = 4 + byte_size(IdsBin),
+    Padding = ofp_utils:padding(Length, 8) * 8,
+    <<TypeInt:16, Length:16, IdsBin/bytes, 0:Padding>>.
+
+table_feature_prop_match(#ofp_table_feature_prop_match{
+                            oxm_ids = Ids}) ->
+    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, match),
+    IdsBin = list_to_binary([table_feature_prop_field_id(Id) || Id <- Ids]),
+    Length = 4 + byte_size(IdsBin),
+    Padding = ofp_utils:padding(Length, 8) * 8,
+    <<TypeInt:16, Length:16, IdsBin/bytes, 0:Padding>>.
+
+table_feature_prop_wildcards(#ofp_table_feature_prop_wildcards{
+                                oxm_ids = Ids}) ->
+    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, wildcards),
+    IdsBin = list_to_binary([table_feature_prop_field_id(Id) || Id <- Ids]),
+    Length = 4 + byte_size(IdsBin),
+    Padding = ofp_utils:padding(Length, 8) * 8,
+    <<TypeInt:16, Length:16, IdsBin/bytes, 0:Padding>>.
+
+table_feature_prop_write_setfield(#ofp_table_feature_prop_write_setfield{
+                                     oxm_ids = Ids}) ->
+    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, write_setfield),
+    IdsBin = list_to_binary([table_feature_prop_field_id(Id) || Id <- Ids]),
+    Length = 4 + byte_size(IdsBin),
+    Padding = ofp_utils:padding(Length, 8) * 8,
+    <<TypeInt:16, Length:16, IdsBin/bytes, 0:Padding>>.
+
+table_feature_prop_write_setfield_miss(
+  #ofp_table_feature_prop_write_setfield_miss{oxm_ids = Ids}) ->
+    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, write_setfield_miss),
+    IdsBin = list_to_binary([table_feature_prop_field_id(Id) || Id <- Ids]),
+    Length = 4 + byte_size(IdsBin),
+    Padding = ofp_utils:padding(Length, 8) * 8,
+    <<TypeInt:16, Length:16, IdsBin/bytes, 0:Padding>>.
+
+table_feature_prop_apply_setfield(#ofp_table_feature_prop_apply_setfield{
+                                     oxm_ids = Ids}) ->
+    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, apply_setfield),
+    IdsBin = list_to_binary([table_feature_prop_field_id(Id) || Id <- Ids]),
+    Length = 4 + byte_size(IdsBin),
+    Padding = ofp_utils:padding(Length, 8) * 8,
+    <<TypeInt:16, Length:16, IdsBin/bytes, 0:Padding>>.
+
+table_feature_prop_apply_setfield_miss(
+  #ofp_table_feature_prop_apply_setfield_miss{oxm_ids = Ids}) ->
+    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, apply_setfield_miss),
+    IdsBin = list_to_binary([table_feature_prop_field_id(Id) || Id <- Ids]),
     Length = 4 + byte_size(IdsBin),
     Padding = ofp_utils:padding(Length, 8) * 8,
     <<TypeInt:16, Length:16, IdsBin/bytes, 0:Padding>>.

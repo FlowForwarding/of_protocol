@@ -425,7 +425,19 @@ table_feature_prop(Binary, Properties) ->
                    apply_actions ->
                        table_feature_prop_apply_actions(IdsBin, []);
                    apply_actions_miss ->
-                       table_feature_prop_apply_actions_miss(IdsBin, [])
+                       table_feature_prop_apply_actions_miss(IdsBin, []);
+                   match ->
+                       table_feature_prop_match(IdsBin, []);
+                   wildcards ->
+                       table_feature_prop_wildcards(IdsBin, []);
+                   write_setfield ->
+                       table_feature_prop_write_setfield(IdsBin, []);
+                   write_setfield_miss ->
+                       table_feature_prop_write_setfield_miss(IdsBin, []);
+                   apply_setfield ->
+                       table_feature_prop_apply_setfield(IdsBin, []);
+                   apply_setfield_miss ->
+                       table_feature_prop_apply_setfield_miss(IdsBin, [])
                end,
     table_feature_prop(Rest, [Property | Properties]).
 
@@ -526,6 +538,98 @@ table_feature_prop_apply_actions_miss(Binary, Ids) ->
         _ ->
             <<_:16, _:16, Rest/bytes>> = Binary,
             table_feature_prop_apply_actions_miss(Rest, [Type | Ids])
+    end.
+
+table_feature_prop_match(<<>>, Ids) ->
+    #ofp_table_feature_prop_match{oxm_ids = lists:reverse(Ids)};
+table_feature_prop_match(Binary, Ids) ->
+    <<ClassInt:16, _:16, _/bytes>> = Binary,
+    Class = ofp_v4_enum:to_atom(oxm_class, ClassInt),
+    case Class of
+        experimenter ->
+            <<_:16, _:16, Id:32, Rest/bytes>> = Binary,
+            table_feature_prop_match(Rest, [{experimenter, Id} | Ids]);
+        openflow_basic ->
+            <<_:16, IdInt:7, _:1, _:8, Rest/bytes>> = Binary,
+            Id = ofp_v4_enum:to_atom(oxm_ofb_match_fields, IdInt),
+            table_feature_prop_match(Rest, [Id | Ids])
+    end.
+
+table_feature_prop_wildcards(<<>>, Ids) ->
+    #ofp_table_feature_prop_wildcards{oxm_ids = lists:reverse(Ids)};
+table_feature_prop_wildcards(Binary, Ids) ->
+    <<ClassInt:16, _:16, _/bytes>> = Binary,
+    Class = ofp_v4_enum:to_atom(oxm_class, ClassInt),
+    case Class of
+        experimenter ->
+            <<_:16, _:16, Id:32, Rest/bytes>> = Binary,
+            table_feature_prop_wildcards(Rest, [{experimenter, Id} | Ids]);
+        openflow_basic ->
+            <<_:16, IdInt:7, _:1, _:8, Rest/bytes>> = Binary,
+            Id = ofp_v4_enum:to_atom(oxm_ofb_match_fields, IdInt),
+            table_feature_prop_wildcards(Rest, [Id | Ids])
+    end.
+
+table_feature_prop_write_setfield(<<>>, Ids) ->
+    #ofp_table_feature_prop_write_setfield{oxm_ids = lists:reverse(Ids)};
+table_feature_prop_write_setfield(Binary, Ids) ->
+    <<ClassInt:16, _:16, _/bytes>> = Binary,
+    Class = ofp_v4_enum:to_atom(oxm_class, ClassInt),
+    case Class of
+        experimenter ->
+            <<_:16, _:16, Id:32, Rest/bytes>> = Binary,
+            table_feature_prop_write_setfield(Rest, [{experimenter, Id} | Ids]);
+        openflow_basic ->
+            <<_:16, IdInt:7, _:1, _:8, Rest/bytes>> = Binary,
+            Id = ofp_v4_enum:to_atom(oxm_ofb_match_fields, IdInt),
+            table_feature_prop_write_setfield(Rest, [Id | Ids])
+    end.
+
+table_feature_prop_write_setfield_miss(<<>>, Ids) ->
+    #ofp_table_feature_prop_write_setfield_miss{oxm_ids = lists:reverse(Ids)};
+table_feature_prop_write_setfield_miss(Binary, Ids) ->
+    <<ClassInt:16, _:16, _/bytes>> = Binary,
+    Class = ofp_v4_enum:to_atom(oxm_class, ClassInt),
+    case Class of
+        experimenter ->
+            <<_:16, _:16, Id:32, Rest/bytes>> = Binary,
+            table_feature_prop_write_setfield_miss(
+              Rest, [{experimenter, Id} | Ids]);
+        openflow_basic ->
+            <<_:16, IdInt:7, _:1, _:8, Rest/bytes>> = Binary,
+            Id = ofp_v4_enum:to_atom(oxm_ofb_match_fields, IdInt),
+            table_feature_prop_write_setfield_miss(Rest, [Id | Ids])
+    end.
+
+table_feature_prop_apply_setfield(<<>>, Ids) ->
+    #ofp_table_feature_prop_apply_setfield{oxm_ids = lists:reverse(Ids)};
+table_feature_prop_apply_setfield(Binary, Ids) ->
+    <<ClassInt:16, _:16, _/bytes>> = Binary,
+    Class = ofp_v4_enum:to_atom(oxm_class, ClassInt),
+    case Class of
+        experimenter ->
+            <<_:16, _:16, Id:32, Rest/bytes>> = Binary,
+            table_feature_prop_apply_setfield(Rest, [{experimenter, Id} | Ids]);
+        openflow_basic ->
+            <<_:16, IdInt:7, _:1, _:8, Rest/bytes>> = Binary,
+            Id = ofp_v4_enum:to_atom(oxm_ofb_match_fields, IdInt),
+            table_feature_prop_apply_setfield(Rest, [Id | Ids])
+    end.
+
+table_feature_prop_apply_setfield_miss(<<>>, Ids) ->
+    #ofp_table_feature_prop_apply_setfield_miss{oxm_ids = lists:reverse(Ids)};
+table_feature_prop_apply_setfield_miss(Binary, Ids) ->
+    <<ClassInt:16, _:16, _/bytes>> = Binary,
+    Class = ofp_v4_enum:to_atom(oxm_class, ClassInt),
+    case Class of
+        experimenter ->
+            <<_:16, _:16, Id:32, Rest/bytes>> = Binary,
+            table_feature_prop_apply_setfield_miss(
+              Rest, [{experimenter, Id} | Ids]);
+        openflow_basic ->
+            <<_:16, IdInt:7, _:1, _:8, Rest/bytes>> = Binary,
+            Id = ofp_v4_enum:to_atom(oxm_ofb_match_fields, IdInt),
+            table_feature_prop_apply_setfield_miss(Rest, [Id | Ids])
     end.
 
 %% ---
