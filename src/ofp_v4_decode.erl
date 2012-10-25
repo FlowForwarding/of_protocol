@@ -437,7 +437,11 @@ table_feature_prop(Binary, Properties) ->
                    apply_setfield ->
                        table_feature_prop_apply_setfield(IdsBin, []);
                    apply_setfield_miss ->
-                       table_feature_prop_apply_setfield_miss(IdsBin, [])
+                       table_feature_prop_apply_setfield_miss(IdsBin, []);
+                   experimenter ->
+                       table_feature_prop_experimenter(IdsBin);
+                   experimenter_miss ->
+                       table_feature_prop_experimenter_miss(IdsBin)
                end,
     table_feature_prop(Rest, [Property | Properties]).
 
@@ -631,6 +635,18 @@ table_feature_prop_apply_setfield_miss(Binary, Ids) ->
             Id = ofp_v4_enum:to_atom(oxm_ofb_match_fields, IdInt),
             table_feature_prop_apply_setfield_miss(Rest, [Id | Ids])
     end.
+
+table_feature_prop_experimenter(Binary) ->
+    <<Experimenter:32, ExpType:32, Data/bytes>> = Binary,
+    #ofp_table_feature_prop_experimenter{experimenter = Experimenter,
+                                         exp_type = ExpType,
+                                         data = Data}.
+
+table_feature_prop_experimenter_miss(Binary) ->
+    <<Experimenter:32, ExpType:32, Data/bytes>> = Binary,
+    #ofp_table_feature_prop_experimenter_miss{experimenter = Experimenter,
+                                              exp_type = ExpType,
+                                              data = Data}.
 
 %% ---
 

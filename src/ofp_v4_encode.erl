@@ -690,7 +690,11 @@ table_feature_prop(#ofp_table_feature_prop_write_setfield_miss{} = Prop) ->
 table_feature_prop(#ofp_table_feature_prop_apply_setfield{} = Prop) ->
     table_feature_prop_apply_setfield(Prop);
 table_feature_prop(#ofp_table_feature_prop_apply_setfield_miss{} = Prop) ->
-    table_feature_prop_apply_setfield_miss(Prop).
+    table_feature_prop_apply_setfield_miss(Prop);
+table_feature_prop(#ofp_table_feature_prop_experimenter{} = Prop) ->
+    table_feature_prop_experimenter(Prop);
+table_feature_prop(#ofp_table_feature_prop_experimenter_miss{} = Prop) ->
+    table_feature_prop_experimenter_miss(Prop).
 
 table_feature_prop_instructions(#ofp_table_feature_prop_instructions{
                                    instruction_ids = Ids}) ->
@@ -805,6 +809,26 @@ table_feature_prop_apply_setfield_miss(
     Length = 4 + byte_size(IdsBin),
     Padding = ofp_utils:padding(Length, 8) * 8,
     <<TypeInt:16, Length:16, IdsBin/bytes, 0:Padding>>.
+
+table_feature_prop_experimenter(#ofp_table_feature_prop_experimenter{
+                                   experimenter = Experimenter,
+                                   exp_type = ExpType,
+                                   data = Data}) ->
+    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, experimenter),
+    Length = 12 + byte_size(Data),
+    Padding = ofp_utils:padding(Length, 8) * 8,
+    <<TypeInt:16, Length:16, Experimenter:32, ExpType:32, Data/bytes,
+      0:Padding>>.
+
+table_feature_prop_experimenter_miss(#ofp_table_feature_prop_experimenter_miss{
+                                        experimenter = Experimenter,
+                                        exp_type = ExpType,
+                                        data = Data}) ->
+    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, experimenter_miss),
+    Length = 12 + byte_size(Data),
+    Padding = ofp_utils:padding(Length, 8) * 8,
+    <<TypeInt:16, Length:16, Experimenter:32, ExpType:32, Data/bytes,
+      0:Padding>>.
 
 table_feature_prop_instruction_id({experimenter, Id}) when is_integer(Id) ->
     ExperimenterInt = ofp_v4_enum:to_int(instruction_type, experimenter),
