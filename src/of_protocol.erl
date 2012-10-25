@@ -66,7 +66,5 @@ get_module(4) ->
     ofp_v4;
 get_module(3) ->
     ofp_v3;
-get_module(1) ->
-    ofp_v1;
 get_module(_) ->
     unsupported.
