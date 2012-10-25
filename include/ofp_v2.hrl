@@ -1,261 +1,567 @@
-%%%-----------------------------------------------------------------------------
-%%% Use is subject to License terms.
-%%% @copyright (C) 2012 FlowForwarding.org
-%%% @doc OpenFlow Protocol version 1.1 specific header.
-%%% @end
-%%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% Copyright 2012 FlowForwarding.org
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+%%-----------------------------------------------------------------------------
+
+%% @author Erlang Solutions Ltd. <openflow@erlang-solutions.com>
+%% @author Krzysztof Rutka <krzysztof.rutka@erlang-solutions.com>
+%% @copyright 2012 FlowForwarding.org
+%% @doc OpenFlow Protocol 1.1 specific header.
+
+%%------------------------------------------------------------------------------
+%% OpenFlow Header
+%%------------------------------------------------------------------------------
 
 %% Protocol version
 -define(VERSION, 2).
 
-%% Misc
--define(OFP_ETH_ALEN, 6).
--define(OFP_MAX_PORT_NAME_LEN, 16).
--define(OFP_MAX_TABLE_NAME_LEN, 32).
--define(DESC_STR_LEN, 256).
--define(SERIAL_NUM_LEN, 32).
+%%------------------------------------------------------------------------------
+%% Common Structures
+%%------------------------------------------------------------------------------
 
-%%%-----------------------------------------------------------------------------
-%%% Common Structure
-%%%-----------------------------------------------------------------------------
+%% Port Structures -------------------------------------------------------------
 
-%%% Header ---------------------------------------------------------------------
+-record(ofp_port, {
+          port_no,
+          hw_addr,
+          name,
+          config,
+          state,
+          curr,
+          advertised,
+          supported,
+          peer,
+          curr_speed,
+          max_speed
+         }).
 
-%% Message types; enum ofp_type
--define(OFPT_HELLO, 0).
--define(OFPT_ERROR, 1).
--define(OFPT_ECHO_REQUEST, 2).
--define(OFPT_ECHO_REPLY, 3).
--define(OFPT_EXPERIMENTER, 4).
--define(OFPT_FEATURES_REQUEST, 5).
--define(OFPT_FEATURES_REPLY, 6).
--define(OFPT_GET_CONFIG_REQUEST, 7).
--define(OFPT_GET_CONFIG_REPLY, 8).
--define(OFPT_SET_CONFIG, 9).
--define(OFPT_PACKET_IN, 10).
--define(OFPT_FLOW_REMOVED, 11).
--define(OFPT_PORT_STATUS, 12).
--define(OFPT_PACKET_OUT, 13).
--define(OFPT_FLOW_MOD, 14).
--define(OFPT_GROUP_MOD, 15).
--define(OFPT_PORT_MOD, 16).
--define(OFPT_TABLE_MOD, 17).
--define(OFPT_STATS_REQUEST, 18).
--define(OFPT_STATS_REPLY, 19).
--define(OFPT_BARRIER_REQUEST, 20).
--define(OFPT_BARRIER_REPLY, 21).
--define(OFPT_QUEUE_GET_CONFIG_REQUEST, 22).
--define(OFPT_QUEUE_GET_CONFIG_REPLY, 23).
+%% Queue Structures ------------------------------------------------------------
 
-%%% Port Structures ------------------------------------------------------------
+-record(ofp_packet_queue, {
+          queue_id,
+          properties
+         }).
 
-%% Port config; enum ofp_port_config
--define(OFPPC_PORT_DOWN, 0).
--define(OFPPC_NO_RECV, 2).
--define(OFPPC_NO_FWD, 5).
--define(OFPPC_NO_PACKET_IN, 6).
+-record(ofp_queue_prop_none, {}).
 
-%% Port state; enum ofp_port_state
--define(OFPPS_LINK_DOWN, 0).
--define(OFPPS_BLOCKED, 1).
--define(OFPPS_LIVE, 2).
+-record(ofp_queue_prop_min_rate, {
+          rate
+         }).
 
-%% Port numbers; Reserved ports; enum ofp_port_no
--define(OFPP_MAX, 16#ffffff00).
--define(OFPP_IN_PORT, 16#fffffff8).
--define(OFPP_TABLE, 16#fffffff9).
--define(OFPP_NORMAL, 16#fffffffa).
--define(OFPP_FLOOD, 16#fffffffb).
--define(OFPP_ALL, 16#fffffffc).
--define(OFPP_CONTROLLER, 16#fffffffd).
--define(OFPP_LOCAL, 16#fffffffe).
--define(OFPP_ANY, 16#ffffffff).
+%% Flow Match Structures -------------------------------------------------------
 
-%% Port features; enum ofp_port_features
--define(OFPPF_10MB_HD, 0).
--define(OFPPF_10MB_FD, 1).
--define(OFPPF_100MB_HD, 2).
--define(OFPPF_100MB_FD, 3).
--define(OFPPF_1GB_HD, 4).
--define(OFPPF_1GB_FD, 5).
--define(OFPPF_10GB_FD, 6).
--define(OFPPF_40GB_FD, 7).
--define(OFPPF_100GB_FD, 8).
--define(OFPPF_1TB_FD, 9).
--define(OFPPF_OTHER, 10).
--define(OFPPF_COPPER, 11).
--define(OFPPF_FIBER, 12).
--define(OFPPF_AUTONEG, 13).
--define(OFPPF_PAUSE, 14).
--define(OFPPF_PAUSE_ASYM, 15).
+-record(ofp_match, {
+          in_port,
+          wildcards,
+          dl_src,
+          dl_src_mask,
+          dl_dst,
+          dl_dst_mask,
+          dl_vlan,
+          dl_vlan_pcp,
+          dl_type,
+          nw_tos,
+          nw_proto,
+          nw_src,
+          nw_src_mask,
+          nw_dst,
+          nw_dst_mask,
+          tp_src,
+          tp_dst,
+          mpls_label,
+          mpls_tc,
+          metadata,
+          metadata_mask
+         }).
 
-%%% Queue Structures -----------------------------------------------------------
+%% Flow Instruction Structures -------------------------------------------------
 
-%% Queue ids
--define(OFPQ_MAX, 16#fffffffe).
--define(OFPQ_ALL, 16#ffffffff).
+-record(ofp_instruction_goto_table, {
+          table_id
+         }).
 
-%% Queue properties; enum ofp_queue_properties
--define(OFPQT_MIN_RATE, 1).
+-record(ofp_instruction_write_metadata, {
+          metadata,
+          metadata_mask
+         }).
 
-%%% Flow Match Structures ------------------------------------------------------
+-record(ofp_instruction_write_actions, {
+          actions
+         }).
 
-%% Match types; enum ofp_match_type
--define(OFPMT_STANDARD, 0).
+-record(ofp_instruction_apply_actions, {
+          actions
+         }).
 
-%% Flow wildcards; enum ofp_flow_wildcards
--define(OFPFW_IN_PORT, 0).
--define(OFPFW_DL_VLAN, 1).
--define(OFPFW_DL_VLAN_PCP, 2).
--define(OFPFW_DL_TYPE, 3).
--define(OFPFW_NW_TOS, 4).
--define(OFPFW_NW_PROTO, 5).
--define(OFPFW_TP_SRC, 6).      %% TCP/UDP/SCTP
--define(OFPFW_TP_DST, 7).      %% TCP/UDP/SCTP
--define(OFPFW_MPLS_LABEL, 8).
--define(OFPFW_MPLS_TC, 9).
--define(OFPFW_ALL, 1023).
+-record(ofp_instruction_clear_actions, {}).
 
-%% VLAN ids; enum ofp_vlan_id
--define(OFPVID_PRESENT, 16#fffe).
--define(OFPVID_NONE, 16#ffff).
+-record(ofp_instruction_experimenter, {
+          experimenter,
+          data
+         }).
 
-%%% Flow Instruction Structures ------------------------------------------------
+%% Action Structures -----------------------------------------------------------
 
-%% Instruction types; enum ofp_instruction_type
--define(OFPIT_GOTO_TABLE, 1).
--define(OFPIT_WRITE_METADATA, 2).
--define(OFPIT_WRITE_ACTIONS, 3).
--define(OFPIT_APPLY_ACTIONS, 4).
--define(OFPIT_CLEAR_ACTIONS, 5).
--define(OFPIT_EXPERIMENTER, 16#ffff).
+-record(ofp_action_output, {
+          port,
+          max_len
+         }).
 
-%%% Action Structures ----------------------------------------------------------
+-record(ofp_action_set_vlan_vid, {
+          vlan_vid
+         }).
 
-%% Action types; enum ofp_action_type
--define(OFPAT_OUTPUT, 0).
--define(OFPAT_SET_VLAN_VID, 1).
--define(OFPAT_SET_VLAN_PCP, 2).
--define(OFPAT_SET_DL_SRC, 3).
--define(OFPAT_SET_DL_DST, 4).
--define(OFPAT_SET_NW_SRC, 5).
--define(OFPAT_SET_NW_DST, 6).
--define(OFPAT_SET_NW_TOS, 7).
--define(OFPAT_SET_NW_ECN, 8).
--define(OFPAT_SET_TP_SRC, 9).
--define(OFPAT_SET_TP_DST, 10).
--define(OFPAT_COPY_TTL_OUT, 11).
--define(OFPAT_COPY_TTL_IN, 12).
--define(OFPAT_SET_MPLS_LABEL, 13).
--define(OFPAT_SET_MPLS_TC, 14).
--define(OFPAT_SET_MPLS_TTL, 15).
--define(OFPAT_DEC_MPLS_TTL, 16).
--define(OFPAT_PUSH_VLAN, 17).
--define(OFPAT_POP_VLAN, 18).
--define(OFPAT_PUSH_MPLS, 19).
--define(OFPAT_POP_MPLS, 20).
--define(OFPAT_SET_QUEUE, 21).
--define(OFPAT_GROUP, 22).
--define(OFPAT_SET_NW_TTL, 23).
--define(OFPAT_DEC_NW_TTL, 24).
--define(OFPAT_EXPERIMENTER, 16#ffff).
+-record(ofp_action_set_vlan_pcp, {
+          vlan_pcp
+         }).
 
-%%%-----------------------------------------------------------------------------
-%%% Controller-to-Switch Messages
-%%%-----------------------------------------------------------------------------
+-record(ofp_action_set_dl_src, {
+          dl_src
+         }).
 
-%%% Features (Handshake) -------------------------------------------------------
+-record(ofp_action_set_dl_dst, {
+          dl_dst
+         }).
 
-%% Capabilities of the switch; enum ofp_capabilities
--define(OFPC_FLOW_STATS, 0).
--define(OFPC_TABLE_STATS, 1).
--define(OFPC_PORT_STATS, 2).
--define(OFPC_GROUP_STATS, 3).
--define(OFPC_IP_REASM, 5).
--define(OFPC_QUEUE_STATS, 6).
--define(OFPC_ARP_MATCH_IP, 7).
+-record(ofp_action_set_nw_src, {
+          nw_src
+         }).
 
-%%% Switch Configuration -------------------------------------------------------
+-record(ofp_action_set_nw_dst, {
+          nw_dst
+         }).
 
-%% Configuration flags; enum ofp_config_flags
--define(OFPC_FRAG_DROP, 0).
--define(OFPC_FRAG_REASM, 1).
--define(OFPC_INVALID_TTL_TO_CONTROLLER, 2).
+-record(ofp_action_set_nw_tos, {
+          nw_tos
+         }).
 
-%%% Modify-State ---------------------------------------------------------------
+-record(ofp_action_set_nw_ecn, {
+          nw_ecn
+         }).
 
-%% Flow mod commands
--define(OFPFC_ADD, 0).
--define(OFPFC_MODIFY, 1).
--define(OFPFC_MODIFY_STRICT, 2).
--define(OFPFC_DELETE, 3).
--define(OFPFC_DELETE_STRICT, 4).
+-record(ofp_action_set_tp_src, {
+          tp_src
+         }).
 
-%% Flow mod flags
--define(OFPFF_SEND_FLOW_REM, 0).
--define(OFPFF_CHECK_OVERLAP, 1).
+-record(ofp_action_set_tp_dst, {
+          tp_dst
+         }).
 
-%%% Rest -----------------------------------------------------------------------
+-record(ofp_action_copy_ttl_out, {}).
 
-%% Controller max length; Buffer ids
--define(OFPCML_MAX, 16#ffe5).
--define(OFPCML_NO_BUFFER, 16#ffff).
+-record(ofp_action_copy_ttl_in, {}).
 
-%% Table ids
--define(OFPTT_MAX, 16#fe).
--define(OFPTT_ALL, 16#ff).
+-record(ofp_action_set_mpls_label, {
+          mpls_label
+         }).
 
-%% Group ids
--define(OFPG_MAX, 16#fffffffd).
--define(OFPG_ANY, 16#fffffffe).
--define(OFPG_ALL, 16#ffffffff).
+-record(ofp_action_set_mpls_tc, {
+          mpls_tc
+         }).
 
-%%%-----------------------------------------------------------------------------
-%%% Sizes
-%%%-----------------------------------------------------------------------------
+-record(ofp_action_set_mpls_ttl, {
+          mpls_ttl
+         }).
 
-%% Message sizes
--define(HELLO_SIZE, 8).
--define(FEATURES_REQUEST_SIZE, 8).
--define(FEATURES_REPLY_SIZE, 32).
--define(GET_CONFIG_REQUEST_SIZE, 8).
--define(GET_CONFIG_REPLY_SIZE, 12).
--define(SET_CONFIG_SIZE, 12).
--define(FLOW_MOD_SIZE, 136).
--define(DESC_STATS_REQUEST_SIZE, 16).
--define(DESC_STATS_REPLY_SIZE, 1072).
+-record(ofp_action_dec_mpls_ttl, {}).
 
-%% Structure sizes
--define(PORT_SIZE, 64).
--define(PACKET_QUEUE_SIZE, 8).
--define(QUEUE_PROP_MIN_RATE_SIZE, 16).
--define(MATCH_SIZE, 88).
--define(INSTRUCTION_GOTO_TABLE_SIZE, 8).
--define(INSTRUCTION_WRITE_METADATA_SIZE, 24).
--define(INSTRUCTION_WRITE_ACTIONS_SIZE, 8).
--define(INSTRUCTION_APPLY_ACTIONS_SIZE, 8).
--define(INSTRUCTION_CLEAR_ACTIONS_SIZE, 8).
--define(INSTRUCTION_EXPERIMENTER_SIZE, 8).
--define(ACTION_OUTPUT_SIZE, 16).
--define(ACTION_POP_MPLS_SIZE, 8).
--define(ACTION_POP_VLAN_SIZE, 8).
--define(ACTION_PUSH_MPLS_SIZE, 8).
--define(ACTION_PUSH_VLAN_SIZE, 8).
--define(ACTION_COPY_TTL_IN_SIZE, 8).
--define(ACTION_COPY_TTL_OUT_SIZE, 8).
--define(ACTION_DEC_MPLS_TTL_SIZE, 8).
--define(ACTION_DEC_NW_TTL_SIZE, 8).
--define(ACTION_SET_MPLS_TTL_SIZE, 8).
--define(ACTION_SET_NW_TTL_SIZE, 8).
--define(ACTION_SET_VLAN_VID_SIZE, 8).
--define(ACTION_SET_VLAN_PCP_SIZE, 8).
--define(ACTION_SET_MPLS_LABEL_SIZE, 8).
--define(ACTION_SET_MPLS_TC_SIZE, 8).
--define(ACTION_SET_ETH_SIZE, 16).
--define(ACTION_SET_IPV4_SIZE, 8).
--define(ACTION_SET_IP_DSCP_SIZE, 8).
--define(ACTION_SET_IP_ECN_SIZE, 8).
--define(ACTION_SET_TP_SIZE, 8).
--define(ACTION_SET_QUEUE_SIZE, 8).
--define(ACTION_GROUP_SIZE, 8).
--define(ACTION_EXPERIMENTER_SIZE, 8).
+-record(ofp_action_push_vlan, {
+          ethertype
+         }).
+
+-record(ofp_action_pop_vlan, {}).
+
+-record(ofp_action_push_mpls, {
+          ethertype
+         }).
+
+-record(ofp_action_pop_mpls, {
+          ethertype
+         }).
+
+-record(ofp_action_set_queue, {
+          queue_id
+         }).
+
+-record(ofp_action_group, {
+          group_id
+         }).
+
+-record(ofp_action_set_nw_ttl, {
+          nw_ttl
+         }).
+
+-record(ofp_action_dec_nw_ttl, {}).
+
+-record(ofp_action_experimenter, {
+          experimenter,
+          data
+         }).
+
+%%------------------------------------------------------------------------------
+%% Controller-to-Switch Messages
+%%------------------------------------------------------------------------------
+
+%% Handshake -------------------------------------------------------------------
+
+-record(ofp_features_request, {}).
+
+-record(ofp_features_reply, {
+          datapath_mac,
+          datapath_id,
+          n_buffers,
+          n_tables,
+          capabilities,
+          ports
+         }).
+
+%% Switch Configuration --------------------------------------------------------
+
+-record(ofp_get_config_request, {}).
+
+-record(ofp_get_config_reply, {
+          flags,
+          miss_send_len
+         }).
+
+-record(ofp_set_config, {
+          flags,
+          miss_send_len
+         }).
+
+%% Flow Table Configuration ----------------------------------------------------
+
+-record(ofp_table_mod, {
+          table_id,
+          config
+         }).
+
+%% Modify State Messages -------------------------------------------------------
+
+-record(ofp_flow_mod, {
+          cookie,
+          cookie_mask,
+          table_id,
+          command,
+          idle_timeout,
+          hard_timeout,
+          priority,
+          buffer_id,
+          out_port,
+          out_group,
+          flags,
+          match,
+          instructions
+         }).
+
+-record(ofp_group_mod, {
+          command,
+          type,
+          group_id,
+          buckets
+         }).
+
+-record(ofp_bucket, {
+          weight,
+          watch_port,
+          watch_group,
+          actions
+         }).
+
+-record(ofp_port_mod, {
+          port_no,
+          hw_addr,
+          config,
+          mask,
+          advertise
+         }).
+
+%% Queue Configuration Messages ------------------------------------------------
+
+-record(ofp_queue_get_config_request, {
+          port
+         }).
+
+-record(ofp_queue_get_config_reply, {
+          port,
+          queues
+         }).
+
+%% Read State Messages ---------------------------------------------------------
+
+-record(ofp_desc_stats_request, {
+          flags
+         }).
+
+-record(ofp_flow_stats_request, {
+          flags,
+          table_id,
+          out_port,
+          out_group,
+          cookie,
+          cookie_mask,
+          match
+         }).
+
+-record(ofp_aggregate_stats_request, {
+          flags,
+          table_id,
+          out_port,
+          out_group,
+          cookie,
+          cookie_mask,
+          match
+         }).
+
+-record(ofp_table_stats_request, {
+          flags
+         }).
+
+-record(ofp_port_stats_request, {
+          flags,
+          port_no
+         }).
+
+-record(ofp_queue_stats_request, {
+          flags,
+          port_no,
+          queue_id
+         }).
+
+-record(ofp_group_stats_request, {
+          flags,
+          group_id
+         }).
+
+-record(ofp_group_desc_stats_request, {
+          flags
+         }).
+
+-record(ofp_experimenter_stats_request, {
+          flags,
+          experimenter,
+          data
+         }).
+
+
+-record(ofp_desc_stats_reply, {
+          flags,
+          mfr_desc,
+          hw_desc,
+          sw_desc,
+          serial_num,
+          dp_desc
+         }).
+
+-record(ofp_flow_stats_reply, {
+          flags,
+          stats
+         }).
+
+-record(ofp_flow_stats, {
+          table_id,
+          duration_sec,
+          duration_nsec,
+          priority,
+          idle_timeout,
+          hard_timeout,
+          cookie,
+          packet_count,
+          byte_count,
+          match,
+          instructions
+         }).
+
+-record(ofp_aggregate_stats_reply, {
+          flags,
+          packet_count,
+          byte_count,
+          flow_count
+         }).
+
+-record(ofp_table_stats_reply, {
+          flags,
+          stats
+         }).
+
+-record(ofp_table_stats, {
+          table_id,
+          name,
+          wildcards,
+          match,
+          instructions,
+          write_actions,
+          apply_actions,
+          config,
+          max_entries,
+          active_count,
+          lookup_count,
+          matched_count
+         }).
+
+-record(ofp_port_stats_reply, {
+          flags,
+          stats
+         }).
+
+-record(ofp_port_stats, {
+          port_no,
+          rx_packets,
+          tx_packets,
+          rx_bytes,
+          tx_bytes,
+          rx_dropped,
+          tx_dropped,
+          rx_errors,
+          tx_errors,
+          rx_frame_err,
+          rx_over_err,
+          rx_crc_err,
+          collisions
+         }).
+
+-record(ofp_queue_stats_reply, {
+          flags,
+          stats
+         }).
+
+-record(ofp_queue_stats, {
+          port_no,
+          queue_id,
+          tx_bytes,
+          tx_packets,
+          tx_errors
+         }).
+
+-record(ofp_group_stats_reply, {
+          flags,
+          stats
+         }).
+
+-record(ofp_group_stats, {
+          group_id,
+          ref_count,
+          packet_count,
+          byte_count,
+          bucket_stats
+         }).
+
+-record(ofp_bucket_counter, {
+          packet_count,
+          byte_count
+         }).
+
+-record(ofp_group_desc_stats_reply, {
+          flags,
+          stats
+         }).
+
+-record(ofp_group_desc_stats, {
+          type,
+          group_id,
+          buckets
+         }).
+
+-record(ofp_experimenter_stats_reply, {
+          flags,
+          experimenter,
+          data
+         }).
+
+%% Packet-Out Messages ---------------------------------------------------------
+
+-record(ofp_packet_out, {
+          buffer_id,
+          in_port,
+          actions,
+          data
+         }).
+
+%% Barrier Messages ------------------------------------------------------------
+
+-record(ofp_barrier_request, {}).
+
+-record(ofp_barrier_reply, {}).
+
+%%------------------------------------------------------------------------------
+%% Asynchronous Messages
+%%------------------------------------------------------------------------------
+
+%% Packet-In Message -----------------------------------------------------------
+
+-record(ofp_packet_in, {
+          buffer_id,
+          in_port,
+          in_phy_port,
+          reason,
+          table_id,
+          data
+         }).
+
+%% Flow Removed Message --------------------------------------------------------
+
+-record(ofp_flow_removed, {
+          cookie,
+          priority,
+          reason,
+          table_id,
+          duration_sec,
+          duration_nsec,
+          idle_timeout,
+          packet_count,
+          byte_count,
+          match
+         }).
+
+%% Port Status Message ---------------------------------------------------------
+
+-record(ofp_port_status, {
+          reason,
+          desc
+         }).
+
+%% Error Message ---------------------------------------------------------------
+
+-record(ofp_error_msg, {
+          type,
+          code,
+          data
+         }).
+
+%%------------------------------------------------------------------------------
+%% Symmetric Messages
+%%------------------------------------------------------------------------------
+
+%% Hello -----------------------------------------------------------------------
+
+-record(ofp_hello, {}).
+
+%% Echo Request ----------------------------------------------------------------
+
+-record(ofp_echo_request, {
+          data
+         }).
+
+%% Echo Reply ------------------------------------------------------------------
+
+-record(ofp_echo_reply, {
+          data
+         }).
+
+%% Vendor ----------------------------------------------------------------------
+
+-record(ofp_experimenter, {
+          experimenter,
+          data
+         }).

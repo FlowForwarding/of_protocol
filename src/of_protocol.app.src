@@ -1,12 +1,13 @@
 {application, of_protocol,
  [
   {description, "OpenFlow Protocol library"},
-  {vsn, "1.2.1"},
+  {vsn, "1.3.0"},
   {registered, []},
   {applications, [
                   kernel,
                   stdlib,
-                  lager
+                  lager,
+                  eenum
                  ]},
   {env, []}
  ]}.

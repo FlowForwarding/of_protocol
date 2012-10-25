@@ -15,11 +15,12 @@
 %%-----------------------------------------------------------------------------
 
 %% @author Erlang Solutions Ltd. <openflow@erlang-solutions.com>
+%% @author Konrad Kaplita <konrad.kaplita@erlang-solutions.com>
 %% @author Krzysztof Rutka <krzysztof.rutka@erlang-solutions.com>
 %% @copyright 2012 FlowForwarding.org
-%% @doc OpenFlow Protocol 1.2 (3) implementation.
+%% @doc OpenFlow Protocol 1.3 (4) implementation.
 %% @private
--module(ofp_v3).
+-module(ofp_v4).
 
 -behaviour(gen_protocol).
 
@@ -27,7 +28,7 @@
 -export([encode/1, decode/1]).
 
 -include("of_protocol.hrl").
--include("ofp_v3.hrl").
+-include("ofp_v4.hrl").
 
 %%------------------------------------------------------------------------------
 %% gen_protocol callbacks
@@ -38,7 +39,7 @@
                                           {error, any()}.
 encode(Message) ->
     try
-        {ok, ofp_v3_encode:do(Message)}
+        {ok, ofp_v4_encode:do(Message)}
     catch
         _:Exception ->
             {error, Exception}
@@ -49,7 +50,7 @@ encode(Message) ->
                                     {error, any()}.
 decode(Binary) ->
     try
-        {ok, ofp_v3_decode:do(Binary)}
+        {ok, ofp_v4_decode:do(Binary)}
     catch
         _:Exception ->
             {error, Exception}
