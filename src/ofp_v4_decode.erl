@@ -726,6 +726,67 @@ decode_group_desc_stats_list(Binary, StatsList) ->
     Stats = decode_group_desc_stats(StatsBin),
     decode_group_desc_stats_list(Rest, [Stats | StatsList]).
 
+decode_meter_stats_list(Binary) ->
+    decode_meter_stats_list(Binary, []).
+
+decode_meter_stats_list(<<>>, MeterStats) ->
+    lists:reverse(MeterStats);
+decode_meter_stats_list(Binary, MeterStats) ->
+    {M, Rest} = decode_meter_stats(Binary),
+    decode_meter_stats_list(Rest, [M | MeterStats]).
+
+decode_meter_stats(Binary) ->
+    <<MeterIdBin:32, Length:16, _Padding:48, FlowCount:32, PacketInCount:64,
+      ByteInCount:64, DSec:32, DNSec:32, Rest/bytes>> = Binary,
+    MeterId = get_id(meter_id, MeterIdBin),
+    case Rest of
+        <<>> ->
+            Rest2 = Rest,
+            BandStats = [];
+        _ ->        
+            BandStatsLength = Length - ?METER_STATS_SIZE,
+            <<BandStatsBin:BandStatsLength/bytes, Rest2/bytes>> = Rest,
+            BandStats = decode_band_stats(BandStatsBin)
+    end,
+    {#ofp_meter_stats{meter_id = MeterId, flow_count = FlowCount,
+                      packet_in_count = PacketInCount,
+                      byte_in_count = ByteInCount, duration_sec = DSec,
+                      duration_nsec = DNSec, band_stats = BandStats},
+     Rest2}.
+
+decode_band_stats(Binary) ->
+    decode_band_stats(Binary, []).
+
+decode_band_stats(<<>>, Stats) ->
+    lists:reverse(Stats);
+decode_band_stats(Binary, Stats) ->
+    <<PacketBandCount:64, ByteBandCount:64, Rest/bytes>> = Binary,
+    S = #ofp_meter_band_stats{packet_band_count = PacketBandCount,
+                              byte_band_count = ByteBandCount},
+    decode_band_stats(Rest, [S | Stats]).
+
+decode_meter_config_list(Binary) ->
+    decode_meter_config_list(Binary, []).
+
+decode_meter_config_list(<<>>, MeterConfigs) ->
+    lists:reverse(MeterConfigs);
+decode_meter_config_list(Binary, MeterConfigs) ->
+    <<Length:16, FlagsBin:16/bits, MeterIdInt:32, Rest/bytes>> = Binary,
+    case Rest of
+        <<>> ->
+            Rest2 = Rest,
+            Bands = [];
+        _ ->        
+            BandsLength = Length - ?METER_CONFIG_SIZE,
+            <<BandsBin:BandsLength/bytes, Rest2/bytes>> = Rest,
+            Bands = decode_bands(BandsBin)
+    end,
+    Flags = binary_to_flags(meter_mod_command, FlagsBin),
+    MeterId = get_id(meter_id, MeterIdInt),
+    MeterConfig = #ofp_meter_config{flags = Flags, meter_id = MeterId,
+                                    bands = Bands},
+    decode_meter_config_list(Rest2, [MeterConfig | MeterConfigs]).
+
 %% @doc Actual decoding of the messages
 -spec decode_body(atom(), binary()) -> ofp_message().
 decode_body(hello, _) ->
@@ -931,9 +992,13 @@ decode_body(multipart_request, Binary) ->
         group_features ->
             #ofp_group_features_request{flags = Flags};
         meter_stats ->
-            #ofp_meter_stats_request{flags = Flags};
+            <<MeterIdBin:32, _Pad:32>> = Data,
+            MeterId = get_id(meter_id, MeterIdBin),
+            #ofp_meter_stats_request{flags = Flags, meter_id = MeterId};
         meter_config ->
-            #ofp_meter_config_request{flags = Flags};
+            <<MeterIdBin:32, _Pad:32>> = Data,
+            MeterId = get_id(meter_id, MeterIdBin),
+            #ofp_meter_config_request{flags = Flags, meter_id = MeterId};
         meter_features ->
             #ofp_meter_features_request{flags = Flags};
         experimenter ->
@@ -1033,6 +1098,22 @@ decode_body(multipart_reply, Binary) ->
                                       max_groups = {Max1, Max2, Max3, Max4},
                                       actions = {Actions1, Actions2,
                                                  Actions3, Actions4}};
+        meter_stats ->
+            MeterStats = decode_meter_stats_list(Data),
+            #ofp_meter_stats_reply{flags = Flags, body = MeterStats};
+        meter_config ->
+            Config = decode_meter_config_list(Data),
+            #ofp_meter_config_reply{flags = Flags, body = Config};
+        meter_features ->
+            <<MaxMeter:32, BandTypesBin:32/bits, CapabilitiesBin:32/bits,
+              MaxBands:8, MaxColor:8, _Pad:16>> = Data,
+            BandTypes = binary_to_flags(meter_band_type, BandTypesBin),
+            Capabilities = binary_to_flags(meter_flag, CapabilitiesBin),
+            #ofp_meter_features_reply{flags = Flags, max_meter = MaxMeter,
+                                      band_types = BandTypes,
+                                      capabilities = Capabilities, 
+                                      max_bands = MaxBands,
+                                      max_color = MaxColor};
         experimenter ->
             DataLength = size(Binary) - ?EXPERIMENTER_STATS_REPLY_SIZE +
                 ?OFP_HEADER_SIZE,
@@ -1041,9 +1122,6 @@ decode_body(multipart_reply, Binary) ->
             #ofp_experimenter_reply{flags = Flags, experimenter = Experimenter,
                                     exp_type = ExpType, data = ExpData}
     end;
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 decode_body(barrier_request, _) ->
     #ofp_barrier_request{};
 decode_body(barrier_reply, _) ->

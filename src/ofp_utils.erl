@@ -149,8 +149,10 @@ flags_to_binary(EnumMod, Type, [Flag | Rest], Binary, BitSize) ->
 
 %% TODO: Handle error if type is unexpected?
 experimenter_bit(action_type) -> 31;
-experimenter_bit(instruction_type) -> 31.
+experimenter_bit(instruction_type) -> 31;
+experimenter_bit(meter_band_type) -> 31.
 
 experimenter_bit(_, action_type, 31) -> experimenter;
 experimenter_bit(_, instruction_type, 31) -> experimenter;
+experimenter_bit(_, meter_band_type, 31) -> experimenter;
 experimenter_bit(EnumMod, Type, Bit) -> EnumMod:to_atom(Type, Bit).
