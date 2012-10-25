@@ -417,7 +417,15 @@ table_feature_prop(Binary, Properties) ->
                    next_tables ->
                        table_feature_prop_next_tables(IdsBin, []);
                    next_tables_miss ->
-                       table_feature_prop_next_tables_miss(IdsBin, [])
+                       table_feature_prop_next_tables_miss(IdsBin, []);
+                   write_actions ->
+                       table_feature_prop_write_actions(IdsBin, []);
+                   write_actions_miss ->
+                       table_feature_prop_write_actions_miss(IdsBin, []);
+                   apply_actions ->
+                       table_feature_prop_apply_actions(IdsBin, []);
+                   apply_actions_miss ->
+                       table_feature_prop_apply_actions_miss(IdsBin, [])
                end,
     table_feature_prop(Rest, [Property | Properties]).
 
@@ -461,6 +469,64 @@ table_feature_prop_next_tables_miss(<<>>, Ids) ->
                                      next_table_ids = lists:reverse(Ids)};
 table_feature_prop_next_tables_miss(<<Id:8, Rest/bytes>>, Ids) ->
     table_feature_prop_next_tables_miss(Rest, [Id | Ids]).
+
+table_feature_prop_write_actions(<<>>, Ids) ->
+    #ofp_table_feature_prop_write_actions{action_ids = lists:reverse(Ids)};
+table_feature_prop_write_actions(Binary, Ids) ->
+    <<TypeInt:16, _:16, _/bytes>> = Binary,
+    Type = ofp_v4_enum:to_atom(action_type, TypeInt),
+    case Type of
+        experimenter ->
+            <<_:16, _:16, Id:32, Rest/bytes>> = Binary,
+            table_feature_prop_write_actions(Rest, [{experimenter, Id} | Ids]);
+        _ ->
+            <<_:16, _:16, Rest/bytes>> = Binary,
+            table_feature_prop_write_actions(Rest, [Type | Ids])
+    end.
+
+table_feature_prop_write_actions_miss(<<>>, Ids) ->
+    #ofp_table_feature_prop_write_actions_miss{action_ids = lists:reverse(Ids)};
+table_feature_prop_write_actions_miss(Binary, Ids) ->
+    <<TypeInt:16, _:16, _/bytes>> = Binary,
+    Type = ofp_v4_enum:to_atom(action_type, TypeInt),
+    case Type of
+        experimenter ->
+            <<_:16, _:16, Id:32, Rest/bytes>> = Binary,
+            table_feature_prop_write_actions_miss(Rest,
+                                                  [{experimenter, Id} | Ids]);
+        _ ->
+            <<_:16, _:16, Rest/bytes>> = Binary,
+            table_feature_prop_write_actions_miss(Rest, [Type | Ids])
+    end.
+
+table_feature_prop_apply_actions(<<>>, Ids) ->
+    #ofp_table_feature_prop_apply_actions{action_ids = lists:reverse(Ids)};
+table_feature_prop_apply_actions(Binary, Ids) ->
+    <<TypeInt:16, _:16, _/bytes>> = Binary,
+    Type = ofp_v4_enum:to_atom(action_type, TypeInt),
+    case Type of
+        experimenter ->
+            <<_:16, _:16, Id:32, Rest/bytes>> = Binary,
+            table_feature_prop_apply_actions(Rest, [{experimenter, Id} | Ids]);
+        _ ->
+            <<_:16, _:16, Rest/bytes>> = Binary,
+            table_feature_prop_apply_actions(Rest, [Type | Ids])
+    end.
+
+table_feature_prop_apply_actions_miss(<<>>, Ids) ->
+    #ofp_table_feature_prop_apply_actions_miss{action_ids = lists:reverse(Ids)};
+table_feature_prop_apply_actions_miss(Binary, Ids) ->
+    <<TypeInt:16, _:16, _/bytes>> = Binary,
+    Type = ofp_v4_enum:to_atom(action_type, TypeInt),
+    case Type of
+        experimenter ->
+            <<_:16, _:16, Id:32, Rest/bytes>> = Binary,
+            table_feature_prop_apply_actions_miss(Rest,
+                                                  [{experimenter, Id} | Ids]);
+        _ ->
+            <<_:16, _:16, Rest/bytes>> = Binary,
+            table_feature_prop_apply_actions_miss(Rest, [Type | Ids])
+    end.
 
 %% ---
 
