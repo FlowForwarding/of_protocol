@@ -61,7 +61,8 @@ strip_string(_, _) ->
 -spec cut_bits(binary(), integer()) -> binary().
 cut_bits(Binary, Bits) ->
     ByteSize = byte_size(Binary) * 8,
-    <<Int:ByteSize>> = Binary,
+    BitSize = bit_size(Binary),
+    <<Int:BitSize>> = Binary,
     TruncBin = <<Int:Bits>>,
     Padding = ByteSize - Bits,
     << 0:Padding, TruncBin/bits >>.
