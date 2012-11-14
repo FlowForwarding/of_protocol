@@ -1046,10 +1046,6 @@
 %%% Symmetric Messages
 %%%-----------------------------------------------------------------------------
 
-%% Hello message
--record(ofp_hello, {}).
--type ofp_hello() :: #ofp_hello{}.
-
 %% Echo Request
 -record(ofp_echo_request, {
           data = <<>> :: binary()

@@ -19,3 +19,12 @@
          }).
 
 -type ofp_message() :: #ofp_message{}.
+
+%% Hello message ---------------------------------------------------------------
+
+-type ofp_hello_element() :: {versionbitmap, [integer()]}.
+
+-record(ofp_hello, {
+          elements = [] :: [ofp_hello_element()]
+         }).
+-type ofp_hello() :: #ofp_hello{}.
