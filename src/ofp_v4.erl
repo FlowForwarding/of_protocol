@@ -46,11 +46,11 @@ encode(Message) ->
     end.
 
 %% @doc Decode binary to erlang representation.
--spec decode(Binary :: binary()) -> {ok, ofp_message()} |
+-spec decode(Binary :: binary()) -> {ok, ofp_message(), binary()} |
                                     {error, any()}.
 decode(Binary) ->
     try
-        {ok, ofp_v4_decode:do(Binary)}
+        ofp_v4_decode:do(Binary)
     catch
         _:Exception ->
             {error, Exception}

@@ -21,7 +21,9 @@
 -module(ofp_parser).
 
 %% API
--export([new/0, parse/2]).
+-export([new/0,
+         new/1,
+         parse/2]).
 
 -include("of_protocol.hrl").
 
@@ -32,27 +34,38 @@
 %% @doc Create new parser.
 -spec new() -> {ok, ofp_parser()}.
 new() ->
-    {ok, #ofp_parser{}}.
+    new(?DEFAULT_VERSION).
+
+-spec new(integer()) -> {ok, ofp_parser()}.
+new(Version) ->
+    case ?MOD(Version) of
+        unsupported ->
+            {error, unsupported_version};
+        Module ->
+            {ok, #ofp_parser{version = Version,
+                             module = Module}}
+    end.
 
 %% @doc Parse binary to OpenFlow Protocol messages.
 -spec parse(ofp_parser(), binary()) -> {ok, ofp_parser(), [ofp_message()]}.
-parse(#ofp_parser{stack = Stack} = Parser, Binary) ->
-    {ok, NewStack, Messages} = parse(Binary, Stack, []),
-    {ok, Parser#ofp_parser{stack = NewStack}, lists:reverse(Messages)}.
+parse(Parser, Binary) ->
+    {ok, NewParser, Messages} = parse(Binary, Parser, []),
+    {ok, NewParser, lists:reverse(Messages)}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions
 %%%-----------------------------------------------------------------------------
 
--spec parse(binary(), binary(), [ofp_message()]) ->
+-spec parse(binary(), ofp_parser(), [ofp_message()]) ->
                    {ok, binary(), [ofp_message()]}.
-parse(Binary, Stack, Messages) ->
-    NewBinary = << Stack/binary, Binary/binary >>,
-    case of_protocol:decode(NewBinary) of
+parse(Binary, #ofp_parser{module = Module, stack = Stack} = Parser, Messages) ->
+    NewBinary = <<Stack/binary, Binary/binary>>,
+    case Module:decode(NewBinary) of
         {error, binary_too_small} ->
-            {ok, NewBinary, Messages};
+            {ok, Parser#ofp_parser{stack = NewBinary}, Messages};
         {error, _} ->
-            {ok, <<>>, Messages};
+            {ok, Parser#ofp_parser{stack = <<>>}, Messages};
         {ok, Message, Leftovers} ->
-            parse(Leftovers, <<>>, [Message | Messages])
+            parse(Leftovers, Parser#ofp_parser{stack = <<>>},
+                  [Message | Messages])
     end.

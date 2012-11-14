@@ -32,12 +32,14 @@
 %%------------------------------------------------------------------------------
 
 %% @doc Actual decoding of the message.
--spec do(Binary :: binary()) -> ofp_message().
+-spec do(Binary :: binary()) -> {ok, ofp_message(), binary()}.
 do(Binary) ->
-    <<Version:8, TypeInt:8, _:16, XID:32, BodyBin/bytes >> = Binary,
+    <<Version:8, TypeInt:8, Length:16, XID:32, Binary2/bytes>> = Binary,
+    BodyLength = Length - 8,
+    <<BodyBin:BodyLength/bytes, Rest/bytes >> = Binary2,
     Type = ofp_v4_enum:to_atom(type, TypeInt),
     Body = decode_body(Type, BodyBin),
-    #ofp_message{version = Version, xid = XID, body = Body}.
+    {ok, #ofp_message{version = Version, xid = XID, body = Body}, Rest}.
 
 %%------------------------------------------------------------------------------
 %% Decode functions
