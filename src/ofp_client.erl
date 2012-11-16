@@ -71,7 +71,7 @@ start_link(Host, Port) ->
                  proplists:proplist()) -> {ok, Pid :: pid()} | ignore |
                                           {error, Error :: term()}.
 start_link(Host, Port, Opts) ->
-    Parent = self(),
+    Parent = get_opt(controlling_process, Opts, self()),
     gen_server:start_link(?MODULE, {{Host, Port}, Parent, Opts}, []).
 
 %% @doc Change the controlling process.
