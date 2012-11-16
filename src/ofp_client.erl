@@ -130,6 +130,8 @@ handle_call({send, Message}, _From, #state{socket = Socket,
         {error, Reason} ->
             {reply, {error, Reason}, State}
     end;
+handle_call({controlling_process, Pid}, _From, State) ->
+    {reply, ok, State#state{parent = Pid}};
 handle_call(stop, _From, State) ->
     {stop, normal, State};
 handle_call(_Request, _From, State) ->
