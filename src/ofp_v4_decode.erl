@@ -39,7 +39,8 @@ do(Binary) ->
     <<BodyBin:BodyLength/bytes, Rest/bytes >> = Binary2,
     Type = ofp_v4_enum:to_atom(type, TypeInt),
     Body = decode_body(Type, BodyBin),
-    {ok, #ofp_message{version = Version, xid = XID, body = Body}, Rest}.
+    {ok, #ofp_message{version = Version, type = Type,
+                      xid = XID, body = Body}, Rest}.
 
 %%------------------------------------------------------------------------------
 %% Decode functions

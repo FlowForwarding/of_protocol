@@ -31,6 +31,7 @@
 
 -record(ofp_message, {
           version = ?DEFAULT_VERSION :: integer(),
+          type :: atom(),
           xid = 0 :: integer(),
           body %% ofp_message_body()
          }).

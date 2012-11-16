@@ -33,11 +33,11 @@
 
 %% @doc Actual encoding of the message.
 -spec do(Message :: ofp_message()) -> binary().
-do(#ofp_message{version = Version, xid = Xid, body = Body}) ->
+do(#ofp_message{version = ?VERSION, xid = Xid, body = Body}) ->
     BodyBin = encode_body(Body),
     TypeInt = type_int(Body),
     Length = ?OFP_HEADER_SIZE + size(BodyBin),
-    <<Version:8, TypeInt:8, Length:16, Xid:32, BodyBin/bytes>>.
+    <<?VERSION:8, TypeInt:8, Length:16, Xid:32, BodyBin/bytes>>.
 
 %%------------------------------------------------------------------------------
 %% Encode functions
