@@ -41,8 +41,6 @@ encode(Message) ->
         {ok, ofp_v3_encode:do(Message)}
     catch
         _:Exception ->
- 	    lager:error("Failed to encode ~p, reason ~p, ~p",
-	        	[Message,Exception,erlang:get_stacktrace()]),
             {error, Exception}
     end.
 
@@ -54,7 +52,5 @@ decode(Binary) ->
         ofp_v3_decode:do(Binary)
     catch
         _:Exception ->
-	    lager:error("Failed to decode ~p, reason ~p, ~p",
-			[Binary,Exception,erlang:get_stacktrace()]),
             {error, Exception}
     end.
