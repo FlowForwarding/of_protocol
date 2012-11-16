@@ -23,7 +23,8 @@
 %% API
 -export([new/0,
          new/1,
-         parse/2]).
+         parse/2,
+         encode/2]).
 
 -include("of_protocol.hrl").
 
@@ -51,6 +52,12 @@ new(Version) ->
 parse(Parser, Binary) ->
     {ok, NewParser, Messages} = parse(Binary, Parser, []),
     {ok, NewParser, lists:reverse(Messages)}.
+
+%% @doc Encode a message using a parser.
+-spec encode(ofp_parser(), ofp_message()) -> {ok, Binary :: binary()} |
+                                             {error, Reason :: term()}.
+encode(#ofp_parser{module = Module}, Message) ->
+    Module:encode(Message).
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions
