@@ -137,8 +137,7 @@
 
 -type ofp_message_body() ::
         %% Immutable messages
-        ofp_hello()
-      | ofp_error_msg()
+        ofp_error_msg()
       | ofp_echo_request()
       | ofp_echo_reply()
       | ofp_experimenter()

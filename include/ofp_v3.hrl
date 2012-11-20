@@ -1066,8 +1066,7 @@
          }).
 -type ofp_experimenter() :: #ofp_experimenter{}.
 
--type ofp_message_body() :: ofp_hello()
-                          | ofp_error_msg()
+-type ofp_message_body() :: ofp_error_msg()
                           | ofp_echo_request()
                           | ofp_echo_reply()
                           | ofp_experimenter()
