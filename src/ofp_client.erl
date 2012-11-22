@@ -91,7 +91,8 @@ controlling_process(Pid, ControllingPid) ->
 %% result in {error, {bad_message, Message :: ofp_message()}}.
 -spec send(pid(), ofp_message()) -> ok | {error, Reason :: term()}.
 send(Pid, Message) ->
-    case Message#ofp_message.type of
+    Message2 = add_type(Message),
+    case Message2#ofp_message.type of
         Type when Type == error;
                   Type == echo_reply;
                   Type == features_reply;
@@ -105,9 +106,9 @@ send(Pid, Message) ->
                   Type == queue_get_config_reply;
                   Type == role_reply;
                   Type == get_async_reply ->
-            gen_server:call(Pid, {send, Message});
+            gen_server:call(Pid, {send, Message2});
         _Else ->
-            {error, {bad_message, Message}}
+            {error, {bad_message, Message2}}
     end.
 
 %% @doc Stop the client.
@@ -200,7 +201,8 @@ handle_info({tcp, Socket, Data}, #state{socket = Socket,
     case ofp_parser:parse(Parser, Data) of
         {ok, NewParser, Messages} ->
             Handle = fun(Message, Acc) ->
-                             handle_message(Message, Acc)
+                             Message2 = add_type(Message),
+                             handle_message(Message2, Acc)
                      end,
             NewState = lists:foldl(Handle, State, Messages),
             {noreply, NewState#state{parser = NewParser}};
@@ -389,3 +391,11 @@ create_error(4, Type, Code) ->
 
 %% extract_async(4, Async) ->
 %%     ofp_client_v4:extract_async(Async).
+
+add_type(#ofp_message{version = Version, body = Body} = Message) ->
+    case Version of
+        3 ->
+            Message#ofp_message{type = ofp_client_v3:type_atom(Body)};
+        4 ->
+            Message#ofp_message{type = ofp_client_v4:type_atom(Body)}
+    end.

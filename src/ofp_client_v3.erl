@@ -21,7 +21,8 @@
 
 -export([create_error/2,
          create_role/2,
-         extract_role/1]).
+         extract_role/1,
+         type_atom/1]).
 
 -include("ofp_v3.hrl").
 
@@ -42,3 +43,93 @@ create_role(Role, GenId) ->
 extract_role(#ofp_role_request{role = Role,
                                generation_id = GenId}) ->
     {Role, GenId}.
+
+-spec type_atom(ofp_message_body()) -> atom().
+type_atom(#ofp_error_msg{}) ->
+    error;
+type_atom(#ofp_error_msg_experimenter{}) ->
+    error;
+type_atom(#ofp_echo_request{}) ->
+    echo_request;
+type_atom(#ofp_echo_reply{}) ->
+    echo_reply;
+type_atom(#ofp_experimenter{}) ->
+    experimenter;
+type_atom(#ofp_features_request{}) ->
+    features_request;
+type_atom(#ofp_features_reply{}) ->
+    features_reply;
+type_atom(#ofp_get_config_request{}) ->
+    get_config_request;
+type_atom(#ofp_get_config_reply{}) ->
+    get_config_reply;
+type_atom(#ofp_set_config{}) ->
+    set_config;
+type_atom(#ofp_packet_in{}) ->
+    packet_in;
+type_atom(#ofp_flow_removed{}) ->
+    flow_removed;
+type_atom(#ofp_port_status{}) ->
+    port_status;
+type_atom(#ofp_queue_get_config_request{}) ->
+    queue_get_config_request;
+type_atom(#ofp_queue_get_config_reply{}) ->
+    queue_get_config_reply;
+type_atom(#ofp_packet_out{}) ->
+    packet_out;
+type_atom(#ofp_flow_mod{}) ->
+    flow_mod;
+type_atom(#ofp_group_mod{}) ->
+    group_mod;
+type_atom(#ofp_port_mod{}) ->
+    port_mod;
+type_atom(#ofp_table_mod{}) ->
+    table_mod;
+type_atom(#ofp_desc_stats_request{}) ->
+    stats_request;
+type_atom(#ofp_desc_stats_reply{}) ->
+    stats_reply;
+type_atom(#ofp_flow_stats_request{}) ->
+    stats_request;
+type_atom(#ofp_flow_stats_reply{}) ->
+    stats_reply;
+type_atom(#ofp_aggregate_stats_request{}) ->
+    stats_request;
+type_atom(#ofp_aggregate_stats_reply{}) ->
+    stats_reply;
+type_atom(#ofp_table_stats_request{}) ->
+    stats_request;
+type_atom(#ofp_table_stats_reply{}) ->
+    stats_reply;
+type_atom(#ofp_port_stats_request{}) ->
+    stats_request;
+type_atom(#ofp_port_stats_reply{}) ->
+    stats_reply;
+type_atom(#ofp_queue_stats_request{}) ->
+    stats_request;
+type_atom(#ofp_queue_stats_reply{}) ->
+    stats_reply;
+type_atom(#ofp_group_stats_request{}) ->
+    stats_request;
+type_atom(#ofp_group_stats_reply{}) ->
+    stats_reply;
+type_atom(#ofp_group_desc_stats_request{}) ->
+    stats_request;
+type_atom(#ofp_group_desc_stats_reply{}) ->
+    stats_reply;
+type_atom(#ofp_group_features_stats_request{}) ->
+    stats_request;
+type_atom(#ofp_group_features_stats_reply{}) ->
+    stats_reply;
+type_atom(#ofp_experimenter_stats_request{}) ->
+    stats_request;
+type_atom(#ofp_experimenter_stats_reply{}) ->
+    stats_reply;
+type_atom(#ofp_barrier_request{}) ->
+    barrier_request;
+type_atom(#ofp_barrier_reply{}) ->
+    barrier_reply;
+type_atom(#ofp_role_request{}) ->
+    role_request;
+type_atom(#ofp_role_reply{}) ->
+    role_reply.
