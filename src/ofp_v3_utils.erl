@@ -32,26 +32,31 @@ flow_add(Opts, Matches, Instructions) ->
        hard_timeout = proplists:get_value(hard_timeout, Opts, 0),
        priority = proplists:get_value(priority, Opts, 16#ffff),
        buffer_id = proplists:get_value(buffer_id, Opts, no_buffer),
-       out_port = proplists:get_value(out_port, Opts, any),
-       out_group = proplists:get_value(out_group, Opts, any),
        flags = proplists:get_value(flags, Opts, []),
        match = match(mk_matches(Matches)),
        instructions = mk_instructions(Instructions)}.
+flow_modify(Op, Opts, Matches, Instructions) ->
+    #ofp_flow_mod{
+       cookie = proplists:get_value(cookie, Opts, <<0:64>>),
+       cookie_mask = proplists:get_value(cookie_mask, Opts, <<0:64>>),
+       table_id = proplists:get_value(table_id, Opts, 0),
+       command = Op,
+       priority = proplists:get_value(priority, Opts, 16#ffff),
+       flags = proplists:get_value(flags, Opts, []),
+       match = match(mk_matches(Matches)),
+       instructions = mk_instructions(Instructions)
+      }.
 flow_delete(Op, Opts, Matches) ->
     #ofp_flow_mod{
        cookie = proplists:get_value(cookie, Opts, <<0:64>>),
        cookie_mask = proplists:get_value(cookie_mask, Opts, <<0:64>>),
        table_id = proplists:get_value(table_id, Opts, 0),
        command = Op,
-       %% idle_timeout = proplists:get_value(idle_timeout, Opts, 0),
-       %% hard_timeout = proplists:get_value(hard_timeout, Opts, 0),
        priority = proplists:get_value(priority, Opts, 16#ffff),
-       %% buffer_id = proplists:get_value(buffer_id, Opts, no_buffer),
-       %% out_port = proplists:get_value(out_port, Opts, any),
-       %% out_group = proplists:get_value(out_group, Opts, any),
+       out_port = proplists:get_value(out_port, Opts, any),
+       out_group = proplists:get_value(out_group, Opts, any),
        flags = proplists:get_value(flags, Opts, []),
        match = match(mk_matches(Matches))
-       %% instructions = Instructions
       }.
 
 %%============================================================================
