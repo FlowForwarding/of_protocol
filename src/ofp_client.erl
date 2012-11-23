@@ -138,6 +138,8 @@ init({Controller, Parent, Opts}) ->
 
 handle_call({send, _Message}, _From, #state{socket = undefined} = State) ->
     {reply, {error, not_connected}, State};
+handle_call({send, _Message}, _From, #state{parser = undefined} = State) ->
+    {reply, {error, parser_not_ready}, State};
 handle_call({send, Message}, _From,
             #state{role = Role, filter = Filter} = State) ->
     case filter_message(Message, Role, Filter) of
@@ -201,8 +203,7 @@ handle_info({tcp, Socket, Data}, #state{socket = Socket,
     case ofp_parser:parse(Parser, Data) of
         {ok, NewParser, Messages} ->
             Handle = fun(Message, Acc) ->
-                             Message2 = add_type(Message),
-                             handle_message(Message2, Acc)
+                             handle_message(Message, Acc)
                      end,
             NewState = lists:foldl(Handle, State, Messages),
             {noreply, NewState#state{parser = NewParser}};
