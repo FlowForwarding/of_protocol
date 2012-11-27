@@ -241,12 +241,17 @@ handle_message(#ofp_message{type = role_request, version = Version,
     {Reply, NewState} = change_role(Version, Role, GenId, State),
     do_send(Message#ofp_message{body = Reply}, State),
     NewState;
-%% handle_message(#ofp_message{type = get_async_request, body = GetAsync},
-%%                #state{filter = _Filter} = State) ->
-%%     State;
-%% handle_message(#ofp_message{type = set_async, body = SetAsync},
-%%                #state{filter = _Filter} = State) ->
-%%     State;
+handle_message(#ofp_message{type = get_async_request,
+                            version = Version} = Message,
+               #state{filter = Filter} = State) ->
+    AsyncReply = create_async(Version, Filter),
+    do_send(Message#ofp_message{body = AsyncReply}, State),
+    State;
+handle_message(#ofp_message{type = set_async, version = Version,
+                            body = SetAsync},
+               #state{filter = _Filter} = State) ->
+    Filter = extract_async(Version, SetAsync),
+    State#state{filter = Filter};
 handle_message(#ofp_message{version = Version, type = Type} = Message,
                #state{role = slave} = State)
   when Type == flow_mod;
@@ -415,11 +420,11 @@ extract_role(3, RoleRequest) ->
 extract_role(4, RoleRequest) ->
     ofp_client_v4:extract_role(RoleRequest).
 
-%% create_async(4, Masks) ->
-%%     ofp_client_v4:create_async(Masks).
+create_async(4, Masks) ->
+    ofp_client_v4:create_async(Masks).
 
-%% extract_async(4, Async) ->
-%%     ofp_client_v4:extract_async(Async).
+extract_async(4, Async) ->
+    ofp_client_v4:extract_async(Async).
 
 add_type(#ofp_message{version = Version, body = Body} = Message) ->
     case Version of
