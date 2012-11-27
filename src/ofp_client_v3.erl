@@ -35,8 +35,8 @@ create_error(Type, Code) ->
 %% @doc Create role change message.
 -spec create_role(atom(), integer()) -> record().
 create_role(Role, GenId) ->
-    #ofp_role_request{role = Role,
-                      generation_id = GenId}.
+    #ofp_role_reply{role = Role,
+                    generation_id = GenId}.
 
 %% @doc Extract role change information.
 -spec extract_role(record()) -> {atom(), integer()}.

@@ -564,8 +564,7 @@
 
 -type ofp_config_flags() :: frag_normal
                           | frag_drop
-                          | frag_reasm
-                          | frag_mask.
+                          | frag_reasm.
 
 -type ofp_buffer_id() :: integer()
                        | no_buffer.

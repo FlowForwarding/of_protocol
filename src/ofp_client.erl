@@ -235,6 +235,18 @@ do_send(Message, #state{socket = Socket, parser = Parser}) ->
             {error, Reason}
     end.
 
+handle_message(#ofp_message{type = role_request, version = Version,
+                            body = RoleRequest} = Message, State) ->
+    {Role, GenId} = extract_role(Version, RoleRequest),
+    {Reply, NewState} = change_role(Version, Role, GenId, State),
+    do_send(Message#ofp_message{body = Reply}, State),
+    NewState;
+%% handle_message(#ofp_message{type = get_async_request, body = GetAsync},
+%%                #state{filter = _Filter} = State) ->
+%%     State;
+%% handle_message(#ofp_message{type = set_async, body = SetAsync},
+%%                #state{filter = _Filter} = State) ->
+%%     State;
 handle_message(#ofp_message{version = Version, type = Type} = Message,
                #state{role = slave} = State)
   when Type == flow_mod;
@@ -244,7 +256,7 @@ handle_message(#ofp_message{version = Version, type = Type} = Message,
        Type == meter_mod ->
     %% Don't allow slave controllers to modify things.
     Error = create_error(Version, bad_request, is_slave),
-    IsSlaveError = Message#ofp_message{type = error, body = Error},
+    IsSlaveError = Message#ofp_message{body = Error},
     do_send(IsSlaveError, State);
 handle_message(#ofp_message{type = Type} = Message,
                #state{parent = Parent} = State)
@@ -263,15 +275,6 @@ handle_message(#ofp_message{type = Type} = Message,
        Type == meter_mod ->
     Parent ! {ofp_message, self(), Message},
     State;
-%% handle_message(#ofp_message{type = role_request, body = RoleRequest},
-%%                #state{role = _Role} = State) ->
-%%     State;
-%% handle_message(#ofp_message{type = get_async_request, body = GetAsync},
-%%                #state{filter = _Filter} = State) ->
-%%     State;
-%% handle_message(#ofp_message{type = set_async, body = SetAsync},
-%%                #state{filter = _Filter} = State) ->
-%%     State;
 handle_message(_OtherMessage, State) ->
     State.
 
@@ -330,6 +333,31 @@ filter_message(#ofp_message{type = Type}, Role, {MasterEqual, Slave}) ->
             true
     end.
 
+change_role(Version, nochange, GenId, #state{role = Role} = State) ->
+    RoleReply = create_role(Version, Role, GenId),
+    {RoleReply, State};
+change_role(Version, equal, GenId, State) ->
+    RoleReply = create_role(Version, equal, GenId),
+    {RoleReply, State#state{role = equal}};
+change_role(Version, Role, GenId,
+            #state{generation_id = CurrentGenId} = State) ->
+    if
+        (CurrentGenId /= undefined)
+        andalso (GenId - CurrentGenId < 0) ->
+            ErrorReply = create_error(Version, role_request_failed, stale),
+            {ErrorReply, State};
+        true ->
+            case Role of
+                master ->
+                    ofp_channel:make_slaves(self());
+                slave ->
+                    ok
+            end,
+            RoleReply = create_role(Version, Role, GenId),
+            {RoleReply, State#state{role = Role,
+                                    generation_id = GenId}}
+    end.
+
 %%------------------------------------------------------------------------------
 %% Helper functions
 %%------------------------------------------------------------------------------
@@ -377,15 +405,15 @@ create_error(3, Type, Code) ->
 create_error(4, Type, Code) ->
     ofp_client_v4:create_error(Type, Code).
 
-%% create_role(3, Role, GenId) ->
-%%     ofp_client_v3:create_role(Role, GenId);
-%% create_role(4, Role, GenId) ->
-%%     ofp_client_v4:create_role(Role, GenId).
+create_role(3, Role, GenId) ->
+    ofp_client_v3:create_role(Role, GenId);
+create_role(4, Role, GenId) ->
+    ofp_client_v4:create_role(Role, GenId).
 
-%% extract_role(3, RoleRequest) ->
-%%     ofp_client_v3:extract_role(RoleRequest);
-%% extract_role(4, RoleRequest) ->
-%%     ofp_client_v4:extract_role(RoleRequest).
+extract_role(3, RoleRequest) ->
+    ofp_client_v3:extract_role(RoleRequest);
+extract_role(4, RoleRequest) ->
+    ofp_client_v4:extract_role(RoleRequest).
 
 %% create_async(4, Masks) ->
 %%     ofp_client_v4:create_async(Masks).

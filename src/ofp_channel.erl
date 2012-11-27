@@ -22,7 +22,8 @@
 %% API
 -export([open/3,
          send/1,
-         send/2]).
+         send/2,
+         make_slaves/1]).
 
 %%------------------------------------------------------------------------------
 %% API functions
@@ -37,3 +38,8 @@ send(Message) ->
 
 send(Pid, Message) ->
     ofp_client:send(Pid, Message).
+
+make_slaves(Caller) ->
+    [ofp_client:make_slave(Pid)
+     || {_, Pid, _, _} <- supervisor:which_children(ofp_channel_sup),
+        Pid /= Caller].

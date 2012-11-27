@@ -22,8 +22,7 @@
 -behaviour(supervisor).
 
 %% Internal API
--export([start_link/0,
-         make_slaves/0]).
+-export([start_link/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -34,10 +33,6 @@
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-
-make_slaves() ->
-    [ofp_client:make_slave(Pid)
-     || {_, Pid, _, _} <- supervisor:which_children(?MODULE)].
 
 %%------------------------------------------------------------------------------
 %% Supervisor callbacks
