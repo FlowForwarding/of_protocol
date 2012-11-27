@@ -68,6 +68,16 @@ flow_stats(Opts, Matches) ->
        out_group = proplists:get_value(out_group, Opts, any),
        match = match(mk_matches(Matches))
       }.
+
+aggr_stats(Opts, Matches) ->
+    #ofp_aggregate_stats_request{
+       table_id = proplists:get_value(table_id, Opts, 0),
+       cookie = proplists:get_value(cookie, Opts, <<0:64>>),
+       cookie_mask = proplists:get_value(cookie_mask, Opts, <<0:64>>),
+       out_port = proplists:get_value(out_port, Opts, any),
+       out_group = proplists:get_value(out_group, Opts, any),
+       match = match(mk_matches(Matches))
+      }.
 %%============================================================================
 %% Matching
 %% Create match specifications, checking that prerequisite fields are present
