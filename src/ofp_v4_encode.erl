@@ -675,14 +675,14 @@ encode_body(#ofp_set_async{packet_in_mask = PacketInMask,
                            flow_removed_mask = FlowRemovedMask}) ->
     encode_async_masks(PacketInMask, PortStatusMask, FlowRemovedMask);
 encode_body(#ofp_meter_mod{command = Command,
-                           flags = Flag,
+                           flags = Flags,
                            meter_id = MeterId,
                            bands = Bands}) ->
     CommandInt = get_id(meter_mod_command, Command),
-    FlagsInt = get_id(meter_flag, Flag),
+    FlagsBin = flags_to_binary(meter_flag, Flags, 2),
     MeterIdInt = get_id(meter_id, MeterId),
     BandsBin = encode_list(Bands),
-    <<CommandInt:16, FlagsInt:16, MeterIdInt:32, BandsBin/bytes>>;
+    <<CommandInt:16, FlagsBin:2/bytes, MeterIdInt:32, BandsBin/bytes>>;
 encode_body(Other) ->
     throw({bad_message, Other}).
 

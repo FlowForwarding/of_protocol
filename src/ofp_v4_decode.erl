@@ -1163,9 +1163,9 @@ decode_body(set_async, Binary) ->
                    port_status_mask = PortStatusMask,
                    flow_removed_mask = FlowRemovedMask};
 decode_body(meter_mod, Binary) ->
-    <<CommandInt:16, FlagsInt:16, MeterIdInt:32, BandsBin/bytes>> = Binary,
+    <<CommandInt:16, FlagsBin:2/bytes, MeterIdInt:32, BandsBin/bytes>> = Binary,
     Command = get_id(meter_mod_command, CommandInt),
-    Flags = get_id(meter_flag, FlagsInt),
+    Flags = binary_to_flags(meter_flag, FlagsBin),
     MeterId = get_id(meter_id, MeterIdInt),
     Bands = decode_bands(BandsBin),
     #ofp_meter_mod{command = Command, flags = Flags, meter_id = MeterId,
