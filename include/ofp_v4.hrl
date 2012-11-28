@@ -692,21 +692,21 @@
 
 -record(ofp_meter_band_drop, {
           type = drop :: ofp_meter_band_type(),
-          rate :: integer(),
-          burst_size :: integer()
+          rate = -1 :: integer(),
+          burst_size = -1 :: integer()
          }).
 
 -record(ofp_meter_band_dscp_remark, {
           type = dscp_remark :: ofp_meter_band_type(),
-          rate :: integer(),
-          burst_size :: integer(),
-          prec_level :: integer()
+          rate = -1 :: integer(),
+          burst_size = -1 :: integer(),
+          prec_level = 1 :: integer()
          }).
 
 -record(ofp_meter_band_experimenter, {
           type = experimenter :: ofp_meter_band_type(),
-          rate :: integer(),
-          burst_size :: integer(),
+          rate -1 :: integer(),
+          burst_size -1 :: integer(),
           experimenter :: integer()
          }).
 
@@ -718,9 +718,9 @@
           command :: ofp_meter_mod_command(),
           %% Warning: OpenFlow 1.3.0 spec defines flags field as a field that
           %% contains only one value. Page 58 section A.3.4.4.
-          flags :: [ofp_meter_flag()],
+          flags = [kbps, stats] :: [ofp_meter_flag()],
           meter_id :: meter_id(),
-          bands :: [ofp_meter_band()]
+          bands = [] :: [ofp_meter_band()]
          }).
 -type ofp_meter_mod() :: #ofp_meter_mod{}.
 
