@@ -705,8 +705,8 @@
 
 -record(ofp_meter_band_experimenter, {
           type = experimenter :: ofp_meter_band_type(),
-          rate -1 :: integer(),
-          burst_size -1 :: integer(),
+          rate = -1 :: integer(),
+          burst_size = -1 :: integer(),
           experimenter :: integer()
          }).
 
