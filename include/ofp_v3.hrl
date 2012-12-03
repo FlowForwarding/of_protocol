@@ -443,7 +443,7 @@
 -record(ofp_action_output, {
           seq = 14,
           port :: ofp_port_no(),
-          max_len = no_buffer :: ofp_buffer_id()
+          max_len = no_buffer :: ofp_packet_in_bytes()
          }).
 
 %% Experimenter action
@@ -633,14 +633,14 @@
 %% Configuration reply
 -record(ofp_get_config_reply, {
           flags = [] :: [ofp_switch_configuration()],
-          miss_send_len :: ofp_buffer_id()
+          miss_send_len :: ofp_packet_in_bytes()
          }).
 -type ofp_get_config_reply() :: #ofp_get_config_reply{}.
 
 %% Set configuration
 -record(ofp_set_config, {
           flags = [] :: [ofp_switch_configuration()],
-          miss_send_len :: ofp_buffer_id()
+          miss_send_len :: ofp_packet_in_bytes()
          }).
 -type ofp_set_config() :: #ofp_set_config{}.
 
@@ -977,6 +977,9 @@
 -type ofp_packet_in_reason() :: no_match
                               | action
                               | invalid_ttl.
+
+-type ofp_packet_in_bytes() :: integer()
+                             | no_buffer.
 
 %% Packet-in
 -record(ofp_packet_in, {
