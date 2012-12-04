@@ -481,7 +481,7 @@
 -record(ofp_action_output, {
           seq = 16,
           port :: ofp_port_no(),
-          max_len = no_buffer :: ofp_buffer_id()
+          max_len = no_buffer :: ofp_packet_in_bytes()
          }).
 
 -record(ofp_action_experimenter, {
@@ -571,13 +571,13 @@
 
 -record(ofp_get_config_reply, {
           flags = [] :: [ofp_config_flags()],
-          miss_send_len :: ofp_buffer_id()
+          miss_send_len :: ofp_packet_in_bytes()
          }).
 -type ofp_get_config_reply() :: #ofp_get_config_reply{}.
 
 -record(ofp_set_config, {
           flags = [] :: [ofp_config_flags()],
-          miss_send_len :: ofp_buffer_id()
+          miss_send_len :: ofp_packet_in_bytes()
          }).
 -type ofp_set_config() :: #ofp_set_config{}.
 
@@ -1296,6 +1296,9 @@
 -type ofp_packet_in_reason() :: no_match
                               | action
                               | invalid_ttl.
+
+-type ofp_packet_in_bytes() :: integer()
+                             | no_buffer.
 
 -record(ofp_packet_in, {
           buffer_id = no_buffer :: ofp_buffer_id(),
