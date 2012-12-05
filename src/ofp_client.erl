@@ -275,6 +275,7 @@ handle_message(#ofp_message{type = Type} = Message,
        Type == port_mod;
        Type == table_mod;
        Type == stats_request;
+       Type == multipart_request;
        Type == barrier_request;
        Type == queue_get_config_request;
        Type == meter_mod ->
