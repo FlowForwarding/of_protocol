@@ -33,13 +33,11 @@ open(Host, Port, Opts) ->
     supervisor:start_child(ofp_channel_sup, [Host, Port, Opts]).
 
 send(Message) ->
-    [send(Pid, Message)
-     || {_, Pid, _, _} <- supervisor:which_children(ofp_channel_sup)].
+    [send(Pid, Message) || {main, Pid} <- ets:lookup(?MODULE, main)].
 
 send(Pid, Message) ->
     ofp_client:send(Pid, Message).
 
 make_slaves(Caller) ->
     [ofp_client:make_slave(Pid)
-     || {_, Pid, _, _} <- supervisor:which_children(ofp_channel_sup),
-        Pid /= Caller].
+     || {main, Pid} <- ets:lookup(?MODULE, main), Pid /= Caller].

@@ -26,6 +26,7 @@
          start_link/1,
          start_link/2,
          start_link/3,
+         start_link/4,
          controlling_process/2,
          send/2,
          stop/1]).
@@ -48,7 +49,9 @@
 -define(DEFAULT_TIMEOUT, timer:seconds(5)).
 
 -record(state, {
+          id :: integer(),
           controller :: {string(), integer()},
+          aux_connections = [] :: [{tcp, integer()}],
           parent :: pid(),
           versions :: integer(),
           role = equal :: master | equal | slave,
@@ -72,13 +75,17 @@ start_link(Host) ->
 start_link(Host, Port) ->
     start_link(Host, Port, [{version, ?DEFAULT_VERSION}]).
 
-%% @doc Start the client.
--spec start_link(string(), integer(),
-                 proplists:proplist()) -> {ok, Pid :: pid()} | ignore |
-                                          {error, Error :: term()}.
 start_link(Host, Port, Opts) ->
+    start_link(Host, Port, Opts, main).
+
+%% @doc Start the client.
+-spec start_link(string(), integer(), proplists:proplist(),
+                 main | {aux, integer(), pid()}) -> {ok, Pid :: pid()} |
+                                                    ignore |
+                                                    {error, Error :: term()}.
+start_link(Host, Port, Opts, Type) ->
     Parent = get_opt(controlling_process, Opts, self()),
-    gen_server:start_link(?MODULE, {{Host, Port}, Parent, Opts}, []).
+    gen_server:start_link(?MODULE, {{Host, Port}, Parent, Opts, Type}, []).
 
 %% @doc Change the controlling process.
 -spec controlling_process(pid(), pid()) -> ok.
@@ -127,14 +134,24 @@ make_slave(Pid) ->
 %% gen_server callbacks
 %%------------------------------------------------------------------------------
 
-init({Controller, Parent, Opts}) ->
+init({Controller, Parent, Opts, Type}) ->
     Version = get_opt(version, Opts, ?DEFAULT_VERSION),
     Versions = lists:umerge(get_opt(versions, Opts, []), [Version]),
     Timeout = get_opt(timeout, Opts, ?DEFAULT_TIMEOUT),
-    {ok, #state{controller = Controller,
-                parent = Parent,
-                versions = Versions,
-                timeout = Timeout}, 0}.
+    State = #state{controller = Controller,
+                   parent = Parent,
+                   versions = Versions,
+                   timeout = Timeout},
+    case Type of
+        main ->
+            ets:insert(ofp_channel, {main, self()}),
+            AuxConnections = get_opt(auxiliary_connections, Opts, []),
+            {ok, State#state{id = 0,
+                             aux_connections = AuxConnections}, 0};
+        {aux, Id, Pid} ->
+            ets:insert(ofp_channel, {Pid, self()}),
+            {ok, State#state{id = Id}, 0}
+    end.
 
 handle_call({send, _Message}, _From, #state{socket = undefined} = State) ->
     {reply, {error, not_connected}, State};
@@ -151,6 +168,8 @@ handle_call({send, Message}, _From,
 handle_call({controlling_process, Pid}, _From, State) ->
     {reply, ok, State#state{parent = Pid}};
 handle_call(make_slave, _From, #state{role = master} = State) ->
+    %% Make auxiliary connections slave as well
+    [make_slave(Pid) || {_, Pid} <- ets:lookup(ofp_channel, self())],
     {reply, ok, State#state{role = slave}};
 handle_call(stop, _From, State) ->
     {stop, normal, State};
@@ -160,20 +179,42 @@ handle_call(_Request, _From, State) ->
 handle_cast(_Message, State) ->
     {noreply, State}.
 
-handle_info(timeout, #state{controller = {Host, Port},
+handle_info(timeout, #state{id = Id,
+                            controller = {Host, Port},
+                            parent = ControllingProcess,
+                            aux_connections = AuxConnections,
                             versions = Versions,
                             timeout = Timeout} = State) ->
     %% Try to connect to the controller
     TCPOpts = [binary, {active, once}],
     case gen_tcp:connect(Host, Port, TCPOpts) of
         {ok, Socket} ->
+            case Id of
+                0 ->
+                    %% Open auxiliary connections
+                    Opts = [{controlling_process, ControllingProcess},
+                            {versions, Versions},
+                            {timeout, Timeout}],
+                    TCPAux = get_opt(tcp, AuxConnections, 0),
+                    [begin
+                         Args = [Host, Port, Opts, {aux, AuxId, self()}],
+                         {ok, Pid} = supervisor:start_child(ofp_channel_sup,
+                                                            Args),
+                         ets:insert(ofp_channel, {self(), Pid})
+                     end || AuxId <- lists:seq(1, TCPAux)];
+                _ ->
+                    ok
+            end,
+
             {ok, HelloBin} = of_protocol:encode(create_hello(Versions)),
             ok = gen_tcp:send(Socket, HelloBin),
             {noreply, State#state{socket = Socket}};
         {error, _Reason} ->
             {noreply, State, Timeout}
     end;
-handle_info({tcp, Socket, Data}, #state{socket = Socket,
+handle_info({tcp, Socket, Data}, #state{id = Id,
+                                        controller = {Host, Port},
+                                        socket = Socket,
                                         parent = Parent,
                                         parser = undefined,
                                         versions = Versions} = State) ->
@@ -188,7 +229,8 @@ handle_info({tcp, Socket, Data}, #state{socket = Socket,
                 {no_common_version, _, _} = Reason ->
                     reset_connection(State, Reason);
                 Version ->
-                    Parent ! {ofp_connected, self(), Version},
+                    Parent ! {ofp_connected, self(),
+                              {Host, Port, Id, Version}},
                     {ok, Parser} = ofp_parser:new(Version),
                     self() ! {tcp, Socket, Leftovers},
                     {noreply, State#state{parser = Parser}}
@@ -217,8 +259,16 @@ handle_info({tcp_error, Socket, Reason}, #state{socket = Socket} = State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
-terminate(_Reason, _State) ->
-    ok.
+terminate(_Reason, #state{id = Id}) ->
+    case Id of
+        0 ->
+            ets:delete_object(ofp_channel, {main, self()}),
+            ets:delete(ofp_channel, self());
+        _ ->
+            ok
+    end,
+
+    io:format("Terminating ~p ~p~n", [Id, self()]).
 
 code_change(_OldVersion, State, _Extra) ->
     {ok, State}.
@@ -388,7 +438,9 @@ gcv([CV | CVs], [SV | _] = SVs) when CV > SV ->
 gcv([CV | _] = CVs, [SV | SVs]) when CV < SV ->
     gcv(CVs, SVs).
 
-reset_connection(#state{socket = Socket,
+reset_connection(#state{id = Id,
+                        controller = {Host, Port},
+                        socket = Socket,
                         parent = Parent,
                         timeout = Timeout} = State, Reason) ->
     %% Close the socket
@@ -399,8 +451,18 @@ reset_connection(#state{socket = Socket,
             gen_tcp:close(Socket)
     end,
 
+    case Id of
+        0 ->
+            %% Terminate auxiliary connections
+            [supervisor:terminate_child(ofp_channel_sup, Pid)
+             || {_, Pid} <- ets:lookup(ofp_channel, self())],
+            ets:delete(ofp_channel, self());
+        _ ->
+            ok
+    end,
+
     %% Notify the parent
-    Parent ! {ofp_closed, self(), Reason},
+    Parent ! {ofp_closed, self(), {Host, Port, Id, Reason}},
 
     %% Reset
     {noreply, State#state{socket = undefined,

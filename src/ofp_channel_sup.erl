@@ -39,6 +39,9 @@ start_link() ->
 %%------------------------------------------------------------------------------
 
 init([]) ->
+    ets:new(ofp_channel, [named_table, public, bag,
+                          {read_concurrency, true}]),
+
     ClientSpec = {ofp_client, {ofp_client, start_link, []},
                   transient, 1000, worker, [ofp_client]},
     {ok, {{simple_one_for_one, 5, 10}, [ClientSpec]}}.
