@@ -166,23 +166,17 @@ handle_call({send, #ofp_message{type = packet_in} = Message}, _From,
         0 ->
             case ets:lookup(ofp_channel, self()) of
                 [] ->
-                    handle_call({send, Message}, self(), State);
+                    {reply, do_filter_send(Message, State), State};
                 List ->
                     RandomIndex = random:uniform(length(List)),
                     {_, AuxPid} = lists:nth(RandomIndex, List),
                     {reply, send(AuxPid, Message), State}
             end;
         _Else ->
-            handle_call({send, Message}, self(), State)
+            {reply, do_filter_send(Message, State), State}
     end;
-handle_call({send, Message}, _From,
-            #state{role = Role, filter = Filter} = State) ->
-    case filter_message(Message, Role, Filter) of
-        true ->
-            {reply, do_send(Message, State), State};
-        false ->
-            {reply, {error, filtered}, State}
-    end;
+handle_call({send, Message}, _From, State) ->
+    {reply, do_filter_send(Message, State), State};
 handle_call({controlling_process, Pid}, _From, State) ->
     {reply, ok, State#state{parent = Pid}};
 handle_call(make_slave, _From, #state{role = master} = State) ->
@@ -307,6 +301,14 @@ do_send(Message, #state{socket = Socket, parser = Parser}) ->
             end;
         {error, Reason} ->
             {error, Reason}
+    end.
+
+do_filter_send(Message, #state{role = Role, filter = Filter} = State) ->
+    case filter_message(Message, Role, Filter) of
+        true ->
+            do_send(Message, State);
+        false ->
+            {error, filtered}
     end.
 
 handle_message(#ofp_message{type = role_request, version = Version,
