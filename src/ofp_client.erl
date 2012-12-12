@@ -160,6 +160,21 @@ handle_call({send, _Message}, _From, #state{parser = undefined} = State) ->
 handle_call({send, #ofp_message{type = features_reply} = Message}, _From,
             #state{id = Id} = State) ->
     {reply, do_send(add_aux_id(Message, Id), State), State};
+handle_call({send, #ofp_message{type = packet_in} = Message}, _From,
+            #state{id = Id} = State) ->
+    case Id of
+        0 ->
+            case ets:lookup(ofp_channel, self()) of
+                [] ->
+                    handle_call({send, Message}, self(), State);
+                List ->
+                    RandomIndex = random:uniform(length(List)),
+                    {_, AuxPid} = lists:nth(RandomIndex, List),
+                    {reply, send(AuxPid, Message), State}
+            end;
+        _Else ->
+            handle_call({send, Message}, self(), State)
+    end;
 handle_call({send, Message}, _From,
             #state{role = Role, filter = Filter} = State) ->
     case filter_message(Message, Role, Filter) of
