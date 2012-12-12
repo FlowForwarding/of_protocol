@@ -21,8 +21,7 @@
 -module(ofp_parser).
 
 %% API
--export([new/0,
-         new/1,
+-export([new/1,
          parse/2,
          encode/2]).
 
@@ -31,11 +30,6 @@
 %%------------------------------------------------------------------------------
 %% API functions
 %%------------------------------------------------------------------------------
-
-%% @doc Create new parser.
--spec new() -> {ok, ofp_parser()}.
-new() ->
-    new(?DEFAULT_VERSION).
 
 -spec new(integer()) -> {ok, ofp_parser()}.
 new(Version) ->

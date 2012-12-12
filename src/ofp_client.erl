@@ -46,6 +46,7 @@
 
 -define(DEFAULT_HOST, "localhost").
 -define(DEFAULT_PORT, 6633).
+-define(DEFAULT_VERSION, 4).
 -define(DEFAULT_TIMEOUT, timer:seconds(5)).
 
 -record(state, {
@@ -73,7 +74,7 @@ start_link(Host) ->
     start_link(Host, ?DEFAULT_PORT).
 
 start_link(Host, Port) ->
-    start_link(Host, Port, [{version, ?DEFAULT_VERSION}]).
+    start_link(Host, Port, []).
 
 start_link(Host, Port, Opts) ->
     start_link(Host, Port, Opts, main).

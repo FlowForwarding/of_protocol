@@ -618,7 +618,7 @@
           command :: ofp_flow_mod_command(),
           idle_timeout = 0 :: integer(),
           hard_timeout = 0 :: integer(),
-          priority = 16#ffff :: integer(),
+          priority = 0 :: integer(),
           buffer_id = no_buffer :: ofp_buffer_id(),
           out_port = any :: ofp_port_no(),
           out_group = any :: ofp_group_id(),

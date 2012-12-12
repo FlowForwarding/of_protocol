@@ -19,7 +19,6 @@
 %% @doc Common header file for all protocol versions.
 
 -define(OFP_HEADER_SIZE, 8).
--define(DEFAULT_VERSION, 3).
 
 -define(MOD(Version), case Version of
                           3 -> ofp_v3;
@@ -30,7 +29,7 @@
 %% Header ----------------------------------------------------------------------
 
 -record(ofp_message, {
-          version = ?DEFAULT_VERSION :: integer(),
+          version :: integer(),
           type :: atom(),
           xid = 0 :: integer(),
           body %% ofp_message_body()
@@ -49,7 +48,7 @@
 %% Parser ----------------------------------------------------------------------
 
 -record(ofp_parser, {
-          version = ?DEFAULT_VERSION :: integer(),
+          version :: integer(),
           module :: atom(),
           stack = <<>> :: binary()
          }).
