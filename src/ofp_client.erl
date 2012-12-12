@@ -54,6 +54,7 @@
           controller :: {string(), integer()},
           aux_connections = [] :: [{tcp, integer()}],
           parent :: pid(),
+          version :: integer(),
           versions :: integer(),
           role = equal :: master | equal | slave,
           generation_id :: integer(),
@@ -246,7 +247,8 @@ handle_info({tcp, Socket, Data}, #state{id = Id,
                               {Host, Port, Id, Version}},
                     {ok, Parser} = ofp_parser:new(Version),
                     self() ! {tcp, Socket, Leftovers},
-                    {noreply, State#state{parser = Parser}}
+                    {noreply, State#state{parser = Parser,
+                                          version = Version}}
             end;
         _Else ->
             reset_connection(State, bad_initial_message)
@@ -290,8 +292,10 @@ code_change(_OldVersion, State, _Extra) ->
 %% Internal functions
 %%------------------------------------------------------------------------------
 
-do_send(Message, #state{socket = Socket, parser = Parser}) ->
-    case ofp_parser:encode(Parser, Message) of
+do_send(Message, #state{socket = Socket,
+                        parser = Parser,
+                        version = Version}) ->
+    case ofp_parser:encode(Parser, Message#ofp_message{version = Version}) of
         {ok, Binary} ->
             Size = byte_size(Binary),
             case Size < (1 bsl 16) of
