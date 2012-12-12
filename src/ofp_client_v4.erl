@@ -24,7 +24,8 @@
          extract_role/1,
          create_async/1,
          extract_async/1,
-         type_atom/1]).
+         type_atom/1,
+         add_aux_id/2]).
 
 -include("ofp_v4.hrl").
 
@@ -179,3 +180,6 @@ type_atom(#ofp_set_async{}) ->
     set_async;
 type_atom(#ofp_meter_mod{}) ->
     meter_mod.
+
+add_aux_id(#ofp_features_reply{} = Reply, Id) ->
+    Reply#ofp_features_reply{auxiliary_id = Id}.

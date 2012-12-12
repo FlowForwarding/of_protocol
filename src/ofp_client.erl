@@ -157,6 +157,9 @@ handle_call({send, _Message}, _From, #state{socket = undefined} = State) ->
     {reply, {error, not_connected}, State};
 handle_call({send, _Message}, _From, #state{parser = undefined} = State) ->
     {reply, {error, parser_not_ready}, State};
+handle_call({send, #ofp_message{type = features_reply} = Message}, _From,
+            #state{id = Id} = State) ->
+    {reply, do_send(add_aux_id(Message, Id), State), State};
 handle_call({send, Message}, _From,
             #state{role = Role, filter = Filter} = State) ->
     case filter_message(Message, Role, Filter) of
@@ -495,4 +498,12 @@ add_type(#ofp_message{version = Version, body = Body} = Message) ->
             Message#ofp_message{type = ofp_client_v3:type_atom(Body)};
         4 ->
             Message#ofp_message{type = ofp_client_v4:type_atom(Body)}
+    end.
+
+add_aux_id(#ofp_message{version = Version, body = Body} = Message, Id) ->
+    case Version of
+        3 ->
+            Message;
+        4 ->
+            Message#ofp_message{body = ofp_client_v4:add_aux_id(Body, Id)}
     end.
