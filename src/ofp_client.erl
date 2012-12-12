@@ -100,25 +100,7 @@ controlling_process(Pid, ControllingPid) ->
 %% result in {error, {bad_message, Message :: ofp_message()}}.
 -spec send(pid(), ofp_message()) -> ok | {error, Reason :: term()}.
 send(Pid, Message) ->
-    Message2 = add_type(Message),
-    case Message2#ofp_message.type of
-        Type when Type == error;
-                  Type == echo_reply;
-                  Type == features_reply;
-                  Type == get_config_reply;
-                  Type == packet_in;
-                  Type == flow_removed;
-                  Type == port_status;
-                  Type == stats_reply;
-                  Type == multipart_reply;
-                  Type == barrier_reply;
-                  Type == queue_get_config_reply;
-                  Type == role_reply;
-                  Type == get_async_reply ->
-            gen_server:call(Pid, {send, Message2});
-        _Else ->
-            {error, {bad_message, Message2}}
-    end.
+    gen_server:call(Pid, {send, Message}).
 
 %% @doc Stop the client.
 -spec stop(pid()) -> ok.
@@ -159,26 +141,26 @@ handle_call({send, _Message}, _From, #state{socket = undefined} = State) ->
     {reply, {error, not_connected}, State};
 handle_call({send, _Message}, _From, #state{parser = undefined} = State) ->
     {reply, {error, parser_not_ready}, State};
-handle_call({send, #ofp_message{type = features_reply} = Message}, _From,
-            #state{id = Id} = State) ->
-    {reply, do_send(add_aux_id(Message, Id), State), State};
-handle_call({send, #ofp_message{type = packet_in} = Message}, _From,
-            #state{id = Id} = State) ->
-    case Id of
-        0 ->
-            case ets:lookup(ofp_channel, self()) of
-                [] ->
-                    {reply, do_filter_send(Message, State), State};
-                List ->
-                    RandomIndex = random:uniform(length(List)),
-                    {_, AuxPid} = lists:nth(RandomIndex, List),
-                    {reply, send(AuxPid, Message), State}
-            end;
+handle_call({send, Message}, _From, #state{version = Version} = State) ->
+    Message2 = add_type(Message#ofp_message{version = Version}),
+    case Message2#ofp_message.type of
+        Type when Type == error;
+                  Type == echo_reply;
+                  Type == features_reply;
+                  Type == get_config_reply;
+                  Type == packet_in;
+                  Type == flow_removed;
+                  Type == port_status;
+                  Type == stats_reply;
+                  Type == multipart_reply;
+                  Type == barrier_reply;
+                  Type == queue_get_config_reply;
+                  Type == role_reply;
+                  Type == get_async_reply ->
+            {reply, handle_send(Message2, State), State};
         _Else ->
-            {reply, do_filter_send(Message, State), State}
+            {reply, {error, {bad_message, Message2}}, State}
     end;
-handle_call({send, Message}, _From, State) ->
-    {reply, do_filter_send(Message, State), State};
 handle_call({controlling_process, Pid}, _From, State) ->
     {reply, ok, State#state{parent = Pid}};
 handle_call(make_slave, _From, #state{role = master} = State) ->
@@ -291,6 +273,27 @@ code_change(_OldVersion, State, _Extra) ->
 %%------------------------------------------------------------------------------
 %% Internal functions
 %%------------------------------------------------------------------------------
+
+handle_send(#ofp_message{type = features_reply} = Message,
+            #state{id = Id} = State) ->
+    do_send(add_aux_id(Message, Id), State);
+handle_send(#ofp_message{type = packet_in} = Message,
+            #state{id = Id} = State) ->
+    case Id of
+        0 ->
+            case ets:lookup(ofp_channel, self()) of
+                [] ->
+                    do_filter_send(Message, State);
+                List ->
+                    RandomIndex = random:uniform(length(List)),
+                    {_, AuxPid} = lists:nth(RandomIndex, List),
+                    send(AuxPid, Message)
+            end;
+        _Else ->
+            do_filter_send(Message, State)
+    end;
+handle_send(Message, State) ->
+    do_filter_send(Message, State).
 
 do_send(Message, #state{socket = Socket,
                         parser = Parser,
