@@ -283,7 +283,13 @@ code_change(_OldVersion, State, _Extra) ->
 do_send(Message, #state{socket = Socket, parser = Parser}) ->
     case ofp_parser:encode(Parser, Message) of
         {ok, Binary} ->
-            gen_tcp:send(Socket, Binary);
+            Size = byte_size(Binary),
+            case Size < (1 bsl 16) of
+                true ->
+                    gen_tcp:send(Socket, Binary);
+                false ->
+                    {error, message_too_big}
+            end;
         {error, Reason} ->
             {error, Reason}
     end.
