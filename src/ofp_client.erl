@@ -206,7 +206,8 @@ handle_info(timeout, #state{id = Id,
             ok = gen_tcp:send(Socket, HelloBin),
             {noreply, State#state{socket = Socket}};
         {error, _Reason} ->
-            {noreply, State, Timeout}
+            erlang:send_after(Timeout, self(), timeout),
+            {noreply, State}
     end;
 handle_info({tcp, Socket, Data}, #state{id = Id,
                                         controller = {Host, Port},
@@ -544,8 +545,10 @@ reset_connection(#state{id = Id,
     Parent ! {ofp_closed, self(), {Host, Port, Id, Reason}},
 
     %% Reset
+    erlang:send_after(Timeout, self(), timeout),
     {noreply, State#state{socket = undefined,
-                          parser = undefined}, Timeout}.
+                          parser = undefined,
+                          version = undefined}}.
 
 create_error(3, Type, Code) ->
     ofp_client_v3:create_error(Type, Code);
