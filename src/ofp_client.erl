@@ -215,12 +215,16 @@ handle_info({tcp, Socket, Data}, #state{id = Id,
                                         parser = undefined,
                                         versions = Versions} = State) ->
     inet:setopts(Socket, [{active, once}]),
-    
     %% Wait for hello
     case of_protocol:decode(Data) of
-        {ok, #ofp_message{body = #ofp_hello{}} = Hello, Leftovers} ->
+        {ok, #ofp_message{version = CtrlVersion,
+                          body = #ofp_hello{}} = Hello, Leftovers} ->
             case decide_on_version(Versions, Hello) of
                 {unsupported_version, _} = Reason ->
+                    Error = create_error(CtrlVersion,
+                                         hello_failed, incompatible),
+                    {ok, ErrorBin} = of_protocol:encode(Error),
+                    ok = gen_tcp:send(Socket, ErrorBin),
                     reset_connection(State, Reason);
                 {no_common_version, _, _} = Reason ->
                     reset_connection(State, Reason);
@@ -386,13 +390,24 @@ decide_on_version(CVersions, #ofp_message{version = SVersion, body = Body}) ->
                 true ->
                     CVersion;
                 false ->
-                    Elements = Body#ofp_hello.elements,
-                    SVersions = get_opt(versionbitmap, Elements, [SVersion]),
-                    case gcv(CVersions, SVersions) of
-                        no_common_version ->
-                            {no_common_version, CVersions, SVersions};
-                        Version ->
-                            Version
+                    if
+                        SVersion >= 4 ->
+                            Elements = Body#ofp_hello.elements,
+                            SVersions = get_opt(versionbitmap, Elements, []),
+                            SVersions2 = lists:umerge([SVersion], SVersions),
+                            case gcv(CVersions, SVersions2) of
+                                no_common_version ->
+                                    {no_common_version, CVersions, SVersions};
+                                Version ->
+                                    Version
+                            end;
+                        true ->
+                            case lists:member(SVersion, CVersions) of
+                                true ->
+                                    SVersion;
+                                false ->
+                                    {unsupported_version, SVersion}
+                            end
                     end
             end;
         true ->
