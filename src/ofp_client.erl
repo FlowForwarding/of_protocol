@@ -213,6 +213,7 @@ handle_info({tcp, Socket, Data}, #state{id = Id,
                                         socket = Socket,
                                         parent = Parent,
                                         parser = undefined,
+                                        version = undefined,
                                         versions = Versions} = State) ->
     inet:setopts(Socket, [{active, once}]),
     %% Wait for hello
@@ -221,7 +222,7 @@ handle_info({tcp, Socket, Data}, #state{id = Id,
                           xid = Xid,
                           body = #ofp_hello{}} = Hello, Leftovers} ->
             case decide_on_version(Versions, Hello) of
-                {unsupported_version, _} = Reason ->
+                {unsupported_version, _} ->
                     Error = create_error(CtrlVersion,
                                          hello_failed, incompatible),
                     ErrorMsg = #ofp_message{version = CtrlVersion,
@@ -229,7 +230,7 @@ handle_info({tcp, Socket, Data}, #state{id = Id,
                                             body = Error},
                     {ok, ErrorBin} = of_protocol:encode(ErrorMsg),
                     ok = gen_tcp:send(Socket, ErrorBin),
-                    reset_connection(State, Reason);
+                    {noreply, State#state{version = lists:max(Versions)}};
                 {no_common_version, _, _} = Reason ->
                     reset_connection(State, Reason);
                 Version ->
@@ -242,6 +243,31 @@ handle_info({tcp, Socket, Data}, #state{id = Id,
             end;
         _Else ->
             reset_connection(State, bad_initial_message)
+    end;
+handle_info({tcp, Socket, Data}, #state{id = Id,
+                                        controller = {Host, Port},
+                                        socket = Socket,
+                                        parent = Parent,
+                                        parser = undefined,
+                                        version = Version} = State) ->
+    inet:setopts(Socket, [{active, once}]),
+    %% Wait for hello_failed error message
+    case of_protocol:decode(Data) of
+        {ok, #ofp_message{version = Version,
+                          xid = 0} = Message, Leftovers} ->
+            Message2 = add_type(Message),
+            case Message2#ofp_message.type of
+                error_msg ->
+                    reset_connection(State, {failed_negotation, Version});
+                _Else ->
+                    Parent ! {ofp_connected, self(),
+                              {Host, Port, Id, Version}},
+                    {ok, Parser} = ofp_parser:new(Version),
+                    self() ! {tcp, Socket, Leftovers},
+                    {noreply, State#state{parser = Parser}}
+            end;
+        _Else ->
+            reset_connection(State, bad_message)
     end;
 handle_info({tcp, Socket, Data}, #state{socket = Socket,
                                         parser = Parser} = State) ->
