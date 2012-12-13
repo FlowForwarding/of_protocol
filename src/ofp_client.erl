@@ -263,8 +263,8 @@ handle_info({tcp, Socket, Data}, #state{id = Id,
                 _Else ->
                     Parent ! {ofp_connected, self(),
                               {Host, Port, Id, Version}},
+                    self() ! {tcp, Socket, Data},
                     {ok, Parser} = ofp_parser:new(Version),
-                    self() ! {tcp, Socket, Leftovers},
                     {noreply, State#state{parser = Parser}}
             end;
         _Else ->
