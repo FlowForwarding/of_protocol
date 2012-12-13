@@ -230,6 +230,7 @@ handle_info({tcp, Socket, Data}, #state{id = Id,
                                             body = Error},
                     {ok, ErrorBin} = of_protocol:encode(ErrorMsg),
                     ok = gen_tcp:send(Socket, ErrorBin),
+                    self() ! {tcp, Socket, Leftovers},
                     {noreply, State#state{version = lists:max(Versions)}};
                 {no_common_version, _, _} = Reason ->
                     reset_connection(State, Reason);
