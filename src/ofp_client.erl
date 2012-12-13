@@ -218,12 +218,16 @@ handle_info({tcp, Socket, Data}, #state{id = Id,
     %% Wait for hello
     case of_protocol:decode(Data) of
         {ok, #ofp_message{version = CtrlVersion,
+                          xid = Xid,
                           body = #ofp_hello{}} = Hello, Leftovers} ->
             case decide_on_version(Versions, Hello) of
                 {unsupported_version, _} = Reason ->
                     Error = create_error(CtrlVersion,
                                          hello_failed, incompatible),
-                    {ok, ErrorBin} = of_protocol:encode(Error),
+                    ErrorMsg = #ofp_message{version = CtrlVersion,
+                                            xid = Xid,
+                                            body = Error},
+                    {ok, ErrorBin} = of_protocol:encode(ErrorMsg),
                     ok = gen_tcp:send(Socket, ErrorBin),
                     reset_connection(State, Reason);
                 {no_common_version, _, _} = Reason ->
