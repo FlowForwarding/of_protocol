@@ -254,8 +254,7 @@ handle_info({tcp, Socket, Data}, #state{id = Id,
     inet:setopts(Socket, [{active, once}]),
     %% Wait for hello_failed error message
     case of_protocol:decode(Data) of
-        {ok, #ofp_message{version = Version,
-                          xid = 0} = Message, Leftovers} ->
+        {ok, #ofp_message{version = Version} = Message, Leftovers} ->
             Message2 = add_type(Message),
             case Message2#ofp_message.type of
                 error_msg ->
