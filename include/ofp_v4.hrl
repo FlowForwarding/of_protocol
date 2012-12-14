@@ -788,7 +788,7 @@
 
 -record(ofp_aggregate_stats_request, {
           flags = [] :: [ofp_multipart_request_flag()],
-          table_id :: ofp_table_id(),
+          table_id = all :: ofp_table_id(),
           out_port = any :: ofp_port_no(),
           out_group = any :: ofp_group_id(),
           cookie = <<0:64>> :: binary(),

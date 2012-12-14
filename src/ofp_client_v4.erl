@@ -25,8 +25,10 @@
          create_async/1,
          extract_async/1,
          type_atom/1,
-         add_aux_id/2]).
+         add_aux_id/2,
+         split_multipart/1]).
 
+-include("of_protocol.hrl").
 -include("ofp_v4.hrl").
 
 %% @doc Create an error message.
@@ -183,3 +185,34 @@ type_atom(#ofp_meter_mod{}) ->
 
 add_aux_id(#ofp_features_reply{} = Reply, Id) ->
     Reply#ofp_features_reply{auxiliary_id = Id}.
+
+split_multipart(#ofp_message{body = #ofp_table_features_reply{}} = Message) ->
+    Features = Message#ofp_message.body#ofp_table_features_reply.body,
+    split_table_features(Message#ofp_message{body = []}, Features, []);
+split_multipart(Message) ->
+    [Message].
+
+split_table_features(_Header, [], Messages) ->
+    lists:reverse(Messages);
+split_table_features(Header, Feats, Messages) ->
+    {FirstTen, Rest} = split2(10, Feats),
+    Flags = case Rest of
+                [] ->
+                    [];
+                _Else ->
+                    [more]
+            end,
+    TableFeatures = #ofp_table_features_reply{flags = Flags,
+                                              body = FirstTen},
+    NewMessage = Header#ofp_message{body = TableFeatures},
+    split_table_features(Header, Rest, [NewMessage | Messages]).
+
+split2(N, List) ->
+    split2(N, List, []).
+
+split2(0, Tail, Head) ->
+    {lists:reverse(Head), Tail};
+split2(_, [], Head) ->
+    {lists:reverse(Head), []};
+split2(N, [X | Tail], Head) ->
+    split2(N - 1, Tail, [X | Head]).

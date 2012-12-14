@@ -255,7 +255,7 @@ handle_info({tcp, Socket, Data}, #state{id = Id,
     inet:setopts(Socket, [{active, once}]),
     %% Wait for hello_failed error message
     case of_protocol:decode(Data) of
-        {ok, #ofp_message{version = Version} = Message, Leftovers} ->
+        {ok, #ofp_message{version = Version} = Message, _Leftovers} ->
             Message2 = add_type(Message),
             case Message2#ofp_message.type of
                 error_msg ->
@@ -326,6 +326,15 @@ handle_send(#ofp_message{type = packet_in} = Message,
             end;
         _Else ->
             do_filter_send(Message, State)
+    end;
+handle_send(#ofp_message{type = multipart_reply} = Message, State) ->
+    Replies = ofp_client_v4:split_multipart(Message),
+    Results = [do_send(Reply, State) || Reply <- Replies],
+    case lists:all(fun(X) -> X == ok end, Results) of
+        true ->
+            ok;
+        false ->
+            {error, bad_multipart_split}
     end;
 handle_send(Message, State) ->
     do_filter_send(Message, State).
