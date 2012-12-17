@@ -24,8 +24,8 @@
 
 -export([do/1]).
 
--include("of_protocol.hrl").
--include("ofp_v4.hrl").
+-include_lib("of_protocol/include/of_protocol.hrl").
+-include_lib("of_protocol/include/ofp_v4.hrl").
 
 %%------------------------------------------------------------------------------
 %% API functions
@@ -34,8 +34,15 @@
 %% @doc Actual encoding of the message.
 -spec do(Message :: ofp_message()) -> binary().
 do(#ofp_message{version = ?VERSION, xid = Xid, body = Body}) ->
-    BodyBin = encode_body(Body),
     TypeInt = type_int(Body),
+    case encode_body(Body) of
+        {multipart, Bodies} ->
+            [enc_msg(Xid, BodyBin, TypeInt) || BodyBin <- Bodies];            
+        BodyBin ->
+            enc_msg(Xid, BodyBin, TypeInt)
+    end.
+
+enc_msg(Xid, BodyBin, TypeInt) ->            
     Length = ?OFP_HEADER_SIZE + size(BodyBin),
     <<?VERSION:8, TypeInt:8, Length:16, Xid:32, BodyBin/bytes>>.
 
@@ -474,11 +481,12 @@ encode_body(#ofp_flow_stats_request{flags = Flags, table_id = Table,
       TableInt:8, 0:24, PortInt:32,
       GroupInt:32, 0:32, Cookie:8/bytes, CookieMask:8/bytes,
       MatchBin/bytes>>;
-encode_body(#ofp_flow_stats_reply{flags = Flags, body = Stats}) ->
+encode_body(#ofp_flow_stats_reply{body = Stats}) ->
     TypeInt = ofp_v4_enum:to_int(multipart_type, flow_stats),
-    FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
-    StatsBin = encode_list(Stats),
-    <<TypeInt:16, FlagsBin/bytes, 0:32, StatsBin/bytes>>;
+    StatsBins = [encode_struct(Stat) || Stat <- Stats],
+    Segments = multipart_split(StatsBins),
+    Bins = [enc_multipart(TypeInt, Flags, BodyBin) || {Flags,BodyBin} <- Segments],
+    {multipart, Bins};
 encode_body(#ofp_aggregate_stats_request{flags = Flags,
                                          table_id = Table, out_port = Port,
                                          out_group = Group, cookie = Cookie,
@@ -512,10 +520,18 @@ encode_body(#ofp_table_stats_reply{flags = Flags, body = Stats}) ->
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       StatsBin/bytes>>;
-encode_body(#ofp_table_features_request{} = Request) ->
-    table_features_request(Request);
-encode_body(#ofp_table_features_reply{} = Reply) ->
-    table_features_reply(Reply);
+encode_body(#ofp_table_features_request{body = Features}) ->
+    TypeInt = ofp_v4_enum:to_int(multipart_type, table_features),
+    FeatBins = [table_features(Feature) || Feature <- Features],
+    Segments = multipart_split(FeatBins),
+    Bins = [enc_multipart(TypeInt, Flags, BodyBin) || {Flags,BodyBin} <- Segments],
+    {multipart, Bins};
+encode_body(#ofp_table_features_reply{body = Features}) ->
+    TypeInt = ofp_v4_enum:to_int(multipart_type, table_features),
+    FeatBins = [table_features(Feature) || Feature <- Features],
+    Segments = multipart_split(FeatBins),
+    Bins = [enc_multipart(TypeInt, Flags, BodyBin) || {Flags,BodyBin} <- Segments],
+    {multipart, Bins};
 encode_body(#ofp_port_stats_request{flags = Flags, port_no = Port}) ->
     TypeInt = ofp_v4_enum:to_int(multipart_type, port_stats),
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
@@ -687,20 +703,6 @@ encode_body(Other) ->
     throw({bad_message, Other}).
 
 %% A.3.5.5 Table Features ------------------------------------------------------
-
-table_features_request(#ofp_table_features_request{flags = Flags,
-                                                   body = Features}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, table_features),
-    FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
-    BodyBin = list_to_binary([table_features(Feature) || Feature <- Features]),
-    <<TypeInt:16, FlagsBin:2/bytes, 0:32, BodyBin/bytes>>.
-
-table_features_reply(#ofp_table_features_reply{flags = Flags,
-                                               body = Features}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, table_features),
-    FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
-    BodyBin = list_to_binary([table_features(Feature) || Feature <- Features]),
-    <<TypeInt:16, FlagsBin:2/bytes, 0:32, BodyBin/bytes>>.
 
 table_features(#ofp_table_features{table_id = TableId,
                                    name = Name,
@@ -1041,4 +1043,24 @@ type_int(#ofp_set_async{}) ->
 type_int(#ofp_meter_mod{}) ->
     ofp_v4_enum:to_int(type, meter_mod).
 
+%% Group encoded binaries into blocks large enough to fit into one
+%% OpenFlow multipart message.
+multipart_split(Bodies) ->
+    multipart_split(Bodies, ?MAX_MULTIPART_SIZE, 0, <<>>, []).
 
+multipart_split([Body|Bodies], MaxSize, AccSize, Bin, Acc)
+  when AccSize+byte_size(Body)=<MaxSize ->
+    multipart_split(Bodies, MaxSize, AccSize+byte_size(Body),
+                    <<Bin/binary,Body/binary>>, Acc);
+multipart_split([Body|Bodies], MaxSize, AccSize, Bin, Acc)
+  when AccSize+byte_size(Body) > MaxSize ->
+    multipart_split(Bodies, MaxSize, byte_size(Body), Body, [{[more],Bin}|Acc]);
+multipart_split([], _MaxSize, _AccSize, <<>>, [{_,Bin}|Acc]) ->
+    lists:reverse([{[],Bin}|Acc]);
+multipart_split([], _MaxSize, _AccSize, Bin, Acc) ->
+    lists:reverse([{[],Bin}|Acc]).
+
+%% Encode one multipart segment.
+enc_multipart(TypeInt, Flags, BodyBin) ->
+    FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
+    <<TypeInt:16, FlagsBin:2/bytes, 0:32, BodyBin/bytes>>.

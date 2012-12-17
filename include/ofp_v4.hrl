@@ -130,6 +130,7 @@
 -define(OFP_MAX_TABLE_NAME_LEN, 32). %% table name string
 -define(DESC_STR_LEN, 256).          %% switch description string
 -define(SERIAL_NUM_LEN, 32).         %% serial number string
+-define(MAX_MULTIPART_SIZE, 16#FFFF-8). %% ?OFP_HEADER_SIZE=8 
 
 %%%-----------------------------------------------------------------------------
 %%% OFP Message Body
@@ -737,6 +738,7 @@
 -record(ofp_desc_request, {
           flags = [] :: [ofp_multipart_request_flag()]
          }).
+
 -type ofp_desc_request() :: #ofp_desc_request{}.
 
 -record(ofp_desc_reply, {

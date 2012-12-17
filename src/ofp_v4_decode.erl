@@ -24,8 +24,16 @@
 
 -export([do/1]).
 
--include("of_protocol.hrl").
--include("ofp_v4.hrl").
+-include_lib("of_protocol/include/of_protocol.hrl").
+-include_lib("of_protocol/include/ofp_v4.hrl").
+
+%% Record used for reassembly of multipart messages
+-record(multipart, {
+          xid           :: non_neg_integer(),
+          latest_ts     :: erlang:timestamp(),
+          segments = [] :: tuple()}).
+
+-define(REASSEMBLY_TIMEOUT, 5). %% Seconds
 
 %%------------------------------------------------------------------------------
 %% API functions
@@ -42,9 +50,21 @@ do(Binary) ->
             BodyLength = Length - 8,
             <<BodyBin:BodyLength/bytes, Rest/bytes >> = Binary2,
             Type = ofp_v4_enum:to_atom(type, TypeInt),
-            Body = decode_body(Type, BodyBin),
-            {ok, #ofp_message{version = Version, type = Type,
-                              xid = XID, body = Body}, Rest}
+            case decode_body(Type, BodyBin) of
+                {multipart, Flags, Segment} ->
+                    case handle_multipart(XID, Flags, Segment) of
+                        pending ->
+                            {ok, pending, Rest};
+                        Msg ->
+                            {ok, #ofp_message{version = Version, type = Type,
+                                              xid = XID, body = Msg}, Rest}
+                    end;
+                    %% {ok, #ofp_message{version = Version, type = Type,
+                    %%                   xid = XID, body = Segment}, Rest};
+                Body ->
+                    {ok, #ofp_message{version = Version, type = Type,
+                                      xid = XID, body = Body}, Rest}
+            end
     end.
 
 %%------------------------------------------------------------------------------
@@ -942,81 +962,82 @@ decode_body(multipart_request, Binary) ->
     <<TypeInt:16, FlagsBin:16/bits, 0:32, Data/bytes>> = Binary,
     Type = ofp_v4_enum:to_atom(multipart_type, TypeInt),
     Flags = binary_to_flags(multipart_request_flags, FlagsBin),
-    case Type of
-        desc ->
-            #ofp_desc_request{flags = Flags};
-        flow_stats ->
-            MatchLength = size(Binary) - (?FLOW_STATS_REQUEST_SIZE - ?MATCH_SIZE) + ?OFP_HEADER_SIZE,
-            <<TableInt:8, 0:24, PortInt:32,
-              GroupInt:32, 0:32, Cookie:8/bytes,
-              CookieMask:8/bytes, MatchBin:MatchLength/bytes>> = Data,
-            Table = get_id(table, TableInt),
-            Port = get_id(port_no, PortInt),
-            Group = get_id(group, GroupInt),
-            Match = decode_match(MatchBin),
-            #ofp_flow_stats_request{flags = Flags,
-                                    table_id = Table, out_port = Port,
-                                    out_group = Group, cookie = Cookie,
-                                    cookie_mask = CookieMask, match = Match};
-        aggregate_stats ->
-            MatchLength = size(Binary) - (?AGGREGATE_STATS_REQUEST_SIZE - ?MATCH_SIZE) + ?OFP_HEADER_SIZE,
-            <<TableInt:8, 0:24, PortInt:32,
-              GroupInt:32, 0:32, Cookie:8/bytes,
-              CookieMask:8/bytes, MatchBin:MatchLength/bytes>> = Data,
-            Table = get_id(table, TableInt),
-            Port = get_id(port_no, PortInt),
-            Group = get_id(group, GroupInt),
-            Match = decode_match(MatchBin),
-            #ofp_aggregate_stats_request{flags = Flags,
-                                         table_id = Table, out_port = Port,
-                                         out_group = Group, cookie = Cookie,
-                                         cookie_mask = CookieMask, match = Match};
-        table_stats ->
-            #ofp_table_stats_request{flags = Flags};
-        table_features ->
-            Features = table_features(Data, []),
-            #ofp_table_features_request{flags = Flags,
-                                        body = Features};
-        port_desc ->
-            #ofp_port_desc_request{flags = Flags};
-        port_stats ->
-            <<PortInt:32, 0:32>> = Data,
-            Port = get_id(port_no, PortInt),
-            #ofp_port_stats_request{flags = Flags,
-                                    port_no = Port};
-        queue_stats ->
-            <<PortInt:32, QueueInt:32>> = Data,
-            Port = get_id(port_no, PortInt),
-            Queue = get_id(queue, QueueInt),
-            #ofp_queue_stats_request{flags = Flags, port_no = Port,
-                                     queue_id = Queue};
-        group_stats ->
-            <<GroupInt:32, 0:32>> = Data,
-            Group = get_id(group, GroupInt),
-            #ofp_group_stats_request{flags = Flags,
-                                     group_id = Group};
-        group_desc ->
-            #ofp_group_desc_request{flags = Flags};
-        group_features ->
-            #ofp_group_features_request{flags = Flags};
-        meter_stats ->
-            <<MeterIdBin:32, _Pad:32>> = Data,
-            MeterId = get_id(meter_id, MeterIdBin),
-            #ofp_meter_stats_request{flags = Flags, meter_id = MeterId};
-        meter_config ->
-            <<MeterIdBin:32, _Pad:32>> = Data,
-            MeterId = get_id(meter_id, MeterIdBin),
-            #ofp_meter_config_request{flags = Flags, meter_id = MeterId};
-        meter_features ->
-            #ofp_meter_features_request{flags = Flags};
-        experimenter ->
-            DataLength = size(Binary) - ?EXPERIMENTER_STATS_REQUEST_SIZE + ?OFP_HEADER_SIZE,
-            <<Experimenter:32, ExpType:32,
-              ExpData:DataLength/bytes>> = Data,
-            #ofp_experimenter_request{flags = Flags,
-                                      experimenter = Experimenter,
-                                      exp_type = ExpType, data = ExpData}
-    end;
+    Req = case Type of
+              desc ->
+                  #ofp_desc_request{flags = Flags};
+              flow_stats ->
+                  MatchLength = size(Binary) - (?FLOW_STATS_REQUEST_SIZE - ?MATCH_SIZE) + ?OFP_HEADER_SIZE,
+                  <<TableInt:8, 0:24, PortInt:32,
+                    GroupInt:32, 0:32, Cookie:8/bytes,
+                    CookieMask:8/bytes, MatchBin:MatchLength/bytes>> = Data,
+                  Table = get_id(table, TableInt),
+                  Port = get_id(port_no, PortInt),
+                  Group = get_id(group, GroupInt),
+                  Match = decode_match(MatchBin),
+                  #ofp_flow_stats_request{flags = Flags,
+                                          table_id = Table, out_port = Port,
+                                          out_group = Group, cookie = Cookie,
+                                          cookie_mask = CookieMask, match = Match};
+              aggregate_stats ->
+                  MatchLength = size(Binary) - (?AGGREGATE_STATS_REQUEST_SIZE - ?MATCH_SIZE) + ?OFP_HEADER_SIZE,
+                  <<TableInt:8, 0:24, PortInt:32,
+                    GroupInt:32, 0:32, Cookie:8/bytes,
+                    CookieMask:8/bytes, MatchBin:MatchLength/bytes>> = Data,
+                  Table = get_id(table, TableInt),
+                  Port = get_id(port_no, PortInt),
+                  Group = get_id(group, GroupInt),
+                  Match = decode_match(MatchBin),
+                  #ofp_aggregate_stats_request{flags = Flags,
+                                               table_id = Table, out_port = Port,
+                                               out_group = Group, cookie = Cookie,
+                                               cookie_mask = CookieMask, match = Match};
+              table_stats ->
+                  #ofp_table_stats_request{flags = Flags};
+              table_features ->
+                  Features = table_features(Data, []),
+                  #ofp_table_features_request{flags = Flags,
+                                              body = Features};
+              port_desc ->
+                  #ofp_port_desc_request{flags = Flags};
+              port_stats ->
+                  <<PortInt:32, 0:32>> = Data,
+                  Port = get_id(port_no, PortInt),
+                  #ofp_port_stats_request{flags = Flags,
+                                          port_no = Port};
+              queue_stats ->
+                  <<PortInt:32, QueueInt:32>> = Data,
+                  Port = get_id(port_no, PortInt),
+                  Queue = get_id(queue, QueueInt),
+                  #ofp_queue_stats_request{flags = Flags, port_no = Port,
+                                           queue_id = Queue};
+              group_stats ->
+                  <<GroupInt:32, 0:32>> = Data,
+                  Group = get_id(group, GroupInt),
+                  #ofp_group_stats_request{flags = Flags,
+                                           group_id = Group};
+              group_desc ->
+                  #ofp_group_desc_request{flags = Flags};
+              group_features ->
+                  #ofp_group_features_request{flags = Flags};
+              meter_stats ->
+                  <<MeterIdBin:32, _Pad:32>> = Data,
+                  MeterId = get_id(meter_id, MeterIdBin),
+                  #ofp_meter_stats_request{flags = Flags, meter_id = MeterId};
+              meter_config ->
+                  <<MeterIdBin:32, _Pad:32>> = Data,
+                  MeterId = get_id(meter_id, MeterIdBin),
+                  #ofp_meter_config_request{flags = Flags, meter_id = MeterId};
+              meter_features ->
+                  #ofp_meter_features_request{flags = Flags};
+              experimenter ->
+                  DataLength = size(Binary) - ?EXPERIMENTER_STATS_REQUEST_SIZE + ?OFP_HEADER_SIZE,
+                  <<Experimenter:32, ExpType:32,
+                    ExpData:DataLength/bytes>> = Data,
+                  #ofp_experimenter_request{flags = Flags,
+                                            experimenter = Experimenter,
+                                            exp_type = ExpType, data = ExpData}
+          end,
+    {multipart, Flags, Req};
 decode_body(multipart_reply, Binary) ->
     <<TypeInt:16, FlagsBin:16/bits, 0:32, Data/bytes>> = Binary,
     Type = ofp_v4_enum:to_atom(multipart_type, TypeInt),
@@ -1057,8 +1078,8 @@ decode_body(multipart_reply, Binary) ->
                                    body = Stats};
         table_features ->
             Features = table_features(Data, []),
-            #ofp_table_features_reply{flags = Flags,
-                                      body = Features};
+            {multipart, Flags, #ofp_table_features_reply{flags = Flags,
+                                                         body = Features}};
         port_desc ->
             Ports = decode_port_list(Data),
             #ofp_port_desc_reply{flags = Flags, body = Ports};
@@ -1185,3 +1206,50 @@ binary_to_flags(Type, Binary) ->
 
 get_id(Enum, Value) ->
     ofp_utils:get_enum_name(ofp_v4_enum, Enum, Value).
+
+%% Handle reassembly of multipart messages
+handle_multipart(XID, [more]=_Flags, Segment) ->
+    case ets:lookup(multipart, XID) of
+        [#multipart{xid = XID, segments = Segments}=MP] ->
+            ets:insert(multipart, MP#multipart{segments = [Segment|Segments],
+                                               latest_ts = os:timestamp()});
+        [] ->
+            ets:insert(multipart,
+                       #multipart{xid = XID, segments = [Segment],
+                                  latest_ts = os:timestamp()})
+    end,
+    pending;
+handle_multipart(XID, []=_Flags, Segment) ->
+    case ets:lookup(multipart, XID) of
+        [#multipart{xid = XID, segments = Segments}] ->
+            ets:delete(multipart, XID),
+            reassemble_multipart([Segment|Segments]);
+        [] ->
+            Segment
+    end.
+
+reassemble_multipart(Segments) ->
+    Body = lists:append([get_body(Segment) || Segment <- lists:reverse(Segments)]),
+    update_body(hd(Segments), Body).
+
+get_body(#ofp_flow_stats_reply{ body = Body }) ->
+    Body;
+get_body(#ofp_table_features_request{ body = Body }) ->
+    Body;
+get_body(#ofp_table_features_reply{ body = Body }) ->
+    Body.
+
+update_body(#ofp_flow_stats_reply{}=M, Body) ->
+    M#ofp_flow_stats_reply{ body = Body };
+update_body(#ofp_table_features_request{} = M, Body) ->
+    M#ofp_table_features_request{ body = Body };
+update_body(#ofp_table_features_reply{} = M, Body) ->
+    M#ofp_table_features_reply{ body = Body }.
+
+mk_reassembly_table() ->
+    ets:new(multipart,
+            [named_table, public,
+             {keypos, #multipart.xid}]).
+
+%% TODO: Handle timeouts in reassembly
+%% ?REASSEMBLY_TIMEOUT

@@ -25,7 +25,7 @@
          parse/2,
          encode/2]).
 
--include("of_protocol.hrl").
+-include_lib("of_protocol/include/of_protocol.hrl").
 
 %%------------------------------------------------------------------------------
 %% API functions
@@ -66,6 +66,8 @@ parse(Binary, #ofp_parser{module = Module, stack = Stack} = Parser, Messages) ->
             {ok, Parser#ofp_parser{stack = NewBinary}, Messages};
         {error, _} ->
             {ok, Parser#ofp_parser{stack = <<>>}, Messages};
+        {ok, no_message, Leftovers} ->
+            parse(Leftovers, Parser#ofp_parser{stack = <<>>}, Messages);
         {ok, Message, Leftovers} ->
             parse(Leftovers, Parser#ofp_parser{stack = <<>>},
                   [Message | Messages])
