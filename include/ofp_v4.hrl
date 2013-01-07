@@ -1302,11 +1302,11 @@
 
 -record(ofp_packet_in, {
           buffer_id = no_buffer :: ofp_buffer_id(),
-          reason :: ofp_packet_in_reason(),
-          table_id :: integer(),
-          cookie = <<0:64>> :: binary(),
-          match :: ofp_match(),
-          data = <<>> :: binary()
+          reason                :: ofp_packet_in_reason(),
+          table_id              :: integer(),
+          cookie = <<-1:64>>    :: binary(),
+          match = #ofp_match{}  :: ofp_match(),
+          data = <<>>           :: binary()
          }).
 -type ofp_packet_in() :: #ofp_packet_in{}.
 

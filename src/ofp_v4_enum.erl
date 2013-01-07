@@ -231,8 +231,7 @@
 
 %% Modify State Messages -------------------------------------------------------
 
-%% Note: Not in the specification
--enum({buffer, [{no_buffer, 16#ffff}]}).
+-enum({buffer, [{no_buffer, 16#ffffffff}]}).
 
 -enum({flow_mod_command, [add,
                           modify,
