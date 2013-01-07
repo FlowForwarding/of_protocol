@@ -20,7 +20,7 @@
 -module(ofp_channel).
 
 %% API
--export([open/3,
+-export([open/4,
          send/1,
          send/2,
          make_slaves/1]).
@@ -29,8 +29,8 @@
 %% API functions
 %%------------------------------------------------------------------------------
 
-open(Host, Port, Opts) ->
-    supervisor:start_child(ofp_channel_sup, [Host, Port, Opts]).
+open(Pid, Host, Port, Opts) ->
+    supervisor:start_child(Pid, [Host, Port, Opts]).
 
 send(Message) ->
     [send(Pid, Message) || {main, Pid} <- ets:lookup(?MODULE, main)].

@@ -61,7 +61,8 @@
           filter = {{true, true, true}, {true, false, false}},
           socket :: inets:socket(),
           parser :: record(),
-          timeout :: integer()
+          timeout :: integer(),
+          supervisor :: pid()
          }).
 
 %%------------------------------------------------------------------------------
@@ -87,7 +88,8 @@ start_link(Host, Port, Opts) ->
                                                     {error, Error :: term()}.
 start_link(Host, Port, Opts, Type) ->
     Parent = get_opt(controlling_process, Opts, self()),
-    gen_server:start_link(?MODULE, {{Host, Port}, Parent, Opts, Type}, []).
+    gen_server:start_link(?MODULE, {{Host, Port}, Parent,
+                                    Opts, Type, self()}, []).
 
 %% @doc Change the controlling process.
 -spec controlling_process(pid(), pid()) -> ok.
@@ -118,14 +120,15 @@ make_slave(Pid) ->
 %% gen_server callbacks
 %%------------------------------------------------------------------------------
 
-init({Controller, Parent, Opts, Type}) ->
+init({Controller, Parent, Opts, Type, Sup}) ->
     Version = get_opt(version, Opts, ?DEFAULT_VERSION),
     Versions = lists:umerge(get_opt(versions, Opts, []), [Version]),
     Timeout = get_opt(timeout, Opts, ?DEFAULT_TIMEOUT),
     State = #state{controller = Controller,
                    parent = Parent,
                    versions = Versions,
-                   timeout = Timeout},
+                   timeout = Timeout,
+                   supervisor = Sup},
     case Type of
         main ->
             ets:insert(ofp_channel, {main, self()}),
@@ -180,7 +183,8 @@ handle_info(timeout, #state{id = Id,
                             parent = ControllingProcess,
                             aux_connections = AuxConnections,
                             versions = Versions,
-                            timeout = Timeout} = State) ->
+                            timeout = Timeout,
+                            supervisor = Sup} = State) ->
     %% Try to connect to the controller
     TCPOpts = [binary, {active, once}],
     case gen_tcp:connect(Host, Port, TCPOpts) of
@@ -194,8 +198,7 @@ handle_info(timeout, #state{id = Id,
                     TCPAux = get_opt(tcp, AuxConnections, 0),
                     [begin
                          Args = [Host, Port, Opts, {aux, AuxId, self()}],
-                         {ok, Pid} = supervisor:start_child(ofp_channel_sup,
-                                                            Args),
+                         {ok, Pid} = supervisor:start_child(Sup, Args),
                          ets:insert(ofp_channel, {self(), Pid})
                      end || AuxId <- lists:seq(1, TCPAux)];
                 _ ->
@@ -531,7 +534,8 @@ reset_connection(#state{id = Id,
                         controller = {Host, Port},
                         socket = Socket,
                         parent = Parent,
-                        timeout = Timeout} = State, Reason) ->
+                        timeout = Timeout,
+                        supervisor = Sup} = State, Reason) ->
     %% Close the socket
     case Socket of
         undefined ->
@@ -543,7 +547,7 @@ reset_connection(#state{id = Id,
     case Id of
         0 ->
             %% Terminate auxiliary connections
-            [supervisor:terminate_child(ofp_channel_sup, Pid)
+            [supervisor:terminate_child(Sup, Pid)
              || {_, Pid} <- ets:lookup(ofp_channel, self())],
             ets:delete(ofp_channel, self());
         _ ->
