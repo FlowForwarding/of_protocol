@@ -22,11 +22,11 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0,
-         start_link/1,
+-export([start_link/1,
          start_link/2,
          start_link/3,
          start_link/4,
+         start_link/5,
          controlling_process/2,
          send/2,
          stop/1]).
@@ -62,33 +62,34 @@
           socket :: inets:socket(),
           parser :: record(),
           timeout :: integer(),
-          supervisor :: pid()
+          supervisor :: pid(),
+          ets :: ets:tid()
          }).
 
 %%------------------------------------------------------------------------------
 %% API functions
 %%------------------------------------------------------------------------------
 
-start_link() ->
-    start_link(?DEFAULT_HOST).
+start_link(Tid) ->
+    start_link(Tid, ?DEFAULT_HOST).
 
-start_link(Host) ->
-    start_link(Host, ?DEFAULT_PORT).
+start_link(Tid, Host) ->
+    start_link(Tid, Host, ?DEFAULT_PORT).
 
-start_link(Host, Port) ->
-    start_link(Host, Port, []).
+start_link(Tid, Host, Port) ->
+    start_link(Tid, Host, Port, []).
 
-start_link(Host, Port, Opts) ->
-    start_link(Host, Port, Opts, main).
+start_link(Tid, Host, Port, Opts) ->
+    start_link(Tid, Host, Port, Opts, main).
 
 %% @doc Start the client.
--spec start_link(string(), integer(), proplists:proplist(),
+-spec start_link(ets:tid(), string(), integer(), proplists:proplist(),
                  main | {aux, integer(), pid()}) -> {ok, Pid :: pid()} |
                                                     ignore |
                                                     {error, Error :: term()}.
-start_link(Host, Port, Opts, Type) ->
+start_link(Tid, Host, Port, Opts, Type) ->
     Parent = get_opt(controlling_process, Opts, self()),
-    gen_server:start_link(?MODULE, {{Host, Port}, Parent,
+    gen_server:start_link(?MODULE, {Tid, {Host, Port}, Parent,
                                     Opts, Type, self()}, []).
 
 %% @doc Change the controlling process.
@@ -120,7 +121,7 @@ make_slave(Pid) ->
 %% gen_server callbacks
 %%------------------------------------------------------------------------------
 
-init({Controller, Parent, Opts, Type, Sup}) ->
+init({Tid, Controller, Parent, Opts, Type, Sup}) ->
     Version = get_opt(version, Opts, ?DEFAULT_VERSION),
     Versions = lists:umerge(get_opt(versions, Opts, []), [Version]),
     Timeout = get_opt(timeout, Opts, ?DEFAULT_TIMEOUT),
@@ -128,15 +129,16 @@ init({Controller, Parent, Opts, Type, Sup}) ->
                    parent = Parent,
                    versions = Versions,
                    timeout = Timeout,
-                   supervisor = Sup},
+                   supervisor = Sup,
+                   ets = Tid},
     case Type of
         main ->
-            ets:insert(ofp_channel, {main, self()}),
+            ets:insert(Tid, {main, self()}),
             AuxConnections = get_opt(auxiliary_connections, Opts, []),
             {ok, State#state{id = 0,
                              aux_connections = AuxConnections}, 0};
         {aux, Id, Pid} ->
-            ets:insert(ofp_channel, {Pid, self()}),
+            ets:insert(Tid, {Pid, self()}),
             {ok, State#state{id = Id}, 0}
     end.
 
@@ -166,9 +168,10 @@ handle_call({send, Message}, _From, #state{version = Version} = State) ->
     end;
 handle_call({controlling_process, Pid}, _From, State) ->
     {reply, ok, State#state{parent = Pid}};
-handle_call(make_slave, _From, #state{role = master} = State) ->
+handle_call(make_slave, _From, #state{role = master,
+                                      ets = Tid} = State) ->
     %% Make auxiliary connections slave as well
-    [make_slave(Pid) || {_, Pid} <- ets:lookup(ofp_channel, self())],
+    [make_slave(Pid) || {_, Pid} <- ets:lookup(Tid, self())],
     {reply, ok, State#state{role = slave}};
 handle_call(stop, _From, State) ->
     {stop, normal, State};
@@ -184,7 +187,8 @@ handle_info(timeout, #state{id = Id,
                             aux_connections = AuxConnections,
                             versions = Versions,
                             timeout = Timeout,
-                            supervisor = Sup} = State) ->
+                            supervisor = Sup,
+                            ets = Tid} = State) ->
     %% Try to connect to the controller
     TCPOpts = [binary, {active, once}],
     case gen_tcp:connect(Host, Port, TCPOpts) of
@@ -199,7 +203,7 @@ handle_info(timeout, #state{id = Id,
                     [begin
                          Args = [Host, Port, Opts, {aux, AuxId, self()}],
                          {ok, Pid} = supervisor:start_child(Sup, Args),
-                         ets:insert(ofp_channel, {self(), Pid})
+                         ets:insert(Tid, {self(), Pid})
                      end || AuxId <- lists:seq(1, TCPAux)];
                 _ ->
                     ok
@@ -294,11 +298,12 @@ handle_info({tcp_error, Socket, Reason}, #state{socket = Socket} = State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
-terminate(_Reason, #state{id = Id}) ->
+terminate(_Reason, #state{id = Id,
+                          ets = Tid}) ->
     case Id of
         0 ->
-            ets:delete_object(ofp_channel, {main, self()}),
-            ets:delete(ofp_channel, self());
+            ets:delete_object(Tid, {main, self()}),
+            ets:delete(Tid, self());
         _ ->
             ok
     end,
@@ -316,10 +321,11 @@ handle_send(#ofp_message{type = features_reply} = Message,
             #state{id = Id} = State) ->
     do_send(add_aux_id(Message, Id), State);
 handle_send(#ofp_message{type = packet_in} = Message,
-            #state{id = Id} = State) ->
+            #state{id = Id,
+                   ets = Tid} = State) ->
     case Id of
         0 ->
-            case ets:lookup(ofp_channel, self()) of
+            case ets:lookup(Tid, self()) of
                 [] ->
                     do_filter_send(Message, State);
                 List ->
@@ -488,7 +494,8 @@ change_role(Version, equal, GenId, State) ->
     RoleReply = create_role(Version, equal, GenId),
     {RoleReply, State#state{role = equal}};
 change_role(Version, Role, GenId,
-            #state{generation_id = CurrentGenId} = State) ->
+            #state{generation_id = CurrentGenId,
+                   ets = Tid} = State) ->
     if
         (CurrentGenId /= undefined)
         andalso (GenId - CurrentGenId < 0) ->
@@ -497,7 +504,7 @@ change_role(Version, Role, GenId,
         true ->
             case Role of
                 master ->
-                    ofp_channel:make_slaves(self());
+                    ofp_channel:make_slaves(Tid, self());
                 slave ->
                     ok
             end,
@@ -535,7 +542,8 @@ reset_connection(#state{id = Id,
                         socket = Socket,
                         parent = Parent,
                         timeout = Timeout,
-                        supervisor = Sup} = State, Reason) ->
+                        supervisor = Sup,
+                        ets = Tid} = State, Reason) ->
     %% Close the socket
     case Socket of
         undefined ->
@@ -548,8 +556,8 @@ reset_connection(#state{id = Id,
         0 ->
             %% Terminate auxiliary connections
             [supervisor:terminate_child(Sup, Pid)
-             || {_, Pid} <- ets:lookup(ofp_channel, self())],
-            ets:delete(ofp_channel, self());
+             || {_, Pid} <- ets:lookup(Tid, self())],
+            ets:delete(Tid, self());
         _ ->
             ok
     end,

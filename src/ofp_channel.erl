@@ -21,9 +21,9 @@
 
 %% API
 -export([open/4,
-         send/1,
          send/2,
-         make_slaves/1]).
+         make_slaves/2,
+         get_ets/1]).
 
 %%------------------------------------------------------------------------------
 %% API functions
@@ -32,12 +32,15 @@
 open(Pid, Host, Port, Opts) ->
     supervisor:start_child(Pid, [Host, Port, Opts]).
 
-send(Message) ->
-    [send(Pid, Message) || {main, Pid} <- ets:lookup(?MODULE, main)].
-
-send(Pid, Message) ->
+send(SwitchId, Message) when is_integer(SwitchId) ->
+    Tid = get_ets(SwitchId),
+    [send(Pid, Message) || {main, Pid} <- ets:lookup(Tid, main)];
+send(Pid, Message) when is_pid(Pid) ->
     ofp_client:send(Pid, Message).
 
-make_slaves(Caller) ->
+make_slaves(Tid, Caller) ->
     [ofp_client:make_slave(Pid)
-     || {main, Pid} <- ets:lookup(?MODULE, main), Pid /= Caller].
+     || {main, Pid} <- ets:lookup(Tid, main), Pid /= Caller].
+
+get_ets(SwitchId) ->
+    list_to_atom("ofp_channel_" ++ integer_to_list(SwitchId)).
