@@ -29,7 +29,8 @@
          start_link/5,
          controlling_process/2,
          send/2,
-         stop/1]).
+         stop/1,
+         get_controllers_state/1]).
 
 %% Internal API
 -export([make_slave/1]).
@@ -55,7 +56,7 @@
           aux_connections = [] :: [{tcp, integer()}],
           parent :: pid(),
           version :: integer(),
-          versions :: integer(),
+          versions :: [integer()],
           role = equal :: master | equal | slave,
           generation_id :: integer(),
           filter = {{true, true, true}, {true, false, false}},
@@ -109,6 +110,22 @@ send(Pid, Message) ->
 -spec stop(pid()) -> ok.
 stop(Pid) ->
     gen_server:call(Pid, stop).
+
+-spec get_controllers_state(integer()) -> tuple(ControllerId :: integer(),
+                                                Role :: atom(),
+                                                ControllerIP :: string(),
+                                                ControllerPort :: integer(),
+                                                LocalIP :: string(),
+                                                LocalPort :: integer(),
+                                                Protocol :: atom(),
+                                                ConnectionState :: atom(),
+                                                CurrentVersion :: integer(),
+                                                SupportedVersions :: list(integer())).
+get_controllers_state(SwitchId) ->
+    Tid = ofp_channel:get_ets(SwitchId),
+    lists:map(fun({main, Pid}) ->
+                      gen_server:call(Pid, get_controller_state)
+              end, ets:lookup(Tid, main)).
 
 %%------------------------------------------------------------------------------
 %% Internal API functions
@@ -175,6 +192,24 @@ handle_call(make_slave, _From, #state{role = master,
     {reply, ok, State#state{role = slave}};
 handle_call(stop, _From, State) ->
     {stop, normal, State};
+handle_call(get_controller_state, _From, #state{id = ControllerId,
+                                                role = Role,
+                                                socket = Socket,
+                                                version = CurrentVersion,
+                                                versions = SupportedVersions
+                                               } = State) ->
+    {ok, {ControllerIP, ControllerPort}} = inet:peername(Socket),
+    {ok, {LocalIP, LocalPort}} = inet:sockname(Socket),
+    Protocol = tcp,
+    ConnectionState = up,
+    {reply, {ControllerId,
+             Role,
+             {ControllerIP, ControllerPort},
+             {LocalIP, LocalPort},
+             Protocol,
+             ConnectionState,
+             CurrentVersion,
+             SupportedVersions}, State};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
