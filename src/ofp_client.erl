@@ -111,16 +111,18 @@ send(Pid, Message) ->
 stop(Pid) ->
     gen_server:call(Pid, stop).
 
--spec get_controllers_state(integer()) -> tuple(ControllerId :: integer(),
-                                                Role :: atom(),
-                                                ControllerIP :: string(),
-                                                ControllerPort :: integer(),
-                                                LocalIP :: string(),
-                                                LocalPort :: integer(),
-                                                Protocol :: atom(),
-                                                ConnectionState :: atom(),
-                                                CurrentVersion :: integer(),
-                                                SupportedVersions :: list(integer())).
+-spec get_controllers_state(integer()) ->
+                                   tuple(ControllerId :: integer(),
+                                         Role :: atom(),
+                                         ControllerIP :: string(),
+                                         ControllerPort :: integer(),
+                                         LocalIP :: string(),
+                                         LocalPort :: integer(),
+                                         Protocol :: atom(),
+                                         ConnectionState :: atom(),
+                                         CurrentVersion :: integer(),
+                                         SupportedVersions :: list(integer())) |
+                                   controller_not_connected.
 get_controllers_state(SwitchId) ->
     Tid = ofp_channel:get_ets(SwitchId),
     lists:map(fun({main, Pid}) ->
@@ -192,6 +194,8 @@ handle_call(make_slave, _From, #state{role = master,
     {reply, ok, State#state{role = slave}};
 handle_call(stop, _From, State) ->
     {stop, normal, State};
+handle_call(get_controller_state, _From, #state{socket = undefined} = State) ->
+    {reply, controller_not_connected, State};
 handle_call(get_controller_state, _From, #state{id = ControllerId,
                                                 role = Role,
                                                 socket = Socket,
