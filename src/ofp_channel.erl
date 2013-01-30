@@ -20,7 +20,7 @@
 -module(ofp_channel).
 
 %% API
--export([open/4,
+-export([open/5,
          send/2,
          make_slaves/2,
          get_ets/1]).
@@ -29,8 +29,8 @@
 %% API functions
 %%------------------------------------------------------------------------------
 
-open(Pid, Host, Port, Opts) ->
-    supervisor:start_child(Pid, [Host, Port, Opts]).
+open(Pid, Id, Host, Port, Opts) ->
+    supervisor:start_child(Pid, [Id, Host, Port, Opts]).
 
 send(SwitchId, Message) when is_integer(SwitchId) ->
     Tid = get_ets(SwitchId),

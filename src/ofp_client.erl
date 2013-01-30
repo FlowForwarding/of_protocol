@@ -22,11 +22,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1,
-         start_link/2,
-         start_link/3,
-         start_link/4,
-         start_link/5,
+-export([start_link/5,
          controlling_process/2,
          send/2,
          stop/1]).
@@ -51,6 +47,7 @@
 
 -record(state, {
           id :: integer(),
+          resource_id :: string(),
           controller :: {string(), integer()},
           aux_connections = [] :: [{tcp, integer()}],
           parent :: pid(),
@@ -70,26 +67,17 @@
 %% API functions
 %%------------------------------------------------------------------------------
 
-start_link(Tid) ->
-    start_link(Tid, ?DEFAULT_HOST).
-
-start_link(Tid, Host) ->
-    start_link(Tid, Host, ?DEFAULT_PORT).
-
-start_link(Tid, Host, Port) ->
-    start_link(Tid, Host, Port, []).
-
-start_link(Tid, Host, Port, Opts) ->
-    start_link(Tid, Host, Port, Opts, main).
+start_link(Tid, Id, Host, Port, Opts) ->
+    start_link(Tid, Id, Host, Port, Opts, main).
 
 %% @doc Start the client.
--spec start_link(ets:tid(), string(), integer(), proplists:proplist(),
+-spec start_link(ets:tid(), string(), string(), integer(), proplists:proplist(),
                  main | {aux, integer(), pid()}) -> {ok, Pid :: pid()} |
                                                     ignore |
                                                     {error, Error :: term()}.
-start_link(Tid, Host, Port, Opts, Type) ->
+start_link(Tid, Id, Host, Port, Opts, Type) ->
     Parent = get_opt(controlling_process, Opts, self()),
-    gen_server:start_link(?MODULE, {Tid, {Host, Port}, Parent,
+    gen_server:start_link(?MODULE, {Tid, Id, {Host, Port}, Parent,
                                     Opts, Type, self()}, []).
 
 %% @doc Change the controlling process.
@@ -121,11 +109,12 @@ make_slave(Pid) ->
 %% gen_server callbacks
 %%------------------------------------------------------------------------------
 
-init({Tid, Controller, Parent, Opts, Type, Sup}) ->
+init({Tid, Id, Controller, Parent, Opts, Type, Sup}) ->
     Version = get_opt(version, Opts, ?DEFAULT_VERSION),
     Versions = lists:umerge(get_opt(versions, Opts, []), [Version]),
     Timeout = get_opt(timeout, Opts, ?DEFAULT_TIMEOUT),
-    State = #state{controller = Controller,
+    State = #state{resource_id = Id,
+                   controller = Controller,
                    parent = Parent,
                    versions = Versions,
                    timeout = Timeout,
