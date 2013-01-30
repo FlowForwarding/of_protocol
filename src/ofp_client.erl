@@ -100,7 +100,7 @@ stop(Pid) ->
     gen_server:call(Pid, stop).
 
 -spec get_controllers_state(integer()) ->
-                                   tuple(ControllerId :: integer(),
+                                   tuple(Id :: string(),
                                          Role :: atom(),
                                          ControllerIP :: string(),
                                          ControllerPort :: integer(),
@@ -185,7 +185,7 @@ handle_call(stop, _From, State) ->
     {stop, normal, State};
 handle_call(get_controller_state, _From, #state{socket = undefined} = State) ->
     {reply, controller_not_connected, State};
-handle_call(get_controller_state, _From, #state{id = ControllerId,
+handle_call(get_controller_state, _From, #state{resource_id = ResourceId,
                                                 role = Role,
                                                 socket = Socket,
                                                 version = CurrentVersion,
@@ -195,7 +195,7 @@ handle_call(get_controller_state, _From, #state{id = ControllerId,
     {ok, {LocalIP, LocalPort}} = inet:sockname(Socket),
     Protocol = tcp,
     ConnectionState = up,
-    {reply, {ControllerId,
+    {reply, {ResourceId,
              Role,
              {ControllerIP, ControllerPort},
              {LocalIP, LocalPort},
