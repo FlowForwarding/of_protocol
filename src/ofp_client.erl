@@ -26,7 +26,8 @@
          controlling_process/2,
          send/2,
          stop/1,
-         get_controllers_state/1]).
+         get_controllers_state/1,
+         get_resource_ids/1]).
 
 %% Internal API
 -export([make_slave/1]).
@@ -117,6 +118,12 @@ get_controllers_state(SwitchId) ->
                       gen_server:call(Pid, get_controller_state)
               end, ets:lookup(Tid, main)).
 
+get_resource_ids(SwitchId) ->
+    Tid = ofp_channel:get_ets(SwitchId),
+    lists:map(fun({main, Pid}) ->
+                      {Pid, gen_server:call(Pid, get_resource_id)}
+              end, ets:lookup(Tid, main)).
+
 %%------------------------------------------------------------------------------
 %% Internal API functions
 %%------------------------------------------------------------------------------
@@ -183,6 +190,8 @@ handle_call(make_slave, _From, #state{role = master,
     {reply, ok, State#state{role = slave}};
 handle_call(stop, _From, State) ->
     {stop, normal, State};
+handle_call(get_resource_id, _From, #state{resource_id = ResourceId} = State) ->
+    {reply, ResourceId, State};
 handle_call(get_controller_state, _From, #state{socket = undefined} = State) ->
     {reply, controller_not_connected, State};
 handle_call(get_controller_state, _From, #state{resource_id = ResourceId,
