@@ -26,6 +26,7 @@
          controlling_process/2,
          send/2,
          stop/1,
+         replace_connection/3,
          get_controllers_state/1,
          get_resource_ids/1]).
 
@@ -94,6 +95,9 @@ controlling_process(Pid, ControllingPid) ->
 -spec send(pid(), ofp_message()) -> ok | {error, Reason :: term()}.
 send(Pid, Message) ->
     gen_server:call(Pid, {send, Message}).
+
+replace_connection(Pid, Host, Port) ->
+    gen_server:cast(Pid, {replace_connection, Host, Port}).
 
 %% @doc Stop the client.
 -spec stop(pid()) -> ok.
@@ -188,10 +192,10 @@ handle_call(make_slave, _From, #state{role = master,
     %% Make auxiliary connections slave as well
     [make_slave(Pid) || {_, Pid} <- ets:lookup(Tid, self())],
     {reply, ok, State#state{role = slave}};
-handle_call(stop, _From, State) ->
-    {stop, normal, State};
 handle_call(get_resource_id, _From, #state{resource_id = ResourceId} = State) ->
     {reply, ResourceId, State};
+handle_call(stop, _From, State) ->
+    {stop, normal, State};
 handle_call(get_controller_state, _From, #state{socket = undefined} = State) ->
     {reply, controller_not_connected, State};
 handle_call(get_controller_state, _From, #state{resource_id = ResourceId,
@@ -215,6 +219,8 @@ handle_call(get_controller_state, _From, #state{resource_id = ResourceId,
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
+handle_cast({replace_connection, Host, Port}, State) ->
+    {noreply, State#state{controller = {Host, Port}}};
 handle_cast(_Message, State) ->
     {noreply, State}.
 
@@ -228,7 +234,7 @@ handle_info(timeout, #state{id = Id,
                             ets = Tid} = State) ->
     %% Try to connect to the controller
     TCPOpts = [binary, {active, once}],
-    case gen_tcp:connect(Host, Port, TCPOpts) of
+    case gen_tcp:connect(Host, Port, TCPOpts, 5000) of
         {ok, Socket} ->
             case Id of
                 0 ->
