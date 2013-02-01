@@ -46,7 +46,7 @@
 -define(DEFAULT_HOST, "localhost").
 -define(DEFAULT_PORT, 6633).
 -define(DEFAULT_VERSION, 4).
--define(DEFAULT_TIMEOUT, timer:seconds(5)).
+-define(DEFAULT_TIMEOUT, timer:seconds(3)).
 
 -record(state, {
           id :: integer(),
@@ -195,7 +195,7 @@ handle_call(make_slave, _From, #state{role = master,
 handle_call(get_resource_id, _From, #state{resource_id = ResourceId} = State) ->
     {reply, ResourceId, State};
 handle_call(stop, _From, State) ->
-    {stop, normal, State};
+    {stop, normal, ok, State};
 handle_call(get_controller_state, _From, #state{socket = undefined} = State) ->
     {reply, controller_not_connected, State};
 handle_call(get_controller_state, _From, #state{resource_id = ResourceId,
@@ -349,9 +349,7 @@ terminate(_Reason, #state{id = Id,
             ets:delete(Tid, self());
         _ ->
             ok
-    end,
-
-    io:format("Terminating ~p ~p~n", [Id, self()]).
+    end.
 
 code_change(_OldVersion, State, _Extra) ->
     {ok, State}.
