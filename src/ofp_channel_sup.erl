@@ -22,7 +22,7 @@
 -behaviour(supervisor).
 
 %% Internal API
--export([start_link/0]).
+-export([start_link/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -31,17 +31,18 @@
 %% Internal API functions
 %%------------------------------------------------------------------------------
 
-start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+start_link(SwitchId) ->
+    supervisor:start_link(?MODULE, [SwitchId]).
 
 %%------------------------------------------------------------------------------
 %% Supervisor callbacks
 %%------------------------------------------------------------------------------
 
-init([]) ->
-    ets:new(ofp_channel, [named_table, public, bag,
-                          {read_concurrency, true}]),
+init([SwitchId]) ->
+    Tid = ofp_channel:get_ets(SwitchId),
+    ets:new(Tid, [named_table, public, bag,
+                  {read_concurrency, true}]),
 
-    ClientSpec = {ofp_client, {ofp_client, start_link, []},
+    ClientSpec = {ofp_client, {ofp_client, start_link, [Tid]},
                   transient, 1000, worker, [ofp_client]},
     {ok, {{simple_one_for_one, 5, 10}, [ClientSpec]}}.
