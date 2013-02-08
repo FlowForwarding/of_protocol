@@ -22,7 +22,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/5,
+-export([start_link/6,
          controlling_process/2,
          send/2,
          stop/1,
@@ -70,17 +70,17 @@
 %% API functions
 %%------------------------------------------------------------------------------
 
-start_link(Tid, Id, Host, Port, Opts) ->
-    start_link(Tid, Id, Host, Port, Opts, main).
+start_link(Tid, Id, Host, Port, Proto, Opts) ->
+    start_link(Tid, Id, Host, Port, Proto, Opts, main).
 
 %% @doc Start the client.
--spec start_link(ets:tid(), string(), string(), integer(), proplists:proplist(),
-                 main | {aux, integer(), pid()}) -> {ok, Pid :: pid()} |
-                                                    ignore |
-                                                    {error, Error :: term()}.
-start_link(Tid, Id, Host, Port, Opts, Type) ->
+-spec start_link(ets:tid(), string(), string(), integer(), tcp | tls,
+                 proplists:proplist(), main | {aux, integer(), pid()}) ->
+                        {ok, Pid :: pid()} | ignore |
+                        {error, Error :: term()}.
+start_link(Tid, Id, Host, Port, Proto, Opts, Type) ->
     Parent = get_opt(controlling_process, Opts, self()),
-    gen_server:start_link(?MODULE, {Tid, Id, {Host, Port}, Parent,
+    gen_server:start_link(?MODULE, {Tid, Id, {Host, Port, Proto}, Parent,
                                     Opts, Type, self()}, []).
 
 %% @doc Change the controlling process.
@@ -198,7 +198,8 @@ handle_call(stop, _From, State) ->
     {stop, normal, ok, State};
 handle_call(get_controller_state, _From, #state{socket = undefined} = State) ->
     {reply, controller_not_connected, State};
-handle_call(get_controller_state, _From, #state{resource_id = ResourceId,
+handle_call(get_controller_state, _From, #state{controller = {_, _, Protocol},
+                                                resource_id = ResourceId,
                                                 role = Role,
                                                 socket = Socket,
                                                 version = CurrentVersion,
@@ -206,7 +207,6 @@ handle_call(get_controller_state, _From, #state{resource_id = ResourceId,
                                                } = State) ->
     {ok, {ControllerIP, ControllerPort}} = inet:peername(Socket),
     {ok, {LocalIP, LocalPort}} = inet:sockname(Socket),
-    Protocol = tcp,
     ConnectionState = up,
     {reply, {ResourceId,
              Role,
@@ -225,7 +225,7 @@ handle_cast(_Message, State) ->
     {noreply, State}.
 
 handle_info(timeout, #state{id = Id,
-                            controller = {Host, Port},
+                            controller = {Host, Port, Proto},
                             parent = ControllingProcess,
                             aux_connections = AuxConnections,
                             versions = Versions,
@@ -244,7 +244,8 @@ handle_info(timeout, #state{id = Id,
                             {timeout, Timeout}],
                     TCPAux = get_opt(tcp, AuxConnections, 0),
                     [begin
-                         Args = [Host, Port, Opts, {aux, AuxId, self()}],
+                         Args = [Host, Port, Proto, Opts,
+                                 {aux, AuxId, self()}],
                          {ok, Pid} = supervisor:start_child(Sup, Args),
                          ets:insert(Tid, {self(), Pid})
                      end || AuxId <- lists:seq(1, TCPAux)];
@@ -260,7 +261,7 @@ handle_info(timeout, #state{id = Id,
             {noreply, State}
     end;
 handle_info({tcp, Socket, Data}, #state{id = Id,
-                                        controller = {Host, Port},
+                                        controller = {Host, Port, _Proto},
                                         socket = Socket,
                                         parent = Parent,
                                         parser = undefined,
@@ -297,7 +298,7 @@ handle_info({tcp, Socket, Data}, #state{id = Id,
             reset_connection(State, bad_initial_message)
     end;
 handle_info({tcp, Socket, Data}, #state{id = Id,
-                                        controller = {Host, Port},
+                                        controller = {Host, Port, _Proto},
                                         socket = Socket,
                                         parent = Parent,
                                         parser = undefined,
@@ -579,7 +580,7 @@ gcv([CV | _] = CVs, [SV | SVs]) when CV < SV ->
     gcv(CVs, SVs).
 
 reset_connection(#state{id = Id,
-                        controller = {Host, Port},
+                        controller = {Host, Port, _Proto},
                         socket = Socket,
                         parent = Parent,
                         timeout = Timeout,
