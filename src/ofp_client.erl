@@ -233,8 +233,7 @@ handle_info(timeout, #state{id = Id,
                             supervisor = Sup,
                             ets = Tid} = State) ->
     %% Try to connect to the controller
-    TCPOpts = [binary, {active, once}],
-    case gen_tcp:connect(Host, Port, TCPOpts, 5000) of
+    case connect(Proto, Host, Port) of
         {ok, Socket} ->
             case Id of
                 0 ->
@@ -244,7 +243,7 @@ handle_info(timeout, #state{id = Id,
                             {timeout, Timeout}],
                     TCPAux = get_opt(tcp, AuxConnections, 0),
                     [begin
-                         Args = [Host, Port, Proto, Opts,
+                         Args = [Host, Port, tcp, Opts,
                                  {aux, AuxId, self()}],
                          {ok, Pid} = supervisor:start_child(Sup, Args),
                          ets:insert(Tid, {self(), Pid})
@@ -254,20 +253,21 @@ handle_info(timeout, #state{id = Id,
             end,
 
             {ok, HelloBin} = of_protocol:encode(create_hello(Versions)),
-            ok = gen_tcp:send(Socket, HelloBin),
+            ok = send(Proto, Socket, HelloBin),
             {noreply, State#state{socket = Socket}};
         {error, _Reason} ->
             erlang:send_after(Timeout, self(), timeout),
             {noreply, State}
     end;
-handle_info({tcp, Socket, Data}, #state{id = Id,
-                                        controller = {Host, Port, _Proto},
-                                        socket = Socket,
-                                        parent = Parent,
-                                        parser = undefined,
-                                        version = undefined,
-                                        versions = Versions} = State) ->
-    inet:setopts(Socket, [{active, once}]),
+handle_info({Type, Socket, Data}, #state{id = Id,
+                                         controller = {Host, Port, Proto},
+                                         socket = Socket,
+                                         parent = Parent,
+                                         parser = undefined,
+                                         version = undefined,
+                                         versions = Versions} = State)
+  when Type == tcp orelse Type == ssl ->
+    setopts(Proto, Socket, [{active, once}]),
     %% Wait for hello
     case of_protocol:decode(Data) of
         {ok, #ofp_message{version = CtrlVersion,
@@ -281,7 +281,7 @@ handle_info({tcp, Socket, Data}, #state{id = Id,
                                             xid = Xid,
                                             body = Error},
                     {ok, ErrorBin} = of_protocol:encode(ErrorMsg),
-                    ok = gen_tcp:send(Socket, ErrorBin),
+                    ok = send(Proto, Socket, ErrorBin),
                     self() ! {tcp, Socket, Leftovers},
                     {noreply, State#state{version = lists:max(Versions)}};
                 {no_common_version, _, _} = Reason ->
@@ -297,13 +297,14 @@ handle_info({tcp, Socket, Data}, #state{id = Id,
         _Else ->
             reset_connection(State, bad_initial_message)
     end;
-handle_info({tcp, Socket, Data}, #state{id = Id,
-                                        controller = {Host, Port, _Proto},
-                                        socket = Socket,
-                                        parent = Parent,
-                                        parser = undefined,
-                                        version = Version} = State) ->
-    inet:setopts(Socket, [{active, once}]),
+handle_info({Type, Socket, Data}, #state{id = Id,
+                                         controller = {Host, Port, Proto},
+                                         socket = Socket,
+                                         parent = Parent,
+                                         parser = undefined,
+                                         version = Version} = State)
+  when Type == tcp orelse Type == ssl ->
+    setopts(Proto, Socket, [{active, once}]),
     %% Wait for hello_failed error message
     case of_protocol:decode(Data) of
         {ok, #ofp_message{version = Version} = Message, _Leftovers} ->
@@ -321,9 +322,11 @@ handle_info({tcp, Socket, Data}, #state{id = Id,
         _Else ->
             reset_connection(State, bad_message)
     end;
-handle_info({tcp, Socket, Data}, #state{socket = Socket,
-                                        parser = Parser} = State) ->
-    inet:setopts(Socket, [{active, once}]),
+handle_info({Type, Socket, Data}, #state{controller = {_, _, Proto},
+                                         socket = Socket,
+                                         parser = Parser} = State)
+  when Type == tcp orelse Type == ssl ->
+    setopts(Proto, Socket, [{active, once}]),
 
     case ofp_parser:parse(Parser, Data) of
         {ok, NewParser, Messages} ->
@@ -335,10 +338,12 @@ handle_info({tcp, Socket, Data}, #state{socket = Socket,
         _Else ->
             reset_connection(State, {bad_data, Data})
     end;
-handle_info({tcp_closed, Socket}, #state{socket = Socket} = State) ->
-    reset_connection(State, tcp_closed);
-handle_info({tcp_error, Socket, Reason}, #state{socket = Socket} = State) ->
-    reset_connection(State, {tcp_error, Reason});
+handle_info({Type, Socket}, #state{socket = Socket} = State)
+  when Type == tcp_closed orelse Type == ssl_closed ->
+    reset_connection(State, Type);
+handle_info({Type, Socket, Reason}, #state{socket = Socket} = State)
+  when Type == tcp_error orelse Type == ssl_error ->
+    reset_connection(State, {Type, Reason});
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -390,7 +395,8 @@ handle_send(#ofp_message{type = multipart_reply} = Message, State) ->
 handle_send(Message, State) ->
     do_filter_send(Message, State).
 
-do_send(Message, #state{socket = Socket,
+do_send(Message, #state{controller = {_, _, Proto},
+                        socket = Socket,
                         parser = Parser,
                         version = Version}) ->
     case ofp_parser:encode(Parser, Message#ofp_message{version = Version}) of
@@ -398,7 +404,7 @@ do_send(Message, #state{socket = Socket,
             Size = byte_size(Binary),
             case Size < (1 bsl 16) of
                 true ->
-                    gen_tcp:send(Socket, Binary);
+                    send(Proto, Socket, Binary);
                 false ->
                     {error, message_too_big}
             end;
@@ -580,7 +586,7 @@ gcv([CV | _] = CVs, [SV | SVs]) when CV < SV ->
     gcv(CVs, SVs).
 
 reset_connection(#state{id = Id,
-                        controller = {Host, Port, _Proto},
+                        controller = {Host, Port, Proto},
                         socket = Socket,
                         parent = Parent,
                         timeout = Timeout,
@@ -591,7 +597,7 @@ reset_connection(#state{id = Id,
         undefined ->
             ok;
         Socket ->
-            gen_tcp:close(Socket)
+            close(Proto, Socket)
     end,
 
     case Id of
@@ -649,3 +655,39 @@ add_aux_id(#ofp_message{version = Version, body = Body} = Message, Id) ->
         4 ->
             Message#ofp_message{body = ofp_client_v4:add_aux_id(Body, Id)}
     end.
+
+%% TLS
+
+connect(tcp, Host, Port) ->
+    gen_tcp:connect(Host, Port, opts(tcp), 5000);
+connect(tls, Host, Port) ->
+    case linc_ofconfig:get_certificates() of
+        [] ->
+            {error, no_certificates};
+        Cs ->
+            Certs = [base64:decode(C) || {_, C} <- Cs],
+            ssl:connect(Host, Port, [{cacerts, Certs} | opts(tls)], 5000)
+    end.
+
+opts(tcp) ->
+    [binary, {reuseaddr, true}, {active, once}];
+opts(tls) ->
+    {ok, Cert} = application:get_env(linc, certificate),
+    {ok, Key} = application:get_env(linc, rsa_private_key),
+    opts(tcp) ++ [{cert, base64:decode(Cert)},
+                  {key, {'RSAPrivateKey', base64:decode(Key)}}].
+
+setopts(tcp, Socket, Opts) ->
+    inet:setopts(Socket, Opts);
+setopts(tls, Socket, Opts) ->
+    ssl:setopts(Socket, Opts).
+
+send(tcp, Socket, Data) ->
+    gen_tcp:send(Socket, Data);
+send(tls, Socket, Data) ->
+    ssl:send(Socket, Data).
+
+close(tcp, Socket) ->
+    gen_tcp:close(Socket);
+close(tls, Socket) ->
+    ssl:close(Socket).
