@@ -247,7 +247,14 @@ handle_info(timeout, #state{id = Id,
                                  {aux, AuxId, self()}],
                          {ok, Pid} = supervisor:start_child(Sup, Args),
                          ets:insert(Tid, {self(), Pid})
-                     end || AuxId <- lists:seq(1, TCPAux)];
+                     end || AuxId <- lists:seq(1, TCPAux)],
+                    TLSAux = get_opt(tls, AuxConnections, 0),
+                    [begin
+                         Args = [Host, Port, tls, Opts,
+                                 {aux, AuxId, self()}],
+                         {ok, Pid} = supervisor:start_child(Sup, Args),
+                         ets:insert(Tid, {self(), Pid})
+                     end || AuxId <- lists:seq(1, TLSAux)];
                 _ ->
                     ok
             end,
