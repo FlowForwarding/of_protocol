@@ -63,7 +63,8 @@
           parser :: record(),
           timeout :: integer(),
           supervisor :: pid(),
-          ets :: ets:tid()
+          ets :: ets:tid(),
+          hello_buffer = <<>> :: binary()
          }).
 
 %%------------------------------------------------------------------------------
@@ -272,11 +273,12 @@ handle_info({Type, Socket, Data}, #state{id = Id,
                                          parent = Parent,
                                          parser = undefined,
                                          version = undefined,
-                                         versions = Versions} = State)
+                                         versions = Versions,
+                                         hello_buffer = Buffer} = State)
   when Type == tcp orelse Type == ssl ->
     setopts(Proto, Socket, [{active, once}]),
     %% Wait for hello
-    case of_protocol:decode(Data) of
+    case of_protocol:decode(<<Buffer/binary, Data/binary>>) of
         {ok, #ofp_message{version = CtrlVersion,
                           xid = Xid,
                           body = #ofp_hello{}} = Hello, Leftovers} ->
@@ -301,6 +303,9 @@ handle_info({Type, Socket, Data}, #state{id = Id,
                     {noreply, State#state{parser = Parser,
                                           version = Version}}
             end;
+        {error, binary_too_small} ->
+            {noreply, State#state{hello_buffer = <<Buffer/binary,
+                                                   Data/binary>>}};
         _Else ->
             reset_connection(State, bad_initial_message)
     end;
@@ -624,7 +629,8 @@ reset_connection(#state{id = Id,
     erlang:send_after(Timeout, self(), timeout),
     {noreply, State#state{socket = undefined,
                           parser = undefined,
-                          version = undefined}}.
+                          version = undefined,
+                          hello_buffer = <<>>}}.
 
 create_error(3, Type, Code) ->
     ofp_client_v3:create_error(Type, Code);
@@ -679,10 +685,12 @@ connect(tls, Host, Port) ->
 opts(tcp) ->
     [binary, {reuseaddr, true}, {active, once}];
 opts(tls) ->
-    {ok, Cert} = application:get_env(linc, certificate),
-    {ok, Key} = application:get_env(linc, rsa_private_key),
-    opts(tcp) ++ [{cert, base64:decode(Cert)},
-                  {key, {'RSAPrivateKey', base64:decode(Key)}}].
+    opts(tcp) ++ [{verify, verify_peer},
+                  {fail_if_no_peer_cert, true}]
+        ++ [{cert, base64:decode(Cert)}
+            || {ok, Cert} <- [application:get_env(linc, certificate)]]
+        ++ [{key, {'RSAPrivateKey', base64:decode(Key)}}
+            || {ok, Key} <- [application:get_env(linc, rsa_private_key)]].
 
 setopts(tcp, Socket, Opts) ->
     inet:setopts(Socket, Opts);
