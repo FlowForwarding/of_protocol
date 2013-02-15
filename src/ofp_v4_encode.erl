@@ -335,10 +335,34 @@ encode_async_masks({PacketInMask1, PacketInMask2},
     <<PIn1:32/bits, PIn2:32/bits, PS1:32/bits, PS2:32/bits,
       FR1:32/bits, FR2:32/bits>>.
 
+encode_bitmap([], Size, Acc) ->
+    Bytes = (Size + 1) * 32,
+    <<Acc:Bytes>>;
+encode_bitmap([H|Rest], Size, Acc) ->
+    Index = (Size - H div 32) * 32 + H rem 32,
+    encode_bitmap(Rest, Size, Acc bor (1 bsl Index)).
+
+encode_bitmap(List) ->
+    Size = lists:max(List) div 32,
+    encode_bitmap(List, Size, 0).
+
+encode_hello_element({versionbitmap, Versions}) ->
+    BitmapBin = encode_bitmap(Versions),
+    TypeInt = ofp_v4_enum:to_int(hello_elem, versionbitmap),
+    SizeInt = 4 + size(BitmapBin),
+    <<TypeInt:16, SizeInt:16, BitmapBin/bytes>>;
+encode_hello_element(_) ->
+    <<>>.
+
+encode_hello_elements([], Acc) ->
+    list_to_binary(Acc);
+encode_hello_elements([H|Rest], Acc) ->
+    encode_hello_elements(Rest, [encode_hello_element(H)|Acc]).
+
 %%% Messages -------------------------------------------------------------------
 
-encode_body(#ofp_hello{}) ->
-    <<>>;
+encode_body(#ofp_hello{elements = Elements}) ->
+    encode_hello_elements(Elements, []);
 encode_body(#ofp_error_msg{type = Type, code = Code, data = Data}) ->
     TypeInt = ofp_v4_enum:to_int(error_type, Type),
     CodeInt = ofp_v4_enum:to_int(Type, Code),

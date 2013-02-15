@@ -795,10 +795,45 @@ decode_meter_config_list(Binary, MeterConfigs) ->
                                     bands = Bands},
     decode_meter_config_list(Rest2, [MeterConfig | MeterConfigs]).
 
+decode_bitmap(_, Index, _, Acc) when Index >= 32 ->
+    Acc;
+decode_bitmap(Int, Index, Base, Acc) when Int band (1 bsl Index) == 0 ->
+    decode_bitmap(Int, Index + 1, Base, Acc);
+decode_bitmap(Int, Index, Base, Acc) ->
+    decode_bitmap(Int, Index + 1, Base, [Base + Index|Acc]).
+
+decode_bitmap(<<>>, _, Acc) ->
+    Acc;
+decode_bitmap(<<Int:32, Rest/bytes>>, Base, Acc) ->
+    Acc2 = decode_bitmap(Int, 0, Base, Acc),
+    decode_bitmap(Rest, Base + 32, Acc2).
+
+decode_bitmap(Binary) ->
+    decode_bitmap(Binary, 0, []).
+
+decode_hello_elements(<<>>, Acc) ->
+    Acc;
+decode_hello_elements(Binary, Acc) ->
+    <<TypeInt:16, Length:16, Rest1/bytes>> = Binary,
+    Type = ofp_v4_enum:to_atom(hello_elem, TypeInt),
+    DataLength = Length - 4,
+    <<Data:DataLength/bytes, Rest2/bytes>> = Rest1,
+    Acc2 = case Type of
+        versionbitmap ->
+	    [decode_bitmap(Data)|Acc];
+        _ ->
+            % ignore unknown types
+            Acc
+    end,
+    decode_hello_elements(Rest2, Acc2).
+
+decode_hello_elements(Binary) ->
+    decode_hello_elements(Binary, []).
+
 %% @doc Actual decoding of the messages
 -spec decode_body(atom(), binary()) -> ofp_message().
-decode_body(hello, _) ->
-    #ofp_hello{};
+decode_body(hello, Binary) ->
+    #ofp_hello{elements = decode_hello_elements(Binary)};
 decode_body(error, Binary) ->
     <<TypeInt:16, More/bytes>> = Binary,
     Type = ofp_v4_enum:to_atom(error_type, TypeInt),
