@@ -292,8 +292,6 @@
                         flow_stats,
                         aggregate_stats,
                         table_stats,
-                        table_features,
-                        port_desc,
                         port_stats,
                         queue_stats,
                         group_stats,
@@ -302,6 +300,8 @@
                         meter_stats,
                         meter_config,
                         meter_features,
+                        table_features,
+                        port_desc,
                         {experimenter, 16#ffff}]}).
 
 %% A.3.5.5 Table Features ------------------------------------------------------
