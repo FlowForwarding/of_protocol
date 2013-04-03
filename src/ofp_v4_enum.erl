@@ -245,9 +245,9 @@
                         no_pkt_counts,
                         no_byt_counts]}).
 
-%% Note: Not in the specification
--enum({group, [{any, 16#fffffffe},
-               all]}).
+%% Note: Not in the OpenFlow 1.3 specification but added in OpenFlow 1.3.1
+-enum({group, [{all, 16#fffffffc},
+               {any, 16#ffffffff}]}).
 
 -enum({group_mod_command, [add,
                            modify,
