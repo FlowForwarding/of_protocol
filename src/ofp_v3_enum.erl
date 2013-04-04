@@ -219,9 +219,10 @@
                         check_overlap,
                         reset_counts]}).
 
-%% Note: Not in the specification
--enum({group, [{any, 16#fffffffe},
-               all]}).
+%% Note: Not in the specification but many of implementations
+%% use these values.  eg. openvswitch, of12softswitch, ryu
+-enum({group, [{all, 16#fffffffc},
+               {any, 16#ffffffff}]}).
 
 -enum({group_mod_command, [add,
                            modify,
