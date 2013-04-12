@@ -198,6 +198,11 @@ handle_call(get_resource_id, _From, #state{resource_id = ResourceId} = State) ->
 handle_call(stop, _From, State) ->
     {stop, normal, ok, State};
 handle_call(get_controller_state, _From, #state{socket = undefined} = State) ->
+    %% Socket to controller not yet opened
+    {reply, controller_not_connected, State};
+handle_call(get_controller_state, _From, #state{version = undefined} = State) ->
+    %% Socket to controller opened,
+    %% but hello message with version not received yet
     {reply, controller_not_connected, State};
 handle_call(get_controller_state, _From, #state{controller = {_, _, Protocol},
                                                 resource_id = ResourceId,

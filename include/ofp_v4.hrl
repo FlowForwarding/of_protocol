@@ -644,9 +644,9 @@
                       | all.
 
 -record(ofp_bucket, {
-          weight :: integer(),
-          watch_port :: integer(),
-          watch_group :: integer(),
+          weight = 1 :: integer(),
+          watch_port = 0 :: integer(),
+          watch_group = 0 :: integer(),
           actions = [] :: [ofp_action()]
          }).
 -type ofp_bucket() :: #ofp_bucket{}.
