@@ -33,7 +33,9 @@ split_binaries(Binaries, List, Size) ->
     {Binary, Rest} = split_binary(Binaries, Size),
     split_binaries(Rest, [Binary | List], Size).
 
--spec encode_string(binary(), integer()) -> binary().
+-spec encode_string(string() | binary(), integer()) -> binary().
+encode_string(String, Length) when is_list(String) ->
+    encode_string(list_to_binary(String), Length);
 encode_string(Binary, Length) when byte_size(Binary) >= Length - 1 ->
     Null = <<0:8>>,
     <<Binary:(Length - 1)/bytes, Null/bytes>>;
