@@ -53,3 +53,18 @@
           stack = <<>> :: binary()
          }).
 -type ofp_parser() :: #ofp_parser{}.
+
+%% Client ----------------------------------------------------------------------
+
+-record(controller_status, {
+          resource_id        :: string(),
+          role               :: master | equal | slave,
+          controller_ip      :: string(),
+          controller_port    :: integer(),
+          local_ip           :: string(),
+          local_port         :: integer(),
+          protocol           :: atom(),
+          connection_state   :: atom(),
+          current_version    :: integer(),
+          supported_versions :: list(integer())
+         }).

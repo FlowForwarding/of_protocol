@@ -105,18 +105,7 @@ replace_connection(Pid, Host, Port) ->
 stop(Pid) ->
     gen_server:call(Pid, stop).
 
--spec get_controllers_state(integer()) ->
-                                   tuple(Id :: string(),
-                                         Role :: atom(),
-                                         ControllerIP :: string(),
-                                         ControllerPort :: integer(),
-                                         LocalIP :: string(),
-                                         LocalPort :: integer(),
-                                         Protocol :: atom(),
-                                         ConnectionState :: atom(),
-                                         CurrentVersion :: integer(),
-                                         SupportedVersions :: list(integer())) |
-                                   controller_not_connected.
+-spec get_controllers_state(integer()) -> #controller_status{}.
 get_controllers_state(SwitchId) ->
     Tid = ofp_channel:get_ets(SwitchId),
     lists:map(fun({main, Pid}) ->
@@ -197,31 +186,19 @@ handle_call(get_resource_id, _From, #state{resource_id = ResourceId} = State) ->
     {reply, ResourceId, State};
 handle_call(stop, _From, State) ->
     {stop, normal, ok, State};
-handle_call(get_controller_state, _From, #state{socket = undefined} = State) ->
-    %% Socket to controller not yet opened
-    {reply, controller_not_connected, State};
-handle_call(get_controller_state, _From, #state{version = undefined} = State) ->
-    %% Socket to controller opened,
-    %% but hello message with version not received yet
-    {reply, controller_not_connected, State};
-handle_call(get_controller_state, _From, #state{controller = {_, _, Protocol},
+handle_call(get_controller_state, _From, #state{controller = {ControllerIP,
+                                                              ControllerPort,
+                                                              Protocol},
                                                 resource_id = ResourceId,
                                                 role = Role,
                                                 socket = Socket,
                                                 version = CurrentVersion,
                                                 versions = SupportedVersions
                                                } = State) ->
-    {ok, {ControllerIP, ControllerPort}} = inet:peername(Socket),
-    {ok, {LocalIP, LocalPort}} = inet:sockname(Socket),
-    ConnectionState = up,
-    {reply, {ResourceId,
-             Role,
-             {ControllerIP, ControllerPort},
-             {LocalIP, LocalPort},
-             Protocol,
-             ConnectionState,
-             CurrentVersion,
-             SupportedVersions}, State};
+    Controller = controller_state(ControllerIP, ControllerPort,
+                                  ResourceId, Role, Socket, Protocol,
+                                  CurrentVersion, SupportedVersions),
+    {reply, Controller, State};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
@@ -577,6 +554,41 @@ change_role(Version, Role, GenId,
             {RoleReply, State#state{role = Role,
                                     generation_id = GenId}}
     end.
+
+controller_state(ConfigControllerIP, ConfigControllerPort, ResourceId, Role,
+                 Socket, Protocol, CurrentVersion, SupportedVersions) ->
+    {ControllerIP, ControllerPort, LocalIP, LocalPort} =
+        case Socket of
+            undefined ->
+                {ConfigControllerIP, ConfigControllerPort,
+                 undefined, undefined};
+            _ ->
+                {ok, {CIP, CPort}} = inet:peername(Socket),
+                {ok, {LIP, LPort}} = inet:sockname(Socket),
+                {CIP, CPort, LIP, LPort}
+        end,
+    ConnectionState = case {Socket, CurrentVersion} of
+                          %% Socket to controller not yet opened
+                          {undefined, _} ->
+                              down;
+                          %% Socket to controller opened,
+                          %% but hello message with version not received yet
+                          {_, undefined} ->
+                              down;
+                          {_, _} ->
+                              up
+                      end,
+    #controller_status{
+       resource_id = ResourceId,
+       role = Role,
+       controller_ip = ControllerIP,
+       controller_port = ControllerPort,
+       local_ip = LocalIP,
+       local_port = LocalPort,
+       protocol = Protocol,
+       connection_state = ConnectionState,
+       current_version = CurrentVersion,
+       supported_versions = SupportedVersions}.
 
 %%------------------------------------------------------------------------------
 %% Helper functions
