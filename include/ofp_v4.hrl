@@ -27,6 +27,7 @@
 -define(OFPG_MAX, 16#fffffffd). %% group id
 -define(OFPTT_MAX, 16#fe).      %% table id
 -define(OFPCML_MAX, 16#ffe5).   %% buffer id
+-define(OFPCML_NO_BUFFER, 16#ffff).   %% buffer id
 -define(OFPM_MAX, 16#fe).       %% flow meter number
 
 %% Message sizes (in bytes) ----------------------------------------------------
