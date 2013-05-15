@@ -26,7 +26,7 @@
          controlling_process/2,
          send/2,
          stop/1,
-         replace_connection/3,
+         replace_connection/4,
          get_controllers_state/1,
          get_resource_ids/1]).
 
@@ -51,7 +51,7 @@
 -record(state, {
           id :: integer(),
           resource_id :: string(),
-          controller :: {string(), integer()},
+          controller :: {string(), integer(), atom()},
           aux_connections = [] :: [{tcp, integer()}],
           parent :: pid(),
           version :: integer(),
@@ -97,8 +97,8 @@ controlling_process(Pid, ControllingPid) ->
 send(Pid, Message) ->
     gen_server:call(Pid, {send, Message}).
 
-replace_connection(Pid, Host, Port) ->
-    gen_server:cast(Pid, {replace_connection, Host, Port}).
+replace_connection(Pid, Host, Port, Proto) ->
+    gen_server:cast(Pid, {replace_connection, Host, Port, Proto}).
 
 %% @doc Stop the client.
 -spec stop(pid()) -> ok.
@@ -202,8 +202,8 @@ handle_call(get_controller_state, _From, #state{controller = {ControllerIP,
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast({replace_connection, Host, Port}, State) ->
-    {noreply, State#state{controller = {Host, Port}}};
+handle_cast({replace_connection, Host, Port, Proto}, State) ->
+    {noreply, State#state{controller = {Host, Port, Proto}}};
 handle_cast(_Message, State) ->
     {noreply, State}.
 
