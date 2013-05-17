@@ -184,22 +184,22 @@
 
 %% Action Structures -----------------------------------------------------------
 
--enum({action_type, [output,
+-enum({action_type, [{output, 0},
                      {copy_ttl_out, 11},
-                     copy_ttl_in,
+                     {copy_ttl_in, 12},
                      {set_mpls_ttl, 15},
-                     dec_mpls_ttl,
-                     push_vlan,
-                     pop_vlan,
-                     push_mpls,
-                     pop_mpls,
-                     set_queue,
-                     group,
-                     set_nw_ttl,
-                     dec_nw_ttl,
-                     set_field,
-                     push_pbb,
-                     pop_pbb,
+                     {dec_mpls_ttl, 16},
+                     {push_vlan, 17},
+                     {pop_vlan, 18},
+                     {push_mpls, 19},
+                     {pop_mpls, 20},
+                     {set_queue, 21},
+                     {group, 22},
+                     {set_nw_ttl, 23},
+                     {dec_nw_ttl, 24},
+                     {set_field, 25},
+                     {push_pbb, 26},
+                     {pop_pbb, 27},
                      {experimenter, 16#ffff}]}).
 
 %%------------------------------------------------------------------------------
