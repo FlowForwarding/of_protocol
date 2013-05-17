@@ -193,13 +193,13 @@
                      pop_vlan,
                      push_mpls,
                      pop_mpls,
-                     push_pbb,
-                     pop_pbb,
                      set_queue,
                      group,
                      set_nw_ttl,
                      dec_nw_ttl,
                      set_field,
+                     push_pbb,
+                     pop_pbb,
                      {experimenter, 16#ffff}]}).
 
 %%------------------------------------------------------------------------------
