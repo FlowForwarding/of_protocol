@@ -127,74 +127,74 @@ has_match(Field, Val, Acc) ->
 	false ->
 	    missing
     end.
-				      
+
 required(in_phy_port) ->
     in_port;
 required(vlan_pcp) ->
     %% this needs work
     {vlan_vid,none};
 required(ip_dscp) ->
-    [{eth_type,16#800},{eth_type,16#86dd}];
+    [{eth_type,<<16#800:16>>},{eth_type,<<16#86dd:16>>}];
 required(ip_ecn) ->
-    [{eth_type,16#800},{eth_type,16#86dd}];
+    [{eth_type,<<16#800:16>>},{eth_type,<<16#86dd:16>>}];
 required(ip_proto) ->
     [{eth_type,<<16#800:16>>},{eth_type,<<16#86dd:16>>}];
 required(ipv4_src) ->
-    {eth_type,16#800};
+    {eth_type,<<16#800:16>>};
 required(ipv4_dst) ->
-    {eth_type,16#800};
+    {eth_type,<<16#800:16>>};
 required(tcp_src) ->
-    {ip_proto,6};
+    {ip_proto,<<6:8>>};
 required(tcp_dst) ->
-    {ip_proto,6};
+    {ip_proto,<<6:8>>};
 required(udp_src) ->
-    {ip_proto,17};
+    {ip_proto,<<17:8>>};
 required(udp_dst) ->
-    {ip_proto,17};
+    {ip_proto,<<17:8>>};
 required(sctp_src) ->
-    {ip_proto,132};
+    {ip_proto,<<132:8>>};
 required(sctp_dst) ->
-    {ip_proto,132};
+    {ip_proto,<<132:8>>};
 required(icmpv4_type) ->
-    {ip_proto,1};
+    {ip_proto,<<1:8>>};
 required(icmpv4_code) ->
-    {ip_proto,1};
+    {ip_proto,<<1:8>>};
 required(arp_op) ->
-    {eth_type,16#806};
+    {eth_type,<<16#806:16>>};
 required(arp_spa) ->
-    {eth_type,16#806};
+    {eth_type,<<16#806:16>>};
 required(arp_tpa) ->
-    {eth_type,16#806};
+    {eth_type,<<16#806:16>>};
 required(arp_sha) ->
-    {eth_type,16#806};
+    {eth_type,<<16#806:16>>};
 required(arp_tha) ->
-    {eth_type,16#806};
+    {eth_type,<<16#806:16>>};
 required(ipv6_src) ->
-    {eth_type,16#86dd};
+    {eth_type,<<16#86dd:16>>};
 required(ipv6_dst) ->
-    {eth_type,16#86dd};
+    {eth_type,<<16#86dd:16>>};
 required(ipv6_flabel) ->
-    {eth_type,16#86dd};
+    {eth_type,<<16#86dd:16>>};
 required(icmpv6_type) ->
-    {ip_proto,58};
+    {ip_proto,<<58:8>>};
 required(icmpv6_code) ->
-    {ip_proto,58};
+    {ip_proto,<<58:8>>};
 required(ipv6_nd_target) ->
-    [{icmpv6_type,135},{icmpv6_type,136}];
+    [{icmpv6_type,<<135:8>>},{icmpv6_type,<<136:8>>}];
 required(ipv6_nd_sll) ->
-    {icmpv6_type,135};
+    {icmpv6_type,<<135:8>>};
 required(ipv6_nd_tll) ->
-    {icmpv6_type,136};
+    {icmpv6_type,<<136:8>>};
 required(mpls_label) ->
-    [{eth_type,16#8847},{eth_type,16#8848}];
+    [{eth_type,<<16#8847:16>>},{eth_type,<<16#8848:16>>}];
 required(mpls_tc) ->
-    [{eth_type,16#8847},{eth_type,16#8848}];
+    [{eth_type,<<16#8847:16>>},{eth_type,<<16#8848:16>>}];
 required(mpls_bos) ->
-    [{eth_type,16#8847},{eth_type,16#8848}];
+    [{eth_type,<<16#8847:16>>},{eth_type,<<16#8848:16>>}];
 required(pbb_isid) ->
-    {eth_type,16#88E7};
+    {eth_type,<<16#88E7:16>>};
 required(ipv6_exthdr) ->
-    {eth_type,16#86dd};
+    {eth_type,<<16#86dd:16>>};
 required(_) ->
     none.
 
