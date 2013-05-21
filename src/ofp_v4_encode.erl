@@ -256,10 +256,10 @@ encode_struct(#ofp_flow_stats{table_id = Table, duration_sec = Sec,
                               match = Match, instructions = Instructions}) ->
     MatchBin = encode_struct(Match),
     InstrsBin = encode_list(Instructions),
-    FlagsBin = ofp_v4_enum:to_int(flow_mod_flags, Flags),
+    FlagsBin = flags_to_binary(flow_mod_flags, Flags, 2),
     Length = ?FLOW_STATS_SIZE + size(MatchBin) - ?MATCH_SIZE + size(InstrsBin),
     <<Length:16, Table:8, 0:8, Sec:32, NSec:32, Priority:16, Idle:16, Hard:16,
-      FlagsBin:16, 0:32, Cookie:8/bytes, PCount:64, BCount:64, MatchBin/bytes,
+      FlagsBin:2/bytes, 0:32, Cookie:8/bytes, PCount:64, BCount:64, MatchBin/bytes,
       InstrsBin/bytes>>;
 encode_struct(#ofp_table_stats{table_id = Table, active_count = ACount,
                                lookup_count = LCount,
