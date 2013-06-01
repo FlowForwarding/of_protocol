@@ -58,7 +58,7 @@
           versions :: [integer()],
           role = equal :: master | equal | slave,
           generation_id :: integer(),
-          filter = {{true, true, true}, {true, false, false}},
+          filter = #async_config{},
           socket :: inets:socket(),
           parser :: record(),
           timeout :: integer(),

@@ -50,20 +50,31 @@ extract_role(#ofp_role_request{role = Role,
     {Role, GenId}.
 
 %% @doc Create async filters message.
--spec create_async({Masks, Masks}) -> record() when
-      Masks :: {boolean(), boolean(), boolean()}.
-create_async({{P1, S1, F1}, {P2, S2, F2}}) ->
-    #ofp_get_async_reply{packet_in_mask = {P1, P2},
-                         port_status_mask = {S1, S2},
-                         flow_removed_mask = {F1, F2}}.
+-spec create_async(#async_config{}) -> #ofp_get_async_reply{}.
+create_async(#async_config{
+                master_equal_packet_in = MEP,
+                master_equal_port_status = MES,
+                master_equal_flow_removed = MEF,
+                slave_packet_in = SP,
+                slave_port_status = SS,
+                slave_flow_removed = SF}) ->
+    #ofp_get_async_reply{packet_in_mask = {MEP, SP},
+                         port_status_mask = {MES, SS},
+                         flow_removed_mask = {MEF, SF}}.
 
 %% @doc Extract async filters information.
--spec extract_async(record()) -> {Masks, Masks} when
-      Masks :: {boolean(), boolean(), boolean()}.
-extract_async(#ofp_set_async{packet_in_mask = {P1, P2},
-                             port_status_mask = {S1, S2},
-                             flow_removed_mask = {F1, F2}}) ->
-    {{P1, S1, F1}, {P2, S2, F2}}.
+-spec extract_async(#ofp_set_async{}) -> #async_config{}.
+extract_async(#ofp_set_async{packet_in_mask = {MEP, SP},
+                             port_status_mask = {MES, SS},
+                             flow_removed_mask = {MEF, SF}}) ->
+    #async_config{
+       master_equal_packet_in = MEP,
+       master_equal_port_status = MES,
+       master_equal_flow_removed = MEF,
+       slave_packet_in = SP,
+       slave_port_status = SS,
+       slave_flow_removed = SF
+      }.
 
 -spec type_atom(ofp_message_body()) -> integer().
 type_atom(#ofp_error_msg{}) ->
