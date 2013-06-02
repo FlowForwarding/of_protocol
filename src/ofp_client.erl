@@ -406,13 +406,16 @@ do_send(Message, #state{controller = {_, _, Proto},
             {error, Reason}
     end.
 
-do_filter_send(Message, #state{role = Role, filter = Filter} = State) ->
-    case filter_message(Message, Role, Filter) of
-        true ->
-            do_send(Message, State);
+do_filter_send(#ofp_message{version = 4} = Message,
+               #state{role = Role, filter = Filter} = State) ->
+    case ofp_v4_client:filter_out_message(Message, Role, Filter) of
         false ->
+            do_send(Message, State);
+        true ->
             {error, filtered}
-    end.
+    end;
+do_filter_send(Message, State) ->
+    do_send(Message, State).
 
 handle_message(#ofp_message{type = role_request, version = Version,
                             body = RoleRequest} = Message, State) ->
@@ -508,25 +511,6 @@ decide_on_version(CVersions, #ofp_message{version = SVersion, body = Body}) ->
                 false ->
                     {unsupported_version, SVersion}
             end
-    end.
-
-filter_message(#ofp_message{type = Type}, Role, {MasterEqual, Slave}) ->
-    {PacketIn, PortStatus, FlowRemoved} =
-        case Role of
-            slave ->
-                Slave;
-            _Else ->
-                MasterEqual
-        end,
-    case Type of
-        packet_in ->
-            PacketIn;
-        port_status ->
-            PortStatus;
-        flow_removed ->
-            FlowRemoved;
-        _Other ->
-            true
     end.
 
 change_role(Version, nochange, GenId, #state{role = Role} = State) ->

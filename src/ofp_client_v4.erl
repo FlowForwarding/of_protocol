@@ -24,6 +24,7 @@
          extract_role/1,
          create_async/1,
          extract_async/1,
+         filter_out_message/3,
          type_atom/1,
          add_aux_id/2,
          split_multipart/1]).
@@ -75,6 +76,35 @@ extract_async(#ofp_set_async{packet_in_mask = {MEP, SP},
        slave_port_status = SS,
        slave_flow_removed = SF
       }.
+
+-spec filter_out_message(#ofp_message{},
+                         master | slave | equal,
+                         #async_config{}) -> boolean().
+filter_out_message(#ofp_message{type = Type, body = Body}, Role, Filter) ->
+    {PacketInFilter, PortStatusFilter, FlowRemovedFilter} =
+        case Role of
+            slave ->
+                {Filter#async_config.slave_packet_in,
+                 Filter#async_config.slave_port_status,
+                 Filter#async_config.slave_flow_removed};
+            _Else ->
+                {Filter#async_config.master_equal_packet_in,
+                 Filter#async_config.master_equal_port_status,
+                 Filter#async_config.master_equal_flow_removed}
+        end,
+    case Type of
+        packet_in ->
+            Reason = Body#ofp_packet_in.reason,
+            should_filter_out(Reason, PacketInFilter);
+        port_status ->
+            Reason = Body#ofp_port_status.reason,
+            should_filter_out(Reason, PortStatusFilter);
+        flow_removed ->
+            Reason = Body#ofp_port_status.reason,
+            should_filter_out(Reason, FlowRemovedFilter);
+        _Other ->
+            false
+    end.
 
 -spec type_atom(ofp_message_body()) -> integer().
 type_atom(#ofp_error_msg{}) ->
@@ -227,3 +257,6 @@ split2(_, [], Head) ->
     {lists:reverse(Head), []};
 split2(N, [X | Tail], Head) ->
     split2(N - 1, Tail, [X | Head]).
+
+should_filter_out(Reason, Filter) ->
+    not lists:member(Reason, Filter).
