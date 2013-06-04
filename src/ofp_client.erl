@@ -408,7 +408,7 @@ do_send(Message, #state{controller = {_, _, Proto},
 
 do_filter_send(#ofp_message{version = 4} = Message,
                #state{role = Role, filter = Filter} = State) ->
-    case ofp_v4_client:filter_out_message(Message, Role, Filter) of
+    case ofp_client_v4:filter_out_message(Message, Role, Filter) of
         false ->
             do_send(Message, State);
         true ->
