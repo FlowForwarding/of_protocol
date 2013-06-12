@@ -52,7 +52,7 @@ do(Binary) ->
 
 %% @doc Decode port structure.
 decode_port(Binary) ->
-    <<PortNoInt:32, 0:32, HWAddr:6/bytes, 0:16, NameBin:16/bytes,
+    <<PortNoInt:32, _Pad:32, HWAddr:6/bytes, _Pad:16, NameBin:16/bytes,
       ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
       AdvertisedBin:4/bytes, SupportedBin:4/bytes, PeerBin:4/bytes,
       CurrSpeed:32, MaxSpeed:32>> = Binary,
@@ -76,7 +76,7 @@ decode_queues(Binary) ->
 decode_queues(<<>>, Queues) ->
     lists:reverse(Queues);
 decode_queues(Binary, Queues) ->
-    <<QueueId:32, Port:32, Length:16, 0:48, Data/bytes>> = Binary,
+    <<QueueId:32, Port:32, Length:16, _Pad:48, Data/bytes>> = Binary,
     PropsLength = Length - ?PACKET_QUEUE_SIZE,
     <<PropsBin:PropsLength/bytes, Rest/bytes>> = Data,
     Props = decode_properties(PropsBin),
@@ -91,19 +91,19 @@ decode_properties(Binary) ->
 decode_properties(<<>>, Properties) ->
     lists:reverse(Properties);
 decode_properties(Binary, Properties) ->
-    <<TypeInt:16, Length:16, 0:32,
+    <<TypeInt:16, Length:16, _Pad:32,
       Data/bytes>> = Binary,
     Type = ofp_v3_enum:to_atom(queue_properties, TypeInt),
     case Type of
         min_rate ->
-            <<Rate:16, 0:48, Rest/bytes>> = Data,
+            <<Rate:16, _Pad:48, Rest/bytes>> = Data,
             Property = #ofp_queue_prop_min_rate{rate = Rate};
         max_rate ->
-            <<Rate:16, 0:48, Rest/bytes>> = Data,
+            <<Rate:16, _Pad:48, Rest/bytes>> = Data,
             Property = #ofp_queue_prop_max_rate{rate = Rate};
         experimenter ->
             DataLength = Length - ?QUEUE_PROP_EXPERIMENTER_SIZE,
-            <<Experimenter:32, 0:32, ExpData:DataLength/bytes,
+            <<Experimenter:32, _Pad:32, ExpData:DataLength/bytes,
               Rest/bytes>> = Data,
             Property = #ofp_queue_prop_experimenter{experimenter = Experimenter,
                                                     data = ExpData}
@@ -116,7 +116,7 @@ decode_match(Binary) ->
     <<1:16, NoPadLength:16, PadFieldsBin:PadFieldsLength/bytes>> = Binary,
     FieldsBinLength = (NoPadLength - 4),
     Padding = (PadFieldsLength - FieldsBinLength) * 8,
-    <<FieldsBin:FieldsBinLength/bytes, 0:Padding>> = PadFieldsBin,
+    <<FieldsBin:FieldsBinLength/bytes, _:Padding>> = PadFieldsBin,
     Fields = decode_match_fields(FieldsBin),
     #ofp_match{fields = Fields}.
 
@@ -173,7 +173,7 @@ decode_actions(Binary, Actions) ->
     case Type of
         output ->
             <<PortInt:32, MaxLenInt:16,
-              0:48, Rest/bytes>> = Data,
+              _Pad:48, Rest/bytes>> = Data,
             Port = get_id(port_no, PortInt),
             MaxLen = get_id(buffer, MaxLenInt),
             Action = #ofp_action_output{port = Port, max_len = MaxLen};
@@ -186,39 +186,39 @@ decode_actions(Binary, Actions) ->
             Queue = get_id(queue, QueueInt),
             Action = #ofp_action_set_queue{queue_id = Queue};
         set_mpls_ttl ->
-            <<TTL:8, 0:24, Rest/bytes>> = Data,
+            <<TTL:8, _Pad:24, Rest/bytes>> = Data,
             Action = #ofp_action_set_mpls_ttl{mpls_ttl = TTL};
         dec_mpls_ttl ->
-            <<0:32, Rest/bytes>> = Data,
+            <<_Pad:32, Rest/bytes>> = Data,
             Action = #ofp_action_dec_mpls_ttl{};
         set_nw_ttl ->
-            <<TTL:8, 0:24, Rest/bytes>> = Data,
+            <<TTL:8, _Pad:24, Rest/bytes>> = Data,
             Action = #ofp_action_set_nw_ttl{nw_ttl = TTL};
         dec_nw_ttl ->
-            <<0:32, Rest/bytes>> = Data,
+            <<_Pad:32, Rest/bytes>> = Data,
             Action = #ofp_action_dec_nw_ttl{};
         copy_ttl_out ->
-            <<0:32, Rest/bytes>> = Data,
+            <<_Pad:32, Rest/bytes>> = Data,
             Action = #ofp_action_copy_ttl_out{};
         copy_ttl_in ->
-            <<0:32, Rest/bytes>> = Data,
+            <<_Pad:32, Rest/bytes>> = Data,
             Action = #ofp_action_copy_ttl_in{};
         push_vlan ->
-            <<EtherType:16, 0:16, Rest/bytes>> = Data,
+            <<EtherType:16, _Pad:16, Rest/bytes>> = Data,
             Action = #ofp_action_push_vlan{ethertype = EtherType};
         pop_vlan ->
-            <<0:32, Rest/bytes>> = Data,
+            <<_Pad:32, Rest/bytes>> = Data,
             Action = #ofp_action_pop_vlan{};
         push_mpls ->
-            <<EtherType:16, 0:16, Rest/bytes>> = Data,
+            <<EtherType:16, _Pad:16, Rest/bytes>> = Data,
             Action = #ofp_action_push_mpls{ethertype = EtherType};
         pop_mpls ->
-            <<EtherType:16, 0:16, Rest/bytes>> = Data,
+            <<EtherType:16, _Pad:16, Rest/bytes>> = Data,
             Action = #ofp_action_pop_mpls{ethertype = EtherType};
         set_field ->
             FieldLength = Length - 4,
             <<FieldBin:FieldLength/bytes, Rest/bytes>> = Data,
-            {Field, _Padding} = decode_match_field(FieldBin),
+            {Field, _Pad} = decode_match_field(FieldBin),
             Action = #ofp_action_set_field{field = Field};
         experimenter ->
             DataLength = Length - ?ACTION_EXPERIMENTER_SIZE,
@@ -242,34 +242,34 @@ decode_instructions(Binary, Instructions) ->
     Type = ofp_v3_enum:to_atom(instruction_type, TypeInt),
     case Type of
         goto_table ->
-            <<Table:8, 0:24, Rest/bytes>> = Data,
+            <<Table:8, _Pad:24, Rest/bytes>> = Data,
             Instruction = #ofp_instruction_goto_table{table_id = Table};
         write_metadata ->
-            <<0:32, Metadata:8/bytes, MetaMask:8/bytes,
+            <<_Pad:32, Metadata:8/bytes, MetaMask:8/bytes,
               Rest/bytes>> = Data,
             Instruction = #ofp_instruction_write_metadata{
-              metadata = Metadata,
-              metadata_mask = MetaMask};
+                             metadata = Metadata,
+                             metadata_mask = MetaMask};
         write_actions ->
             ActionsLength = Length - ?INSTRUCTION_WRITE_ACTIONS_SIZE,
-            <<0:32, ActionsBin:ActionsLength/bytes,
+            <<_Pad:32, ActionsBin:ActionsLength/bytes,
               Rest/bytes>> = Data,
             Actions = decode_actions(ActionsBin),
             Instruction = #ofp_instruction_write_actions{actions = Actions};
         apply_actions ->
             ActionsLength = Length - ?INSTRUCTION_APPLY_ACTIONS_SIZE,
-            <<0:32, ActionsBin:ActionsLength/bytes,
+            <<_Pad:32, ActionsBin:ActionsLength/bytes,
               Rest/bytes>> = Data,
             Actions = decode_actions(ActionsBin),
             Instruction = #ofp_instruction_apply_actions{actions = Actions};
         clear_actions ->
-            <<0:32, Rest/bytes>> = Data,
+            <<_Pad:32, Rest/bytes>> = Data,
             Instruction = #ofp_instruction_clear_actions{};
         experimenter ->
             DataLength = Length - ?INSTRUCTION_EXPERIMENTER_SIZE,
             <<Experimenter:32, ExpData:DataLength/bytes, Rest/bytes>> = Data,
             Instruction = #ofp_instruction_experimenter{
-              experimenter = Experimenter, data = ExpData}
+                             experimenter = Experimenter, data = ExpData}
     end,
     decode_instructions(Rest, [Instruction | Instructions]).
 
@@ -281,7 +281,7 @@ decode_buckets(<<>>, Buckets) ->
     lists:reverse(Buckets);
 decode_buckets(Binary, Buckets) ->
     <<Length:16, Weight:16, Port:32, Group:32,
-      0:32, Data/bytes>> = Binary,
+      _Pad:32, Data/bytes>> = Binary,
     ActionsLength = Length - ?BUCKET_SIZE,
     <<ActionsBin:ActionsLength/bytes, Rest/bytes>> = Data,
     Actions = decode_actions(ActionsBin),
@@ -315,7 +315,7 @@ decode_flow_stats_list(Binary, FlowStatsList) ->
     decode_flow_stats_list(Rest, [FlowStats | FlowStatsList]).
 
 decode_table_stats(Binary) ->
-    <<TableInt:8, 0:56, NameBin:?OFP_MAX_TABLE_NAME_LEN/bytes,
+    <<TableInt:8, _Pad:56, NameBin:?OFP_MAX_TABLE_NAME_LEN/bytes,
       MatchBin:8/bytes, WildcardsBin:8/bytes, WriteActionsBin:4/bytes,
       ApplyActionsBin:4/bytes, WriteSetBin:8/bytes, ApplySetBin:8/bytes,
       MetaMatch:8/bytes, MetaWrite:8/bytes, InstructionsBin:4/bytes,
@@ -341,7 +341,7 @@ decode_table_stats(Binary) ->
                      lookup_count = LCount, matched_count = MCount}.
 
 decode_port_stats(Binary) ->
-    <<PortInt:32, 0:32, RXPackets:64,
+    <<PortInt:32, _Pad:32, RXPackets:64,
       TXPackets:64, RXBytes:64, TXBytes:64,
       RXDropped:64, TXDropped:64, RXErrors:64,
       TXErrors:64, FrameErr:64, OverErr:64,
@@ -364,8 +364,8 @@ decode_queue_stats(Binary) ->
                      tx_packets = Packets, tx_errors = Errors}.
 
 decode_group_stats(Binary) ->
-    <<_:16, 0:16, GroupInt:32, RefCount:32,
-      0:32, PCount:64, BCount:64,
+    <<_:16, _Pad:16, GroupInt:32, RefCount:32,
+      _Pad:32, PCount:64, BCount:64,
       BucketsBin/bytes>> = Binary,
     Group = get_id(group, GroupInt),
     Buckets = decode_bucket_counters(BucketsBin),
@@ -395,7 +395,7 @@ decode_bucket_counters(<<PCount:64, BCount:64, Rest/bytes>>,
                                                 byte_count = BCount} | Buckets]).
 
 decode_group_desc_stats(Binary) ->
-    <<_:16, TypeInt:8, 0:8,
+    <<_:16, TypeInt:8, _Pad:8,
       GroupInt:32, BucketsBin/bytes>> = Binary,
     Type = ofp_v3_enum:to_atom(group_type, TypeInt),
     Group = get_id(group, GroupInt),
@@ -454,7 +454,7 @@ decode_body(features_request, _) ->
 decode_body(features_reply, Binary) ->
     PortsLength = size(Binary) - ?FEATURES_REPLY_SIZE + ?OFP_HEADER_SIZE,
     <<DataPathMac:6/bytes, DataPathID:16, NBuffers:32,
-      NTables:8, 0:24, CapaBin:4/bytes, 0:32,
+      NTables:8, _Pad:24, CapaBin:4/bytes, _Pad:32,
       PortsBin:PortsLength/bytes>> = Binary,
     Capabilities = binary_to_flags(capabilities, CapaBin),
     Ports = [decode_port(PortBin)
@@ -481,7 +481,7 @@ decode_body(packet_in, Binary) ->
       TableId:8, Tail/bytes>> = Binary,
     MatchLength = size(Binary) - (?PACKET_IN_SIZE - ?MATCH_SIZE)
         - 2 - TotalLen + ?OFP_HEADER_SIZE,
-    <<MatchBin:MatchLength/bytes, 0:16, Payload/bytes>> = Tail,
+    <<MatchBin:MatchLength/bytes, _Pad:16, Payload/bytes>> = Tail,
     BufferId = get_id(buffer, BufferIdInt),
     Reason = ofp_v3_enum:to_atom(packet_in_reason, ReasonInt),
     Match = decode_match(MatchBin),
@@ -503,12 +503,12 @@ decode_body(flow_removed, Binary) ->
                       hard_timeout = Hard, packet_count = PCount,
                       byte_count = BCount, match = Match};
 decode_body(port_status, Binary) ->
-    <<ReasonInt:8, 0:56, PortBin:?PORT_SIZE/bytes>> = Binary,
+    <<ReasonInt:8, _Pad:56, PortBin:?PORT_SIZE/bytes>> = Binary,
     Reason = ofp_v3_enum:to_atom(port_reason, ReasonInt),
     Port = decode_port(PortBin),
     #ofp_port_status{reason = Reason, desc = Port};
 decode_body(stats_request, Binary) ->
-    <<TypeInt:16, FlagsBin:2/bytes, 0:32,
+    <<TypeInt:16, FlagsBin:2/bytes, _Pad:32,
       Data/bytes>> = Binary,
     Type = ofp_v3_enum:to_atom(stats_type, TypeInt),
     Flags = binary_to_flags(stats_request_flags, FlagsBin),
@@ -517,8 +517,8 @@ decode_body(stats_request, Binary) ->
             #ofp_desc_stats_request{flags = Flags};
         flow ->
             MatchLength = size(Binary) - (?FLOW_STATS_REQUEST_SIZE - ?MATCH_SIZE) + ?OFP_HEADER_SIZE,
-            <<TableInt:8, 0:24, PortInt:32,
-              GroupInt:32, 0:32, Cookie:8/bytes,
+            <<TableInt:8, _Pad:24, PortInt:32,
+              GroupInt:32, _Pad:32, Cookie:8/bytes,
               CookieMask:8/bytes, MatchBin:MatchLength/bytes>> = Data,
             Table = get_id(table, TableInt),
             Port = get_id(port_no, PortInt),
@@ -530,8 +530,8 @@ decode_body(stats_request, Binary) ->
                                     cookie_mask = CookieMask, match = Match};
         aggregate ->
             MatchLength = size(Binary) - (?AGGREGATE_STATS_REQUEST_SIZE - ?MATCH_SIZE) + ?OFP_HEADER_SIZE,
-            <<TableInt:8, 0:24, PortInt:32,
-              GroupInt:32, 0:32, Cookie:8/bytes,
+            <<TableInt:8, _Pad:24, PortInt:32,
+              GroupInt:32, _Pad:32, Cookie:8/bytes,
               CookieMask:8/bytes, MatchBin:MatchLength/bytes>> = Data,
             Table = get_id(table, TableInt),
             Port = get_id(port_no, PortInt),
@@ -544,7 +544,7 @@ decode_body(stats_request, Binary) ->
         table ->
             #ofp_table_stats_request{flags = Flags};
         port ->
-            <<PortInt:32, 0:32>> = Data,
+            <<PortInt:32, _Pad:32>> = Data,
             Port = get_id(port_no, PortInt),
             #ofp_port_stats_request{flags = Flags,
                                     port_no = Port};
@@ -555,7 +555,7 @@ decode_body(stats_request, Binary) ->
             #ofp_queue_stats_request{flags = Flags,
                                      port_no = Port, queue_id = Queue};
         group ->
-            <<GroupInt:32, 0:32>> = Data,
+            <<GroupInt:32, _Pad:32>> = Data,
             Group = get_id(group, GroupInt),
             #ofp_group_stats_request{flags = Flags,
                                      group_id = Group};
@@ -572,7 +572,7 @@ decode_body(stats_request, Binary) ->
                                             exp_type = ExpType, data = ExpData}
     end;
 decode_body(stats_reply, Binary) ->
-    <<TypeInt:16, FlagsBin:2/bytes, 0:32,
+    <<TypeInt:16, FlagsBin:2/bytes, _Pad:32,
       Data/bytes>> = Binary,
     Type = ofp_v3_enum:to_atom(stats_type, TypeInt),
     Flags = binary_to_flags(stats_reply_flags, FlagsBin),
@@ -596,7 +596,7 @@ decode_body(stats_reply, Binary) ->
                                   stats = Stats};
         aggregate ->
             <<PCount:64, BCount:64, FCount:32,
-              0:32>> = Data,
+              _Pad:32>> = Data,
             #ofp_aggregate_stats_reply{flags = Flags,
                                        packet_count = PCount,
                                        byte_count = BCount,
@@ -670,20 +670,20 @@ decode_body(stats_reply, Binary) ->
                                           exp_type = ExpType, data = ExpData}
     end;
 decode_body(queue_get_config_request, Binary) ->
-    <<PortInt:32, 0:32>> = Binary,
+    <<PortInt:32, _Pad:32>> = Binary,
     Port = get_id(port_no, PortInt),
     #ofp_queue_get_config_request{port = Port};
 decode_body(queue_get_config_reply, Binary) ->
     QueuesLength = size(Binary) - ?QUEUE_GET_CONFIG_REPLY_SIZE
         + ?OFP_HEADER_SIZE,
-    <<PortInt:32, 0:32, QueuesBin:QueuesLength/bytes>> = Binary,
+    <<PortInt:32, _Pad:32, QueuesBin:QueuesLength/bytes>> = Binary,
     Port = get_id(port_no, PortInt),
     Queues = decode_queues(QueuesBin),
     #ofp_queue_get_config_reply{port = Port,
                                 queues = Queues};
 decode_body(packet_out, Binary) ->
     <<BufferIdInt:32, PortInt:32, ActionsLength:16,
-      0:48, Binary2/bytes>> = Binary,
+      _Pad:48, Binary2/bytes>> = Binary,
     DataLength = size(Binary) - ?PACKET_OUT_SIZE + ?OFP_HEADER_SIZE
         - ActionsLength,
     <<ActionsBin:ActionsLength/bytes, Data:DataLength/bytes>> = Binary2,
@@ -695,7 +695,7 @@ decode_body(packet_out, Binary) ->
 decode_body(flow_mod, Binary) ->
     <<Cookie:8/bytes, CookieMask:8/bytes, TableInt:8, CommandInt:8,
       Idle:16, Hard:16, Priority:16, BufferInt:32, OutPortInt:32,
-      OutGroupInt:32, FlagsBin:2/bytes, 0:16, Data/bytes>> = Binary,
+      OutGroupInt:32, FlagsBin:2/bytes, _Pad:16, Data/bytes>> = Binary,
     Table = get_id(table, TableInt),
     Buffer = get_id(buffer, BufferInt),
     Command = ofp_v3_enum:to_atom(flow_mod_command, CommandInt),
@@ -715,7 +715,7 @@ decode_body(flow_mod, Binary) ->
                   match = Match, instructions = Instructions};
 decode_body(group_mod, Binary) ->
     BucketsLength = size(Binary) - ?GROUP_MOD_SIZE + ?OFP_HEADER_SIZE,
-    <<CommandInt:16, TypeInt:8, 0:8,
+    <<CommandInt:16, TypeInt:8, _Pad:8,
       GroupInt:32, BucketsBin:BucketsLength/bytes>> = Binary,
     Command = ofp_v3_enum:to_atom(group_mod_command, CommandInt),
     Type = ofp_v3_enum:to_atom(group_type, TypeInt),
@@ -724,9 +724,9 @@ decode_body(group_mod, Binary) ->
     #ofp_group_mod{command = Command, type = Type,
                    group_id = Group, buckets = Buckets};
 decode_body(port_mod, Binary) ->
-    <<PortInt:32, 0:32, Addr:6/bytes,
-      0:16, ConfigBin:4/bytes, MaskBin:4/bytes,
-      AdvertiseBin:4/bytes, 0:32>> = Binary,
+    <<PortInt:32, _Pad:32, Addr:6/bytes,
+      _Pad:16, ConfigBin:4/bytes, MaskBin:4/bytes,
+      AdvertiseBin:4/bytes, _Pad:32>> = Binary,
     Port = get_id(port_no, PortInt),
     Config = binary_to_flags(port_config, ConfigBin),
     Mask = binary_to_flags(port_config, MaskBin),
@@ -734,7 +734,7 @@ decode_body(port_mod, Binary) ->
     #ofp_port_mod{port_no = Port, hw_addr = Addr,
                   config = Config, mask = Mask, advertise = Advertise};
 decode_body(table_mod, Binary) ->
-    <<TableInt:8, 0:24, ConfigInt:32>> = Binary,
+    <<TableInt:8, _Pad:24, ConfigInt:32>> = Binary,
     Table = get_id(table, TableInt),
     Config = ofp_v3_enum:to_atom(table_config, ConfigInt),
     #ofp_table_mod{table_id = Table, config = Config};
@@ -743,11 +743,11 @@ decode_body(barrier_request, _) ->
 decode_body(barrier_reply, _) ->
     #ofp_barrier_reply{};
 decode_body(role_request, Binary) ->
-    <<RoleInt:32, 0:32, Gen:64>> = Binary,
+    <<RoleInt:32, _Pad:32, Gen:64>> = Binary,
     Role = ofp_v3_enum:to_atom(controller_role, RoleInt),
     #ofp_role_request{role = Role, generation_id = Gen};
 decode_body(role_reply, Binary) ->
-    <<RoleInt:32, 0:32, Gen:64>> = Binary,
+    <<RoleInt:32, _Pad:32, Gen:64>> = Binary,
     Role = ofp_v3_enum:to_atom(controller_role, RoleInt),
     #ofp_role_reply{role = Role, generation_id = Gen}.
 
