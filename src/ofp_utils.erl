@@ -54,11 +54,10 @@ strip_string(Binary, Byte) when Byte >= 0 ->
         0 ->
             strip_string(Binary, Byte - 1);
         _ ->
-            String = binary:part(Binary, 0, Byte + 1),
-            <<String/bytes, 0:8>>
+            binary:part(Binary, 0, Byte + 1)
     end;
 strip_string(_, _) ->
-    <<"\0">>.
+    <<>>.
 
 -spec cut_bits(binary(), integer()) -> binary().
 cut_bits(Binary, Bits) ->
