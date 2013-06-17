@@ -133,7 +133,7 @@ binary_to_flags(EnumMod, Type, Integer, Bit, Flags) when Bit >= 0 ->
             binary_to_flags(EnumMod, Type, Integer, Bit - 1, Flags)
     end;
 binary_to_flags(_, _, _, _, Flags) ->
-    lists:reverse(Flags).
+    Flags.
 
 -spec flags_to_binary(atom(), atom(), [atom()], binary(), integer()) -> binary().
 flags_to_binary(_, _, [], Binary, _) ->
