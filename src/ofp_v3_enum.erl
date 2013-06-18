@@ -98,7 +98,7 @@
 %% Note: Not in the specification
 -enum({queue, [{all, 16#ffffffff}]}).
 
--enum({queue_properties, [min_rate,
+-enum({queue_properties, [{min_rate, 1},
                           max_rate,
                           {experimenter, 16#ffff}]}).
 
