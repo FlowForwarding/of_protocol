@@ -820,7 +820,7 @@ decode_hello_elements(Binary, Acc) ->
     <<Data:DataLength/bytes, Rest2/bytes>> = Rest1,
     Acc2 = case Type of
                versionbitmap ->
-                   [decode_bitmap(Data)|Acc];
+                   [{versionbitmap, decode_bitmap(Data)}|Acc];
                _ ->
                    %% ignore unknown types
                    Acc
