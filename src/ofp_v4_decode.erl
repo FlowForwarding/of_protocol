@@ -368,14 +368,14 @@ decode_flow_stats_list(Binary, FlowStatsList) ->
 
 decode_flow_stats(Binary) ->
     <<_:16, Table:8, _:8, Sec:32, NSec:32, Priority:16, Idle:16, Hard:16,
-      FlagsBin:16, _:32, Cookie:8/bytes, PCount:64, BCount:64,
+      FlagsBin:2/bytes, _:32, Cookie:8/bytes, PCount:64, BCount:64,
       Data/bytes>> = Binary,
     <<_:16, MatchLength:16, _/bytes>> = Data,
     MatchLengthPad = MatchLength + ofp_utils:padding(MatchLength, 8),
     <<MatchBin:MatchLengthPad/bytes, InstrsBin/bytes>> = Data,
     Match = decode_match(MatchBin),
     Instrs = decode_instructions(InstrsBin),
-    Flags = ofp_v4_enum:to_atom(flow_mod_flags, FlagsBin),
+    Flags = binary_to_flags(flow_mod_flags, FlagsBin),
     #ofp_flow_stats{table_id = Table, duration_sec = Sec, duration_nsec = NSec,
                     priority = Priority, idle_timeout = Idle,
                     hard_timeout = Hard, flags = Flags, cookie = Cookie,
@@ -789,7 +789,7 @@ decode_meter_config_list(Binary, MeterConfigs) ->
             <<BandsBin:BandsLength/bytes, Rest2/bytes>> = Rest,
             Bands = decode_bands(BandsBin)
     end,
-    Flags = binary_to_flags(meter_mod_command, FlagsBin),
+    Flags = binary_to_flags(meter_flag, FlagsBin),
     MeterId = get_id(meter_id, MeterIdInt),
     MeterConfig = #ofp_meter_config{flags = Flags, meter_id = MeterId,
                                     bands = Bands},
@@ -820,7 +820,7 @@ decode_hello_elements(Binary, Acc) ->
     <<Data:DataLength/bytes, Rest2/bytes>> = Rest1,
     Acc2 = case Type of
                versionbitmap ->
-                   [decode_bitmap(Data)|Acc];
+                   [{versionbitmap, decode_bitmap(Data)}|Acc];
                _ ->
                    %% ignore unknown types
                    Acc
