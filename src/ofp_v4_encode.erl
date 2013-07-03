@@ -392,11 +392,11 @@ encode_body(#ofp_get_config_request{}) ->
     <<>>;
 encode_body(#ofp_get_config_reply{flags = Flags, miss_send_len = Miss}) ->
     FlagsBin = flags_to_binary(config_flags, Flags, 2),
-    MissInt = ofp_v4_enum:to_int(miss_send_len, Miss),
+    MissInt = get_id(miss_send_len, Miss),
     <<FlagsBin:16/bits, MissInt:16>>;
 encode_body(#ofp_set_config{flags = Flags, miss_send_len = Miss}) ->
     FlagsBin = flags_to_binary(config_flags, Flags, 2),
-    MissInt = ofp_v4_enum:to_int(miss_send_len, Miss),
+    MissInt = get_id(miss_send_len, Miss),
     <<FlagsBin:16/bits, MissInt:16>>;
 encode_body(#ofp_packet_in{buffer_id = BufferId, reason = Reason,
                            table_id = TableId, cookie = Cookie,
