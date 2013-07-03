@@ -318,7 +318,7 @@ encode_struct(#ofp_meter_band_stats{packet_band_count = PBC,
 encode_struct(#ofp_meter_config{flags = Flags, meter_id = MeterId,
                                 bands = Bands}) ->
     MeterIdInt = get_id(meter_id, MeterId),
-    FlagsBin = flags_to_binary(meter_mod_command, Flags, 2),
+    FlagsBin = flags_to_binary(meter_flag, Flags, 2),
     BandsBin = encode_list(Bands),
     Length = ?METER_CONFIG_SIZE + byte_size(BandsBin),
     <<Length:16, FlagsBin:16/bits, MeterIdInt:32, BandsBin/bytes>>.
