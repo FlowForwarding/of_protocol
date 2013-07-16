@@ -624,10 +624,8 @@
 -record(ofp_get_config_request, {}).
 -type ofp_get_config_request() :: #ofp_get_config_request{}.
 
--type ofp_switch_configuration() :: frag_normal
-                                  | frag_drop
+-type ofp_switch_configuration() :: frag_drop
                                   | frag_reasm
-                                  | frag_mask
                                   | invalid_ttl_to_controller.
 
 %% Configuration reply

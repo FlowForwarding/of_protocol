@@ -563,8 +563,7 @@
 -record(ofp_get_config_request, {}).
 -type ofp_get_config_request() :: #ofp_get_config_request{}.
 
--type ofp_config_flags() :: frag_normal
-                          | frag_drop
+-type ofp_config_flags() :: frag_drop
                           | frag_reasm.
 
 -type ofp_buffer_id() :: integer()

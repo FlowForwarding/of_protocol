@@ -219,8 +219,7 @@
 %% Switch Configuration --------------------------------------------------------
 
 -enum({config_flags, [frag_drop,
-                      frag_reasm,
-                      invalid_ttl_to_controller]}).
+                      frag_reasm]}).
 
 -enum({miss_send_len, [{no_buffer, 16#ffff}]}).
 
