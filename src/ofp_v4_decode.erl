@@ -789,7 +789,7 @@ decode_meter_config_list(Binary, MeterConfigs) ->
             <<BandsBin:BandsLength/bytes, Rest2/bytes>> = Rest,
             Bands = decode_bands(BandsBin)
     end,
-    Flags = binary_to_flags(meter_mod_command, FlagsBin),
+    Flags = binary_to_flags(meter_flag, FlagsBin),
     MeterId = get_id(meter_id, MeterIdInt),
     MeterConfig = #ofp_meter_config{flags = Flags, meter_id = MeterId,
                                     bands = Bands},
