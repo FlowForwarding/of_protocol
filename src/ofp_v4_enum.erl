@@ -272,7 +272,7 @@
                   {controller, 16#fffffffe},
                   {all, 16#ffffffff}]}).
 
--enum({meter_band_type, [drop,
+-enum({meter_band_type, [{drop, 1},
                          dscp_remark,
                          {experimenter, 16#ffff}]}).
 
