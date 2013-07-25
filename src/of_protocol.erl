@@ -36,7 +36,7 @@
 -spec encode(ofp_message()) -> {ok, binary()} | {error, any()}.
 encode(#ofp_message{version = Version} = Message) ->
     case ?MOD(Version) of
-        undefined ->
+        unsupported ->
             {error, unsupported_version};
         Module ->
             Module:encode(Message)

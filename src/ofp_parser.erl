@@ -58,7 +58,7 @@ encode(#ofp_parser{module = Module}, Message) ->
 %%%-----------------------------------------------------------------------------
 
 -spec parse(binary(), ofp_parser(), [ofp_message()]) ->
-                   {ok, binary(), [ofp_message()]}.
+                   {ok, ofp_parser(), [ofp_message()]}.
 parse(Binary, #ofp_parser{module = Module, stack = Stack} = Parser, Messages) ->
     NewBinary = <<Stack/binary, Binary/binary>>,
     case Module:decode(NewBinary) of
