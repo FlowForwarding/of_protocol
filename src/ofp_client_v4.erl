@@ -100,7 +100,7 @@ filter_out_message(#ofp_message{type = Type, body = Body}, Role, Filter) ->
             Reason = Body#ofp_port_status.reason,
             should_filter_out(Reason, PortStatusFilter);
         flow_removed ->
-            Reason = Body#ofp_port_status.reason,
+            Reason = Body#ofp_flow_removed.reason,
             should_filter_out(Reason, FlowRemovedFilter);
         _Other ->
             false
