@@ -260,7 +260,7 @@ vlan_vid(Val) when is_integer(Val) ->
     vlan_vid(<<Val:13>>);
 vlan_vid(Val) ->
     #ofp_field{name = vlan_vid,
-	      value = <<Val:13>>}.
+	      value = Val}.
 vlan_vid(Val, Mask) when is_integer(Val), is_integer(Mask) ->
     vlan_vid(<<Val:13>>, <<Mask:13>>);
 vlan_vid(Val, Mask) ->

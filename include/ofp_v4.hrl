@@ -352,8 +352,8 @@
           class = openflow_basic :: ofp_field_class(),
           name :: ofp_field_type(),
           has_mask = false :: boolean(),
-          value :: binary(),
-          mask :: binary()
+          value :: bitstring(),
+          mask :: bitstring()
          }).
 -type ofp_field() :: #ofp_field{}.
 

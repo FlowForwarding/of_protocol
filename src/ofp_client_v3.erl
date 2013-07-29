@@ -27,19 +27,19 @@
 -include("ofp_v3.hrl").
 
 %% @doc Create an error message.
--spec create_error(atom(), atom()) -> record().
+-spec create_error(atom(), atom()) -> ofp_error_msg().
 create_error(Type, Code) ->
     #ofp_error_msg{type = Type,
                    code = Code}.
 
 %% @doc Create role change message.
--spec create_role(atom(), integer()) -> record().
+-spec create_role(atom(), integer()) -> ofp_role_reply().
 create_role(Role, GenId) ->
     #ofp_role_reply{role = Role,
                     generation_id = GenId}.
 
 %% @doc Extract role change information.
--spec extract_role(record()) -> {atom(), integer()}.
+-spec extract_role(ofp_role_request()) -> {atom(), integer()}.
 extract_role(#ofp_role_request{role = Role,
                                generation_id = GenId}) ->
     {Role, GenId}.

@@ -60,7 +60,7 @@
           generation_id :: integer(),
           filter = #async_config{},
           socket :: inets:socket(),
-          parser :: record(),
+          parser :: ofp_parser(),
           timeout :: integer(),
           supervisor :: pid(),
           ets :: ets:tid(),
@@ -105,7 +105,7 @@ replace_connection(Pid, Host, Port, Proto) ->
 stop(Pid) ->
     gen_server:call(Pid, stop).
 
--spec get_controllers_state(integer()) -> #controller_status{}.
+-spec get_controllers_state(integer()) -> [#controller_status{}].
 get_controllers_state(SwitchId) ->
     Tid = ofp_channel:get_ets(SwitchId),
     lists:map(fun({main, Pid}) ->

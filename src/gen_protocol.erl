@@ -14,5 +14,5 @@
 
 %% Decode OpenFlow Protocol message from binary to Erlang representation.
 -callback decode(Binary :: binary()) ->
-    {ok, Message :: of_protocol:ofp_message()} |
+    {ok, Message :: of_protocol:ofp_message(), binary()} |
     {error, Reason :: any()}.
