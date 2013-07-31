@@ -444,7 +444,8 @@ handle_message(#ofp_message{version = Version, type = Type} = Message,
     %% Don't allow slave controllers to modify things.
     Error = create_error(Version, bad_request, is_slave),
     IsSlaveError = Message#ofp_message{body = Error},
-    do_send(IsSlaveError, State);
+    do_send(IsSlaveError, State),
+    State;
 handle_message(#ofp_message{type = Type} = Message,
                #state{parent = Parent} = State)
   when Type == echo_request;
