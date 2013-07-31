@@ -412,7 +412,7 @@ do_filter_send(#ofp_message{version = 4} = Message,
         false ->
             do_send(Message, State);
         true ->
-            {error, filtered}
+            {ok, filtered}
     end;
 do_filter_send(Message, State) ->
     do_send(Message, State).
