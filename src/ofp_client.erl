@@ -23,6 +23,7 @@
 
 %% API
 -export([start_link/6,
+         start_link/7,
          controlling_process/2,
          send/2,
          stop/1,
@@ -71,17 +72,17 @@
 %% API functions
 %%------------------------------------------------------------------------------
 
-start_link(Tid, Id, Host, Port, Proto, Opts) ->
-    start_link(Tid, Id, Host, Port, Proto, Opts, main).
+start_link(Tid, ResourceId, Host, Port, Proto, Opts) ->
+    start_link(Tid, ResourceId, Host, Port, Proto, Opts, main).
 
 %% @doc Start the client.
 -spec start_link(ets:tid(), string(), string(), integer(), tcp | tls,
                  proplists:proplist(), main | {aux, integer(), pid()}) ->
                         {ok, Pid :: pid()} | ignore |
                         {error, Error :: term()}.
-start_link(Tid, Id, Host, Port, Proto, Opts, Type) ->
+start_link(Tid, ResourceId, Host, Port, Proto, Opts, Type) ->
     Parent = get_opt(controlling_process, Opts, self()),
-    gen_server:start_link(?MODULE, {Tid, Id, {Host, Port, Proto}, Parent,
+    gen_server:start_link(?MODULE, {Tid, ResourceId, {Host, Port, Proto}, Parent,
                                     Opts, Type, self()}, []).
 
 %% @doc Change the controlling process.
@@ -129,11 +130,11 @@ make_slave(Pid) ->
 %% gen_server callbacks
 %%------------------------------------------------------------------------------
 
-init({Tid, Id, Controller, Parent, Opts, Type, Sup}) ->
+init({Tid, ResourceId, Controller, Parent, Opts, Type, Sup}) ->
     Version = get_opt(version, Opts, ?DEFAULT_VERSION),
     Versions = lists:umerge(get_opt(versions, Opts, []), [Version]),
     Timeout = get_opt(timeout, Opts, ?DEFAULT_TIMEOUT),
-    State = #state{resource_id = Id,
+    State = #state{resource_id = ResourceId,
                    controller = Controller,
                    parent = Parent,
                    versions = Versions,
@@ -146,9 +147,9 @@ init({Tid, Id, Controller, Parent, Opts, Type, Sup}) ->
             AuxConnections = get_opt(auxiliary_connections, Opts, []),
             {ok, State#state{id = 0,
                              aux_connections = AuxConnections}, 0};
-        {aux, Id, Pid} ->
+        {aux, AuxId, Pid} ->
             ets:insert(Tid, {Pid, self()}),
-            {ok, State#state{id = Id}, 0}
+            {ok, State#state{id = AuxId}, 0}
     end.
 
 handle_call({send, _Message}, _From, #state{socket = undefined} = State) ->
@@ -207,7 +208,8 @@ handle_cast({replace_connection, Host, Port, Proto}, State) ->
 handle_cast(_Message, State) ->
     {noreply, State}.
 
-handle_info(timeout, #state{id = Id,
+handle_info(timeout, #state{resource_id = ResourceId,
+                            id = Id,
                             controller = {Host, Port, Proto},
                             parent = ControllingProcess,
                             aux_connections = AuxConnections,
@@ -226,14 +228,15 @@ handle_info(timeout, #state{id = Id,
                             {timeout, Timeout}],
                     TCPAux = get_opt(tcp, AuxConnections, 0),
                     [begin
-                         Args = [Host, Port, tcp, Opts,
-                                 {aux, AuxId, self()}],
+                         Args = [generate_aux_resource_id(ResourceId, AuxId),
+                                 Host, Port, tcp, Opts, {aux, AuxId, self()}],
                          {ok, Pid} = supervisor:start_child(Sup, Args),
                          ets:insert(Tid, {self(), Pid})
                      end || AuxId <- lists:seq(1, TCPAux)],
                     TLSAux = get_opt(tls, AuxConnections, 0),
                     [begin
-                         Args = [Host, Port, tls, Opts,
+                         Args = [generate_aux_resource_id(ResourceId, AuxId),
+                                 Host, Port, tls, Opts,
                                  {aux, AuxId, self()}],
                          {ok, Pid} = supervisor:start_child(Sup, Args),
                          ets:insert(Tid, {self(), Pid})
@@ -708,3 +711,7 @@ close(tcp, Socket) ->
     gen_tcp:close(Socket);
 close(tls, Socket) ->
     ssl:close(Socket).
+
+-spec generate_aux_resource_id(string(), integer()) -> string().
+generate_aux_resource_id(MainResourceId, AuxId) ->
+    MainResourceId ++ "_aux" ++ AuxId.
