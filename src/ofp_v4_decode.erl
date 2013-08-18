@@ -867,7 +867,7 @@ decode_body(experimenter, Binary) ->
 decode_body(features_request, _) ->
     #ofp_features_request{};
 decode_body(features_reply, Binary) ->
-    <<DataPathMac:48/bits, DataPathID:16, NBuffers:32,
+    <<DataPathID:16, DataPathMac:48/bits, NBuffers:32,
       NTables:8, AuxId:8, _Pad:16, CapaBin:32/bits, _Pad:32>> = Binary,
     Capabilities = binary_to_flags(capabilities, CapaBin),
     #ofp_features_reply{datapath_mac = DataPathMac,
