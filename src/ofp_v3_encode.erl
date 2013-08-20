@@ -150,7 +150,7 @@ encode_struct(#ofp_action_output{port = Port, max_len = MaxLen}) ->
     Type = ofp_v3_enum:to_int(action_type, output),
     Length = ?ACTION_OUTPUT_SIZE,
     PortInt = get_id(port_no, Port),
-    MaxLenInt = get_id(buffer, MaxLen),
+    MaxLenInt = get_id(max_len, MaxLen),
     <<Type:16, Length:16, PortInt:32, MaxLenInt:16, 0:48>>;
 encode_struct(#ofp_action_group{group_id = Group}) ->
     Type = ofp_v3_enum:to_int(action_type, group),
@@ -338,7 +338,7 @@ encode_body(#ofp_set_config{flags = Flags, miss_send_len = Miss}) ->
     <<FlagsBin:2/bytes, MissInt:16>>;
 encode_body(#ofp_packet_in{buffer_id = BufferId, reason = Reason,
                            table_id = TableId, match = Match, data = Data}) ->
-    BufferIdInt = get_id(buffer, BufferId),
+    BufferIdInt = get_id(buffer_id, BufferId),
     ReasonInt = ofp_v3_enum:to_int(packet_in_reason, Reason),
     MatchBin = encode_struct(Match),
     TotalLen = byte_size(Data),
@@ -367,7 +367,7 @@ encode_body(#ofp_queue_get_config_reply{port = Port, queues = Queues}) ->
     <<PortInt:32, 0:32, QueuesBin/bytes>>;
 encode_body(#ofp_packet_out{buffer_id = BufferId, in_port = Port,
                             actions = Actions, data = Data}) ->
-    BufferIdInt = get_id(buffer, BufferId),
+    BufferIdInt = get_id(buffer_id, BufferId),
     PortInt = get_id(port_no, Port),
     ActionsBin = encode_list(Actions),
     ActionsLength = size(ActionsBin),
@@ -376,12 +376,12 @@ encode_body(#ofp_packet_out{buffer_id = BufferId, in_port = Port,
 encode_body(#ofp_flow_mod{cookie = Cookie, cookie_mask = CookieMask,
                           table_id = Table, command = Command,
                           idle_timeout = Idle, hard_timeout = Hard,
-                          priority = Priority, buffer_id = Buffer,
+                          priority = Priority, buffer_id = BufferId,
                           out_port = OutPort, out_group = OutGroup,
                           flags = Flags, match = Match,
                           instructions = Instructions}) ->
     TableInt = get_id(table, Table),
-    BufferInt = get_id(buffer, Buffer),
+    BufferIdInt = get_id(buffer_id, BufferId),
     CommandInt = ofp_v3_enum:to_int(flow_mod_command, Command),
     OutPortInt = get_id(port_no, OutPort),
     OutGroupInt = get_id(group, OutGroup),
@@ -389,7 +389,7 @@ encode_body(#ofp_flow_mod{cookie = Cookie, cookie_mask = CookieMask,
     MatchBin = encode_struct(Match),
     InstructionsBin = encode_list(Instructions),
     <<Cookie:8/bytes, CookieMask:8/bytes, TableInt:8, CommandInt:8,
-      Idle:16, Hard:16, Priority:16, BufferInt:32, OutPortInt:32,
+      Idle:16, Hard:16, Priority:16, BufferIdInt:32, OutPortInt:32,
       OutGroupInt:32, FlagsBin:2/bytes, 0:16, MatchBin/bytes,
       InstructionsBin/bytes>>;
 encode_body(#ofp_group_mod{command = Command, type = Type,
