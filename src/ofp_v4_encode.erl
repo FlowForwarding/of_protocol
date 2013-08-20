@@ -386,7 +386,7 @@ encode_body(#ofp_features_reply{datapath_mac = DataPathMac,
                                 n_tables = NTables, auxiliary_id = AuxId,
                                 capabilities = Capabilities}) ->
     CapaBin = flags_to_binary(capabilities, Capabilities, 4),
-    <<DataPathMac:48/bits, DataPathID:16, NBuffers:32,
+    <<DataPathID:16, DataPathMac:48/bits, NBuffers:32,
       NTables:8, AuxId:8, 0:16, CapaBin:32/bits, 0:32>>;
 encode_body(#ofp_get_config_request{}) ->
     <<>>;

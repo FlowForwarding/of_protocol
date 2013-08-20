@@ -453,7 +453,7 @@ decode_body(features_request, _) ->
     #ofp_features_request{};
 decode_body(features_reply, Binary) ->
     PortsLength = size(Binary) - ?FEATURES_REPLY_SIZE + ?OFP_HEADER_SIZE,
-    <<DataPathMac:6/bytes, DataPathID:16, NBuffers:32,
+    <<DataPathID:16, DataPathMac:6/bytes, NBuffers:32,
       NTables:8, _Pad:24, CapaBin:4/bytes, _Pad:32,
       PortsBin:PortsLength/bytes>> = Binary,
     Capabilities = binary_to_flags(capabilities, CapaBin),

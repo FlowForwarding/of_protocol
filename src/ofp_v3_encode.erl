@@ -324,7 +324,7 @@ encode_body(#ofp_features_reply{datapath_mac = DataPathMac,
                                 ports = Ports}) ->
     PortsBin = encode_list(Ports),
     CapaBin = flags_to_binary(capabilities, Capabilities, 4),
-    <<DataPathMac:6/bytes, DataPathID:16, NBuffers:32, NTables:8,
+    <<DataPathID:16, DataPathMac:6/bytes, NBuffers:32, NTables:8,
       0:24, CapaBin:4/bytes, 0:32, PortsBin/bytes>>;
 encode_body(#ofp_get_config_request{}) ->
     <<>>;
