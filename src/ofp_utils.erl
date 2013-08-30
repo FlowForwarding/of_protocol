@@ -54,11 +54,10 @@ strip_string(Binary, Byte) when Byte >= 0 ->
         0 ->
             strip_string(Binary, Byte - 1);
         _ ->
-            String = binary:part(Binary, 0, Byte + 1),
-            <<String/bytes, 0:8>>
+            binary:part(Binary, 0, Byte + 1)
     end;
 strip_string(_, _) ->
-    <<"\0">>.
+    <<>>.
 
 -spec cut_bits(binary(), integer()) -> binary().
 cut_bits(Binary, Bits) ->
@@ -134,7 +133,7 @@ binary_to_flags(EnumMod, Type, Integer, Bit, Flags) when Bit >= 0 ->
             binary_to_flags(EnumMod, Type, Integer, Bit - 1, Flags)
     end;
 binary_to_flags(_, _, _, _, Flags) ->
-    lists:reverse(Flags).
+    Flags.
 
 -spec flags_to_binary(atom(), atom(), [atom()], binary(), integer()) -> binary().
 flags_to_binary(_, _, [], Binary, _) ->
