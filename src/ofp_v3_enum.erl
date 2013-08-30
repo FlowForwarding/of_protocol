@@ -176,6 +176,8 @@
                      {set_field, 25},
                      {experimenter, 16#ffff}]}).
 
+-enum({max_len, [{no_buffer, 16#ffff}]}).
+
 %%------------------------------------------------------------------------------
 %% Controller-to-Switch Messages
 %%------------------------------------------------------------------------------
@@ -209,7 +211,7 @@
 %% Modify State Messages -------------------------------------------------------
 
 %% Note: Not in the specification
--enum({buffer, [{no_buffer, 16#ffffffff}]}).
+-enum({buffer_id, [{no_buffer, 16#ffffffff}]}).
 
 -enum({flow_mod_command, [add,
                           modify,

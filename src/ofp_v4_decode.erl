@@ -231,7 +231,7 @@ decode_actions(Binary, Actions) ->
             <<PortInt:32, MaxLenInt:16,
               _Pad:48, Rest/bytes>> = Data,
             Port = get_id(port_no, PortInt),
-            MaxLen = get_id(buffer, MaxLenInt),
+            MaxLen = get_id(max_len, MaxLenInt),
             Action = #ofp_action_output{port = Port, max_len = MaxLen};
         group ->
             <<GroupInt:32, Rest/bytes>> = Data,
@@ -893,7 +893,7 @@ decode_body(packet_in, Binary) ->
     MatchLength = size(Binary) - (?PACKET_IN_SIZE - ?MATCH_SIZE)
         - 2 - TotalLen + ?OFP_HEADER_SIZE,
     <<MatchBin:MatchLength/bytes, _Pad:16, Payload/bytes>> = Tail,
-    BufferId = get_id(buffer, BufferIdInt),
+    BufferId = get_id(buffer_id, BufferIdInt),
     Reason = ofp_v4_enum:to_atom(packet_in_reason, ReasonInt),
     Match = decode_match(MatchBin),
     <<Data:TotalLen/bytes>> = Payload,
@@ -925,17 +925,17 @@ decode_body(packet_out, Binary) ->
     DataLength = size(Binary) - ?PACKET_OUT_SIZE + ?OFP_HEADER_SIZE
         - ActionsLength,
     <<ActionsBin:ActionsLength/bytes, Data:DataLength/bytes>> = Binary2,
-    BufferId = get_id(buffer, BufferIdInt),
+    BufferId = get_id(buffer_id, BufferIdInt),
     Port = get_id(port_no, PortInt),
     Actions = decode_actions(ActionsBin),
     #ofp_packet_out{buffer_id = BufferId, in_port = Port,
                     actions = Actions, data = Data};
 decode_body(flow_mod, Binary) ->
     <<Cookie:8/bytes, CookieMask:8/bytes, TableInt:8, CommandInt:8,
-      Idle:16, Hard:16, Priority:16, BufferInt:32, OutPortInt:32,
+      Idle:16, Hard:16, Priority:16, BufferIdInt:32, OutPortInt:32,
       OutGroupInt:32, FlagsBin:2/bytes, _Pad:16, Data/bytes>> = Binary,
     Table = get_id(table, TableInt),
-    Buffer = get_id(buffer, BufferInt),
+    BufferId = get_id(buffer_id, BufferIdInt),
     Command = ofp_v4_enum:to_atom(flow_mod_command, CommandInt),
     OutPort = get_id(port_no, OutPortInt),
     OutGroup = get_id(group, OutGroupInt),
@@ -948,7 +948,7 @@ decode_body(flow_mod, Binary) ->
     Instructions = decode_instructions(InstrBin),
     #ofp_flow_mod{cookie = Cookie, cookie_mask = CookieMask,
                   table_id = Table, command = Command, idle_timeout = Idle,
-                  hard_timeout = Hard, priority = Priority, buffer_id = Buffer,
+                  hard_timeout = Hard, priority = Priority, buffer_id = BufferId,
                   out_port = OutPort, out_group = OutGroup, flags = Flags,
                   match = Match, instructions = Instructions};
 decode_body(group_mod, Binary) ->
