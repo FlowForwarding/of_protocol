@@ -30,6 +30,8 @@
 
 %% @doc Actual decoding of the message.
 -spec do(Binary :: binary()) -> {ok, ofp_message(), binary()}.
+do(Binary) when ?OFP_HEADER_SIZE > byte_size(Binary) ->
+    {error, binary_too_small};
 do(Binary) ->
     <<Version:8, TypeInt:8, Length:16, XID:32, Binary2/bytes>> = Binary,
     case Length > byte_size(Binary) of
