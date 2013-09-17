@@ -21,6 +21,10 @@
 
 -behaviour(gen_server).
 
+-ifdef(TEST).
+-compile([export_all]).
+-endif.
+
 %% API
 -export([start_link/6,
          start_link/7,
