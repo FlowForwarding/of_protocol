@@ -21,6 +21,10 @@
 
 -behaviour(gen_server).
 
+-ifdef(TEST).
+-compile([export_all]).
+-endif.
+
 %% API
 -export([start_link/6,
          start_link/7,
@@ -517,11 +521,24 @@ decide_on_version(CVersions, #ofp_message{version = SVersion, body = Body}) ->
             end
     end.
 
-change_role(Version, nochange, GenId, #state{role = Role} = State) ->
-    RoleReply = create_role(Version, Role, GenId),
+change_role(Version, nochange, _GenId,
+            #state{role = Role,
+                   generation_id = CurrentGenId} = State) ->
+    RoleReply = case CurrentGenId of
+                    undefined ->
+                        create_role(Version, Role, max_generation_id());
+                    _ ->
+                        create_role(Version, Role, CurrentGenId)
+                end,
     {RoleReply, State};
-change_role(Version, equal, GenId, State) ->
-    RoleReply = create_role(Version, equal, GenId),
+change_role(Version, equal, _GenId,
+            #state{generation_id = CurrentGenId} = State) ->
+    RoleReply = case CurrentGenId of
+                    undefined ->
+                        create_role(Version, equal, max_generation_id());
+                    _ ->
+                        create_role(Version, equal, CurrentGenId)
+                end,
     {RoleReply, State#state{role = equal}};
 change_role(Version, Role, GenId,
             #state{generation_id = CurrentGenId,
@@ -715,3 +732,6 @@ close(tls, Socket) ->
 -spec generate_aux_resource_id(string(), integer()) -> string().
 generate_aux_resource_id(MainResourceId, AuxId) ->
     MainResourceId ++ "_aux" ++ AuxId.
+
+max_generation_id() ->
+    16#FFFFFFFFFFFFFFFF.
