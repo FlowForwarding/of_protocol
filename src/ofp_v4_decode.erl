@@ -90,13 +90,13 @@ decode_match_field(<<Header:4/bytes, Binary/bytes>>) ->
     case HasMask of
         false ->
             <<Value:Length/bytes, Rest/bytes>> = Binary,
-            TLV = #ofp_field{value = ofp_utils:cut_bits(Value, BitLength)};
+            TLV = #ofp_field{value = ofp_utils:uncut_bits(Value, BitLength)};
         true ->
             Length2 = (Length div 2),
             <<Value:Length2/bytes, Mask:Length2/bytes,
               Rest/bytes>> = Binary,
-            TLV = #ofp_field{value = ofp_utils:cut_bits(Value, BitLength),
-                             mask = ofp_utils:cut_bits(Mask, BitLength)}
+            TLV = #ofp_field{value = ofp_utils:uncut_bits(Value, BitLength),
+                             mask = ofp_utils:uncut_bits(Mask, BitLength)}
     end,
     {TLV#ofp_field{class = Class,
                    name = Field,
