@@ -337,7 +337,7 @@ sctp_src(Val) when byte_size(Val)==2 ->
 % ip_proto=132
 sctp_dst(Val) when byte_size(Val)==2 ->
     #ofp_field{name = sctp_dst,
-	      value = Val}.
+               value = Val}.
 
 % ip_proto=1
 icmpv4_type(Val) -> %8
@@ -438,7 +438,7 @@ icmpv6_code(Val) -> % 8
 % icmpv6_type=135|136
 ipv6_nd_target(Val) -> % 128
     #ofp_field{name = ipv6_nd_target,
-	      value = Val}.
+               value = Val}.
 
 % icmpv6_type=135
 ipv6_nd_sll(Val) -> % 48
@@ -458,10 +458,12 @@ mpls_label(Val) -> % 20
 % eth_type=0x8847|0x8848
 mpls_tc(Val) -> % 3
     #ofp_field{name = mpls_tc,
-	      value = Val}.
+               value = Val}.
 
 % eth_type=0x8847|0x8848
-%% mpls_bos
+mpls_bos(Val) ->
+    #ofp_field{name = mpls_bos,
+               value = Val}.
 
 % eth_type=0x88e7
 %% pbb_isid
