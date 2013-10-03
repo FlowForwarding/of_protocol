@@ -20,7 +20,7 @@
 -module(ofp_channel).
 
 %% API
--export([open/6,
+-export([open/4,
          send/2,
          make_slaves/2,
          get_ets/1]).
@@ -29,8 +29,25 @@
 %% API functions
 %%------------------------------------------------------------------------------
 
-open(Pid, Id, Host, Port, Proto, Opts) ->
-    supervisor:start_child(Pid, [Id, Host, Port, Proto, Opts]).
+%% @doc Opens the OpenFlow channel to the controller described by the
+%% `ControllerHandle'.
+%%
+%% The channel can be opened in two ways: the switch may actively try to connect
+%% to a controller or listen to a connection from a controller. In the first
+%% scenario the `ControllerHandle' is a four element tuple tagged
+%% with remote_peer. The second, third and fourth tuple's element are ip address
+%% of the controller, the port it listens on and the protocol type respectively.
+%% In the second scenario the `ControllerHandle' is a three element tuple
+%% tagged with socket. The subsequent elements are the socket holding
+%% the connection to the controller that initiated it and the protocol type.
+-spec open(ChannelSupPid :: pid(), Id :: string(), ControllerHandle,
+           Opts :: [term()]) -> StartChildRet :: term() when
+      ControllerHandle ::
+        {remote_peer, inet:ip_address(), inet:port_number(), Proto} |
+        {socket, inet:socket(), Proto},
+      Proto :: tcp | tls.
+open(Pid, Id, ControllerHandle, Opts) ->
+    supervisor:start_child(Pid, [Id, ControllerHandle, Opts]).
 
 send(SwitchId, Message) when is_integer(SwitchId) ->
     Tid = get_ets(SwitchId),
