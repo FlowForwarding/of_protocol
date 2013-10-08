@@ -45,10 +45,10 @@ encode(#ofp_message{version = Version} = Message) ->
 %% @doc Decode binary to Erlang representation.
 -spec decode(binary()) -> {ok, ofp_message(), binary()} | {error, any()}.
 decode(Binary) when byte_size(Binary) >= ?OFP_HEADER_SIZE ->
-    <<Version:8, _:8, Length:16, _/bytes>> = Binary,
+    <<Version:8, _:8, Length:16, Xid:32, _/bytes>> = Binary,
     case ?MOD(Version) of
         unsupported ->
-            {error, unsupported_version};
+            {error, unsupported_version, Xid};
         Module ->
             case byte_size(Binary) >= Length of
                 false ->
