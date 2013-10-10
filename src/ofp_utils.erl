@@ -11,6 +11,7 @@
          encode_string/2,
          strip_string/1,
          cut_bits/2,
+         uncut_bits/2,
          padding/2,
          binary_to_flags/3,
          flags_to_binary/4, 
@@ -67,6 +68,16 @@ cut_bits(Binary, Bits) ->
     TruncBin = <<Int:Bits>>,
     Padding = ByteSize - Bits,
     << 0:Padding, TruncBin/bits >>.
+
+%% @doc Revert a byte aligned binary to state befor cutting bits.
+%% It removes padding introduced by cut_bits/2 and alignes the binary
+%%to the correct size.
+-spec uncut_bits(binary(), integer()) -> binary().
+uncut_bits(Binary, RequiredBitSize) ->
+    BitSize = bit_size(Binary),
+    PaddingSize = BitSize - RequiredBitSize,
+    <<_:PaddingSize, Value:RequiredBitSize/bitstring>> = Binary,
+    Value.
 
 -spec padding(integer(), integer()) -> integer().
 padding(Length, Padding) ->
