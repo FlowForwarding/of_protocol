@@ -268,22 +268,10 @@ handle_info({Type, Socket, Data}, #state{id = Id,
     setopts(Proto, Socket, [{active, once}]),
     %% Wait for hello
     case of_protocol:decode(<<Buffer/binary, Data/binary>>) of
-        {ok, #ofp_message{version = CtrlVersion,
-                          xid = Xid,
-                          body = #ofp_hello{}} = Hello, Leftovers} ->
+        {ok, #ofp_message{xid = Xid, body = #ofp_hello{}} = Hello, Leftovers} ->
             case decide_on_version(Versions, Hello) of
-                {unsupported_version, _} ->
-                    Error = create_error(CtrlVersion,
-                                         hello_failed, incompatible),
-                    ErrorMsg = #ofp_message{version = CtrlVersion,
-                                            xid = Xid,
-                                            body = Error},
-                    {ok, ErrorBin} = of_protocol:encode(ErrorMsg),
-                    ok = send(Proto, Socket, ErrorBin),
-                    self() ! {tcp, Socket, Leftovers},
-                    {noreply, State#state{version = lists:max(Versions)}};
-                {no_common_version, _, _} = Reason ->
-                    reset_connection(State, Reason);
+                {failed, Reason} ->
+                    handle_failed_negotiation(Xid, Reason, State);
                 Version ->
                     Parent ! {ofp_connected, self(),
                               {Host, Port, Id, Version}},
@@ -295,33 +283,9 @@ handle_info({Type, Socket, Data}, #state{id = Id,
         {error, binary_too_small} ->
             {noreply, State#state{hello_buffer = <<Buffer/binary,
                                                    Data/binary>>}};
-        _Else ->
-            reset_connection(State, bad_initial_message)
-    end;
-handle_info({Type, Socket, Data}, #state{id = Id,
-                                         controller = {Host, Port, Proto},
-                                         socket = Socket,
-                                         parent = Parent,
-                                         parser = undefined,
-                                         version = Version} = State)
-  when Type == tcp orelse Type == ssl ->
-    setopts(Proto, Socket, [{active, once}]),
-    %% Wait for hello_failed error message
-    case of_protocol:decode(Data) of
-        {ok, #ofp_message{version = Version} = Message, _Leftovers} ->
-            Message2 = add_type(Message),
-            case Message2#ofp_message.type of
-                error_msg ->
-                    reset_connection(State, {failed_negotation, Version});
-                _Else ->
-                    Parent ! {ofp_connected, self(),
-                              {Host, Port, Id, Version}},
-                    self() ! {tcp, Socket, Data},
-                    {ok, Parser} = ofp_parser:new(Version),
-                    {noreply, State#state{parser = Parser}}
-            end;
-        _Else ->
-            reset_connection(State, bad_message)
+        {error, unsupported_version, Xid} ->
+            handle_failed_negotiation(Xid, unsupported_version_or_bad_message,
+                                      State)
     end;
 handle_info({Type, Socket, Data}, #state{controller = {_, _, Proto},
                                          socket = Socket,
@@ -484,41 +448,38 @@ create_hello(Versions) ->
            end,
     #ofp_message{version = Version, xid = 0, body = Body}.
 
-decide_on_version(CVersions, #ofp_message{version = SVersion, body = Body}) ->
-    CVersion = lists:max(CVersions),
+decide_on_version(SupportedVersions, #ofp_message{version = CtrlHighestVersion,
+                                                  body = HelloBody}) ->
+    SupportedHighestVersion = lists:max(SupportedVersions),
     if
-        CVersion >= 4 ->
-            case CVersion == SVersion of
-                true ->
-                    CVersion;
-                false ->
-                    if
-                        SVersion >= 4 ->
-                            Elements = Body#ofp_hello.elements,
-                            SVersions = get_opt(versionbitmap, Elements, []),
-                            SVersions2 = lists:umerge([SVersion], SVersions),
-                            case gcv(CVersions, SVersions2) of
-                                no_common_version ->
-                                    {no_common_version, CVersions, SVersions};
-                                Version ->
-                                    Version
-                            end;
-                        true ->
-                            case lists:member(SVersion, CVersions) of
-                                true ->
-                                    SVersion;
-                                false ->
-                                    {unsupported_version, SVersion}
-                            end
-                    end
-            end;
+        SupportedHighestVersion == CtrlHighestVersion ->
+            SupportedHighestVersion;
+        SupportedHighestVersion >= 4 andalso CtrlHighestVersion >= 4 ->
+            decide_on_version_with_bitmap(SupportedVersions, CtrlHighestVersion,
+                                          HelloBody);
         true ->
-            case lists:member(SVersion, CVersions) of
-                true ->
-                    SVersion;
-                false ->
-                    {unsupported_version, SVersion}
-            end
+            decide_on_version_without_bitmap(SupportedVersions,
+                                             CtrlHighestVersion)
+    end.
+
+decide_on_version_with_bitmap(SupportedVersions, CtrlHighestVersion,
+                              HelloBody) ->
+    Elements = HelloBody#ofp_hello.elements,
+    SwitchVersions = get_opt(versionbitmap, Elements, []),
+    SwitchVersions2 = lists:umerge([CtrlHighestVersion], SwitchVersions),
+    case greatest_common_version(SupportedVersions, SwitchVersions2) of
+        no_common_version ->
+            {failed, {no_common_version, SupportedVersions, SwitchVersions2}};
+        Version ->
+            Version
+    end.
+
+decide_on_version_without_bitmap(SupportedVersions, CtrlHighestVersion) ->
+    case lists:member(CtrlHighestVersion, SupportedVersions) of
+        true ->
+            CtrlHighestVersion;
+        false ->
+            {failed, {unsupported_version, CtrlHighestVersion}}
     end.
 
 change_role(Version, nochange, _GenId,
@@ -599,6 +560,21 @@ controller_state(ConfigControllerIP, ConfigControllerPort, ResourceId, Role,
 %% Helper functions
 %%------------------------------------------------------------------------------
 
+send_incompatible_version_error(Xid, Socket, Proto, OFVersion) ->
+    ErrorMessageBody = create_error(OFVersion, hello_failed, incompatible),
+    ErrorMessage = #ofp_message{version = OFVersion,
+                                xid = Xid,
+                                body = ErrorMessageBody},
+    {ok, EncodedErrorMessage} = of_protocol:encode(ErrorMessage),
+    ok = send(Proto, Socket, EncodedErrorMessage).
+
+handle_failed_negotiation(Xid, Reason, #state{socket = Socket,
+                                              controller = {_, _, Proto},
+                                              versions = Versions} = State) ->
+    send_incompatible_version_error(Xid, Socket, Proto,
+                                    lists:max(Versions)),
+    reset_connection(State, Reason).
+
 get_opt(Opt, Opts, Default) ->
     case lists:keyfind(Opt, 1, Opts) of
         false ->
@@ -608,16 +584,13 @@ get_opt(Opt, Opts, Default) ->
     end.
 
 %% @doc Greatest common version.
-gcv([], _) ->
+greatest_common_version([], _) ->
     no_common_version;
-gcv(_, []) ->
+greatest_common_version(_, []) ->
     no_common_version;
-gcv([CV | _], [SV | _]) when CV == SV ->
-    CV;
-gcv([CV | CVs], [SV | _] = SVs) when CV > SV ->
-    gcv(CVs, SVs);
-gcv([CV | _] = CVs, [SV | SVs]) when CV < SV ->
-    gcv(CVs, SVs).
+greatest_common_version(ControllerVersions, SwitchVersions) ->
+    lists:max([CtrlVersion || CtrlVersion <- ControllerVersions,
+                              lists:member(CtrlVersion, SwitchVersions)]).
 
 reset_connection(#state{id = Id,
                         controller = {Host, Port, Proto},
