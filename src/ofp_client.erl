@@ -451,14 +451,13 @@ create_hello(Versions) ->
 decide_on_version(SupportedVersions, #ofp_message{version = CtrlHighestVersion,
                                                   body = HelloBody}) ->
     SupportedHighestVersion = lists:max(SupportedVersions),
-    case SupportedHighestVersion == CtrlHighestVersion of
-        true ->
+    if
+        SupportedHighestVersion == CtrlHighestVersion ->
             SupportedHighestVersion;
-        false
-          when SupportedHighestVersion >= 4 andalso CtrlHighestVersion >= 4 ->
+        SupportedHighestVersion >= 4 andalso CtrlHighestVersion >= 4 ->
             decide_on_version_with_bitmap(SupportedVersions, CtrlHighestVersion,
                                           HelloBody);
-        false ->
+        true ->
             decide_on_version_without_bitmap(SupportedVersions,
                                              CtrlHighestVersion)
     end.
@@ -466,11 +465,11 @@ decide_on_version(SupportedVersions, #ofp_message{version = CtrlHighestVersion,
 decide_on_version_with_bitmap(SupportedVersions, CtrlHighestVersion,
                               HelloBody) ->
     Elements = HelloBody#ofp_hello.elements,
-    SVersions = get_opt(versionbitmap, Elements, []),
-    SVersions2 = lists:umerge([CtrlHighestVersion], SVersions),
-    case greatest_common_verision(SupportedVersions, SVersions2) of
+    SwitchVersions = get_opt(versionbitmap, Elements, []),
+    SwitchVersions2 = lists:umerge([CtrlHighestVersion], SwitchVersions),
+    case greatest_common_version(SupportedVersions, SwitchVersions2) of
         no_common_version ->
-            {failed, {no_common_version, SupportedVersions, SVersions}};
+            {failed, {no_common_version, SupportedVersions, SwitchVersions2}};
         Version ->
             Version
     end.
@@ -585,16 +584,13 @@ get_opt(Opt, Opts, Default) ->
     end.
 
 %% @doc Greatest common version.
-greatest_common_verision([], _) ->
+greatest_common_version([], _) ->
     no_common_version;
-greatest_common_verision(_, []) ->
+greatest_common_version(_, []) ->
     no_common_version;
-greatest_common_verision([CV | _], [SV | _]) when CV == SV ->
-    CV;
-greatest_common_verision([CV | CVs], [SV | _] = SVs) when CV > SV ->
-    greatest_common_verision(CVs, SVs);
-greatest_common_verision([CV | _] = CVs, [SV | SVs]) when CV < SV ->
-    greatest_common_verision(CVs, SVs).
+greatest_common_version(ControllerVersions, SwitchVersions) ->
+    lists:max([CtrlVersion || CtrlVersion <- ControllerVersions,
+                              lists:member(CtrlVersion, SwitchVersions)]).
 
 reset_connection(#state{id = Id,
                         controller = {Host, Port, Proto},
