@@ -377,9 +377,11 @@ do_send(Message, #state{controller = {_, _, Proto},
             {error, Reason}
     end.
 
-do_filter_send(#ofp_message{version = 4} = Message,
-               #state{role = Role, filter = Filter} = State) ->
-    case ofp_client_v4:filter_out_message(Message, Role, Filter) of
+do_filter_send(#ofp_message{version = Version} = Message,
+               #state{role = Role, filter = Filter} = State)
+  when Version >= 4 ->
+    Module = client_module(Version),
+    case Module:filter_out_message(Message, Role, Filter) of
         false ->
             do_send(Message, State);
         true ->
@@ -632,41 +634,36 @@ reset_connection(#state{id = Id,
                           version = undefined,
                           hello_buffer = <<>>}}.
 
-create_error(3, Type, Code) ->
-    ofp_client_v3:create_error(Type, Code);
-create_error(4, Type, Code) ->
-    ofp_client_v4:create_error(Type, Code).
+client_module(3) -> ofp_client_v3;
+client_module(4) -> ofp_client_v4;
+client_module(5) -> ofp_client_v5.
 
-create_role(3, Role, GenId) ->
-    ofp_client_v3:create_role(Role, GenId);
-create_role(4, Role, GenId) ->
-    ofp_client_v4:create_role(Role, GenId).
+create_error(Version, Type, Code) ->
+    (client_module(Version)):create_error(Type, Code).
 
-extract_role(3, RoleRequest) ->
-    ofp_client_v3:extract_role(RoleRequest);
-extract_role(4, RoleRequest) ->
-    ofp_client_v4:extract_role(RoleRequest).
+create_role(Version, Role, GenId) ->
+    (client_module(Version)):create_role(Role, GenId).
 
-create_async(4, Masks) ->
-    ofp_client_v4:create_async(Masks).
+extract_role(Version, RoleRequest) ->
+    (client_module(Version)):extract_role(RoleRequest).
 
-extract_async(4, Async) ->
-    ofp_client_v4:extract_async(Async).
+create_async(Version, Masks) when Version >= 4 ->
+    (client_module(Version)):create_async(Masks).
+
+extract_async(Version, Async) when Version >= 4 ->
+    (client_module(Version)):extract_async(Async).
 
 add_type(#ofp_message{version = Version, body = Body} = Message) ->
-    case Version of
-        3 ->
-            Message#ofp_message{type = ofp_client_v3:type_atom(Body)};
-        4 ->
-            Message#ofp_message{type = ofp_client_v4:type_atom(Body)}
-    end.
+    Module = client_module(Version),
+    Message#ofp_message{type = Module:type_atom(Body)}.
 
 add_aux_id(#ofp_message{version = Version, body = Body} = Message, Id) ->
     case Version of
         3 ->
             Message;
-        4 ->
-            Message#ofp_message{body = ofp_client_v4:add_aux_id(Body, Id)}
+        _ ->
+            Module = client_module(Version),
+            Message#ofp_message{body = Module:add_aux_id(Body, Id)}
     end.
 
 %% TLS
