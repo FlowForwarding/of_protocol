@@ -589,8 +589,13 @@ greatest_common_version([], _) ->
 greatest_common_version(_, []) ->
     no_common_version;
 greatest_common_version(ControllerVersions, SwitchVersions) ->
-    lists:max([CtrlVersion || CtrlVersion <- ControllerVersions,
-                              lists:member(CtrlVersion, SwitchVersions)]).
+    case [CtrlVersion || CtrlVersion <- ControllerVersions,
+                         lists:member(CtrlVersion, SwitchVersions)] of
+        [] ->
+            no_common_version;
+        [_|_] = CommonVersions ->
+            lists:max(CommonVersions)
+    end.
 
 reset_connection(#state{id = Id,
                         controller = {Host, Port, Proto},
