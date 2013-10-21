@@ -24,7 +24,7 @@
 
 -define(OFPP_MAX, 16#ffffff00). %% port number
 -define(OFPQ_MAX, 16#fffffffe). %% queue id
--define(OFPG_MAX, 16#fffffffd). %% group id
+-define(OFPG_MAX, 16#ffffff00). %% group id
 -define(OFPTT_MAX, 16#fe).      %% table id
 -define(OFPCML_MAX, 16#ffe5).   %% buffer id
 -define(OFPCML_NO_BUFFER, 16#ffff).   %% buffer id
