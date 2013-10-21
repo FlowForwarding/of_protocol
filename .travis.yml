@@ -1,1 +1,6 @@
 language: erlang
+# Can't use R14, as our included rebar is newer.  Let's include a few
+# recent OTP releases.
+otp_release:
+  - R15B03
+  - R16B
