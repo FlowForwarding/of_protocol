@@ -1419,21 +1419,21 @@
                              | bad_command
                              | bad_flags.
 
--type ofp_goup_mod_failed() :: group_exists
-                             | invalid_group
-                             | weight_unsupported
-                             | out_of_groups
-                             | out_of_buckets
-                             | chaining_unsupported
-                             | watch_unsupported
-                             | loop
-                             | unknown_group
-                             | chained_group
-                             | bad_type
-                             | bad_command
-                             | bad_bucket
-                             | bad_watch
-                             | eperm.
+-type ofp_group_mod_failed() :: group_exists
+                              | invalid_group
+                              | weight_unsupported
+                              | out_of_groups
+                              | out_of_buckets
+                              | chaining_unsupported
+                              | watch_unsupported
+                              | loop
+                              | unknown_group
+                              | chained_group
+                              | bad_type
+                              | bad_command
+                              | bad_bucket
+                              | bad_watch
+                              | eperm.
 
 -type ofp_port_mod_failed() :: bad_port
                              | bad_hw_addr
@@ -1483,7 +1483,7 @@
                         | ofp_bad_instruction()
                         | ofp_bad_match()
                         | ofp_flow_mod_failed()
-                        | ofp_goup_mod_failed()
+                        | ofp_group_mod_failed()
                         | ofp_port_mod_failed()
                         | ofp_table_mod_failed()
                         | ofp_queue_op_failed()
