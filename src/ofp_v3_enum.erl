@@ -241,7 +241,7 @@
 
 -enum({stats_request_flags, []}).
 
--enum({stats_reply_flags, [{more, 1}]}).
+-enum({stats_reply_flags, [more]}).
 
 -enum({stats_type, [desc,
                     flow,
