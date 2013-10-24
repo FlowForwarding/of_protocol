@@ -445,7 +445,9 @@
                          eperm,
                          bad_timeout,
                          bad_command,
-                         bad_flags]}).
+                         bad_flags,
+                         cant_sync,
+                         bad_priority]}).
 
 -enum({group_mod_failed, [group_exists,
                           invalid_group,

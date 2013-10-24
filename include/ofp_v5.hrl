@@ -1416,7 +1416,9 @@
                              | eperm
                              | bad_timeout
                              | bad_command
-                             | bad_flags.
+                             | bad_flags
+                             | cant_sync
+                             | bad_priority.
 
 -type ofp_goup_mod_failed() :: group_exists
                              | invalid_group
