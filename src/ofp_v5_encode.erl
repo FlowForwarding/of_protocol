@@ -735,8 +735,7 @@ table_features(#ofp_table_features{table_id = TableId,
                                    max_entries = MaxEntries,
                                    properties = Properties}) ->
     TableIdInt = get_id(table, TableId),
-    NamePadding = ofp_utils:padding(byte_size(Name),
-                                    ?OFP_MAX_TABLE_NAME_LEN) * 8,
+    NamePadding = (?OFP_MAX_TABLE_NAME_LEN - byte_size(Name)) * 8,
     PropertiesBin = list_to_binary([table_feature_prop(Property)
                                     || Property <- Properties]),
     Length = 64 + byte_size(PropertiesBin),

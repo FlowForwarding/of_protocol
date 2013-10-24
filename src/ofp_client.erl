@@ -26,8 +26,8 @@
 -endif.
 
 %% API
--export([start_link/6,
-         start_link/7,
+-export([start_link/4,
+         start_link/5,
          controlling_process/2,
          send/2,
          stop/1,
@@ -47,6 +47,7 @@
          code_change/3]).
 
 -include("of_protocol.hrl").
+-include_lib("kernel/include/inet.hrl").
 
 -define(DEFAULT_HOST, "localhost").
 -define(DEFAULT_PORT, 6633).
@@ -64,29 +65,37 @@
           role = equal :: master | equal | slave,
           generation_id :: integer(),
           filter = #async_config{},
-          socket :: inets:socket(),
+          socket :: inet:socket(),
           parser :: ofp_parser(),
           timeout :: integer(),
           supervisor :: pid(),
           ets :: ets:tid(),
-          hello_buffer = <<>> :: binary()
+          hello_buffer = <<>> :: binary(),
+          reconnect :: true | false
          }).
 
 %%------------------------------------------------------------------------------
 %% API functions
 %%------------------------------------------------------------------------------
 
-start_link(Tid, ResourceId, Host, Port, Proto, Opts) ->
-    start_link(Tid, ResourceId, Host, Port, Proto, Opts, main).
+start_link(Tid, ResourceId, ControllerHandle, Opts) ->
+    start_link(Tid, ResourceId, ControllerHandle, Opts, main).
 
-%% @doc Start the client.
--spec start_link(ets:tid(), string(), string(), integer(), tcp | tls,
-                 proplists:proplist(), main | {aux, integer(), pid()}) ->
+%% @doc Starts the client.
+%%
+%% For more information on `ControllerHandle' see {@link ofp_channel:open/4}.
+-spec start_link(Tid :: ets:tid(), ResourceId :: string(),
+                 ControllerHandle ::
+                   {remote_peer, inet:ip_address(), inet:port_number(), Proto} |
+                   {socket, inet:socket(), Proto},
+                 Opts :: proplists:proplist(),
+                 Type :: main | {aux, integer(), pid()}) ->
                         {ok, Pid :: pid()} | ignore |
-                        {error, Error :: term()}.
-start_link(Tid, ResourceId, Host, Port, Proto, Opts, Type) ->
+                        {error, Error :: term()} when
+      Proto :: tcp | tls.
+start_link(Tid, ResourceId, ControllerHandle, Opts, Type) ->
     Parent = get_opt(controlling_process, Opts, self()),
-    gen_server:start_link(?MODULE, {Tid, ResourceId, {Host, Port, Proto}, Parent,
+    gen_server:start_link(?MODULE, {Tid, ResourceId, ControllerHandle, Parent,
                                     Opts, Type, self()}, []).
 
 %% @doc Change the controlling process.
@@ -134,27 +143,28 @@ make_slave(Pid) ->
 %% gen_server callbacks
 %%------------------------------------------------------------------------------
 
-init({Tid, ResourceId, Controller, Parent, Opts, Type, Sup}) ->
+%% @doc Initializes the ofp_client.
+%%
+%% The ofp_client can start in two different ways depending on the
+%% `ControllerHandle'. If this variable is a tuple tagged with remote_peer
+%% the client will attempt to connect to the controller. On the other hand,
+%% if the variable is a tuple tagged with socket the client will assume that
+%% the connection has already been established and move on to sending hello
+%% message. For more information on `ControllerHandle' see
+%% {@link ofp_channel:open/4}.
+init({Tid, ResourceId, ControllerHandle, Parent, Opts, Type, Sup}) ->
     Version = get_opt(version, Opts, ?DEFAULT_VERSION),
     Versions = lists:umerge(get_opt(versions, Opts, []), [Version]),
     Timeout = get_opt(timeout, Opts, ?DEFAULT_TIMEOUT),
-    State = #state{resource_id = ResourceId,
-                   controller = Controller,
+    State1 = #state{resource_id = ResourceId,
                    parent = Parent,
                    versions = Versions,
                    timeout = Timeout,
                    supervisor = Sup,
                    ets = Tid},
-    case Type of
-        main ->
-            ets:insert(Tid, {main, self()}),
-            AuxConnections = get_opt(auxiliary_connections, Opts, []),
-            {ok, State#state{id = 0,
-                             aux_connections = AuxConnections}, 0};
-        {aux, AuxId, Pid} ->
-            ets:insert(Tid, {Pid, self()}),
-            {ok, State#state{id = AuxId}, 0}
-    end.
+    State2 = init_controller_handle(ControllerHandle, State1),
+    State3 = init_aux_connections(Tid, Opts, Type, State2),
+    {ok, State3, 0}.
 
 handle_call({send, _Message}, _From, #state{socket = undefined} = State) ->
     {reply, {error, not_connected}, State};
@@ -218,6 +228,7 @@ handle_info(timeout, #state{resource_id = ResourceId,
                             parent = ControllingProcess,
                             aux_connections = AuxConnections,
                             versions = Versions,
+                            socket = undefined,
                             timeout = Timeout,
                             supervisor = Sup,
                             ets = Tid} = State) ->
@@ -256,6 +267,13 @@ handle_info(timeout, #state{resource_id = ResourceId,
             erlang:send_after(Timeout, self(), timeout),
             {noreply, State}
     end;
+handle_info(timeout, #state{controller = {_Host, _Port, Proto},
+                            versions = Versions,
+                            socket = Socket}  = State) ->
+    {ok, HelloBin} = of_protocol:encode(create_hello(Versions)),
+    send(Proto, Socket, HelloBin),
+    setopts(Proto, Socket, opts(tcp)),
+    {noreply, State};
 handle_info({Type, Socket, Data}, #state{id = Id,
                                          controller = {Host, Port, Proto},
                                          socket = Socket,
@@ -301,14 +319,14 @@ handle_info({Type, Socket, Data}, #state{controller = {_, _, Proto},
             NewState = lists:foldl(Handle, State, Messages),
             {noreply, NewState#state{parser = NewParser}};
         _Else ->
-            reset_connection(State, {bad_data, Data})
+            terminate_connection(State, {bad_data, Data})
     end;
 handle_info({Type, Socket}, #state{socket = Socket} = State)
   when Type == tcp_closed orelse Type == ssl_closed ->
-    reset_connection(State, Type);
+    terminate_connection(State, Type);
 handle_info({Type, Socket, Reason}, #state{socket = Socket} = State)
   when Type == tcp_error orelse Type == ssl_error ->
-    reset_connection(State, {Type, Reason});
+    terminate_connection(State, {Type, Reason});
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -575,7 +593,33 @@ handle_failed_negotiation(Xid, Reason, #state{socket = Socket,
                                               versions = Versions} = State) ->
     send_incompatible_version_error(Xid, Socket, Proto,
                                     lists:max(Versions)),
-    reset_connection(State, Reason).
+    terminate_connection(State, Reason).
+
+init_controller_handle({remote_peer, Host, Port, Proto}, #state{} = State) ->
+    State#state{
+      controller = {Host, Port, Proto}, socket = undefined, reconnect = true};
+init_controller_handle({socket, Socket, Proto}, #state{} = State) ->
+    {ok, {Address, Port}} = inet:peername(Socket),
+    Host = retrieve_hostname_from_address(Address),
+    State#state{
+      controller = {Host, Port, Proto}, socket = Socket, reconnect = false}.
+
+init_aux_connections(Tid, Opts, main, #state{} = State) ->
+    ets:insert(Tid, {main, self()}),
+    AuxConnections = get_opt(auxiliary_connections, Opts, []),
+    State#state{id = 0, aux_connections = AuxConnections};
+init_aux_connections(Tid, _Opts, {aux, AuxId, Pid}, #state{} = State) ->
+    ets:insert(Tid, {Pid, self()}),
+    State#state{id = AuxId}.
+
+retrieve_hostname_from_address(Address) ->
+    case inet:gethostbyaddr(Address) of
+        {ok, Hostent} when Hostent#hostent.h_name =/= undefined ->
+            Hostent#hostent.h_name;
+        _ ->
+            inet_parse:ntoa(Address)
+    end.
+
 
 get_opt(Opt, Opts, Default) ->
     case lists:keyfind(Opt, 1, Opts) of
@@ -599,40 +643,34 @@ greatest_common_version(ControllerVersions, SwitchVersions) ->
             lists:max(CommonVersions)
     end.
 
-reset_connection(#state{id = Id,
-                        controller = {Host, Port, Proto},
-                        socket = Socket,
-                        parent = Parent,
-                        timeout = Timeout,
-                        supervisor = Sup,
-                        ets = Tid} = State, Reason) ->
-    %% Close the socket
-    case Socket of
-        undefined ->
-            ok;
-        Socket ->
-            close(Proto, Socket)
-    end,
-
-    case Id of
-        0 ->
-            %% Terminate auxiliary connections
-            [supervisor:terminate_child(Sup, Pid)
-             || {_, Pid} <- ets:lookup(Tid, self())],
-            ets:delete(Tid, self());
-        _ ->
-            ok
-    end,
-
-    %% Notify the parent
+terminate_connection(#state{id = Id,
+                            controller = {Host, Port, Proto},
+                            socket = Socket,
+                            parent = Parent,
+                            timeout = Timeout,
+                            supervisor = Sup,
+                            ets = Tid,
+                            reconnect = Reconnect} = State, Reason) ->
+    close(Proto, Socket),
+    terminate_auxiliary_connections(Id, Sup, Tid),
+    ets:delete(Tid, self()),
     Parent ! {ofp_closed, self(), {Host, Port, Id, Reason}},
+    case Reconnect of
+        true ->
+            erlang:send_after(Timeout, self(), timeout),
+            {noreply, State#state{socket = undefined,
+                                  parser = undefined,
+                                  version = undefined,
+                                  hello_buffer = <<>>}};
+        false ->
+            {stop, normal, State}
+    end.
 
-    %% Reset
-    erlang:send_after(Timeout, self(), timeout),
-    {noreply, State#state{socket = undefined,
-                          parser = undefined,
-                          version = undefined,
-                          hello_buffer = <<>>}}.
+terminate_auxiliary_connections(0, _, _) ->
+    ok;
+terminate_auxiliary_connections(_Id, Sup, Tid) ->
+    [supervisor:terminate_child(Sup, Pid)
+     || {_, Pid} <- ets:lookup(Tid, self())].
 
 client_module(3) -> ofp_client_v3;
 client_module(4) -> ofp_client_v4;
@@ -699,6 +737,8 @@ send(tcp, Socket, Data) ->
 send(tls, Socket, Data) ->
     ssl:send(Socket, Data).
 
+close(_, undefined) ->
+    ok;
 close(tcp, Socket) ->
     gen_tcp:close(Socket);
 close(tls, Socket) ->

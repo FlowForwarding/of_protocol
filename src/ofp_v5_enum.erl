@@ -287,9 +287,9 @@
 
 %% Multipart Messages ----------------------------------------------------------
 
--enum({multipart_request_flags, [{more, 1}]}).
+-enum({multipart_request_flags, [more]}).
 
--enum({multipart_reply_flags, [{more, 1}]}).
+-enum({multipart_reply_flags, [more]}).
 
 -enum({multipart_type, [desc,
                         flow_stats,

@@ -518,9 +518,8 @@ mk_action({output, Port, MaxLen}) ->
 mk_action({group, Group}) ->
     #ofp_action_group{group_id = Group};
 
-mk_action({set_queue, Port, Queue}) ->
-    #ofp_action_set_queue{port = Port,
-			 queue_id = Queue};
+mk_action({set_queue, Queue}) ->
+    #ofp_action_set_queue{queue_id = Queue};
 
 mk_action({set_mpls_ttl, TTL}) ->
     #ofp_action_set_mpls_ttl{mpls_ttl = TTL};
