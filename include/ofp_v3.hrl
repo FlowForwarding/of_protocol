@@ -429,7 +429,6 @@
 %% Set queue action
 -record(ofp_action_set_queue, {
           seq = 12,
-          port :: integer(),
           queue_id :: integer()
          }).
 
