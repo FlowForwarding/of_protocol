@@ -8,13 +8,9 @@
 mk_msg({flow_add, Opts, {matching,Ms}, {instructions,Is}}) ->
     message(flow_add(Opts, Ms, Is));
 mk_msg({flow_del, Opts, {matching,Ms}}) ->
-    message(flow_delete(delete,
-                        Opts, 
-                        match(mk_matches(Ms))));
+    message(flow_delete(delete, Opts, Ms));
 mk_msg({flow_del_strict,Opts, {matching,Ms}}) ->
-    message(flow_delete(delete_strict,
-                        Opts, 
-                        match(mk_matches(Ms)))).
+    message(flow_delete(delete_strict, Opts, Ms)).
 
 message(Body) ->
     #ofp_message{xid=1,body=Body}.
