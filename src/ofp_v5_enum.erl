@@ -378,6 +378,10 @@
                     role_request_failed,
                     meter_mod_failed,
                     table_features_failed,
+                    bad_property,
+                    async_config_failed,
+                    flow_monitor_failed,
+                    bundle_failed,
                     {experimenter, 16#ffff}]}).
 
 -enum({hello_failed, [incompatible,
@@ -506,6 +510,46 @@
                                bad_len,
                                bad_argument,
                                eperm]}).
+
+-enum({bad_property, [bad_type,
+                      bad_len,
+                      bad_value,
+                      too_many,
+                      dup_type,
+                      bad_experimenter,
+                      bad_exp_type,
+                      bad_exp_value,
+                      eperm]}).
+
+-enum({async_config_failed, [invalid,
+                             unsupported,
+                             eperm]}).
+
+-enum({flow_monitor_failed, [unknown,
+                             monitor_exists,
+                             invalid_monitor,
+                             unknown_monitor,
+                             bad_command,
+                             bad_flags,
+                             bad_table_id,
+                             bad_out]}).
+
+-enum({bundle_failed, [unknown,
+                       eperm,
+                       bad_id,
+                       bundle_exist,
+                       bundle_closed,
+                       out_of_bundles,
+                       bad_type,
+                       bad_flags,
+                       msg_bad_len,
+                       msg_bad_xid,
+                       msg_unsup,
+                       msg_conflict,
+                       msg_too_many,
+                       msg_failed,
+                       timeout,
+                       bundle_in_progress]}).
 
 %%------------------------------------------------------------------------------
 %% Symmetric Messages
