@@ -54,23 +54,18 @@ encode_struct(#ofp_match{fields = Fields}) ->
 encode_struct(#ofp_field{class = Class, name = Field, has_mask = HasMask,
                          value = Value, mask = Mask}) ->
     ClassInt = ofp_v4_enum:to_int(oxm_class, Class),
-    FieldInt = ofp_v4_enum:to_int(oxm_ofb_match_fields, Field),
-    BitLength = ofp_v4_map:tlv_length(Field),
-    case Class of
+    {FieldInt, BitLength} = case Class of
         openflow_basic ->
-            Value2 = ofp_utils:cut_bits(Value, BitLength);
+            {ofp_v4_enum:to_int(oxm_ofb_match_fields, Field),
+             ofp_v4_map:tlv_length(Field)};
         _ ->
-            Value2 = Value
+            {Field, bit_size(Value)}
     end,
+    Value2 = ofp_utils:cut_bits(Value, BitLength),
     case HasMask of
         true ->
             HasMaskInt = 1,
-            case Class of
-                openflow_basic ->
-                    Mask2 = ofp_utils:cut_bits(Mask, BitLength);
-                _ ->
-                    Mask2 = Mask
-            end,
+            Mask2 = ofp_utils:cut_bits(Mask, BitLength),
             Rest = <<Value2/bytes, Mask2/bytes>>,
             Len2 = byte_size(Value2) * 2;
         false ->
