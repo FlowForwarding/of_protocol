@@ -69,9 +69,9 @@ cut_bits(Binary, Bits) ->
     Padding = ByteSize - Bits,
     << 0:Padding, TruncBin/bits >>.
 
-%% @doc Revert a byte aligned binary to state befor cutting bits.
+%% @doc Revert a byte aligned binary to state before cutting bits.
 %% It removes padding introduced by cut_bits/2 and alignes the binary
-%%to the correct size.
+%% to the correct size.
 -spec uncut_bits(binary(), integer()) -> binary().
 uncut_bits(Binary, RequiredBitSize) ->
     BitSize = bit_size(Binary),
