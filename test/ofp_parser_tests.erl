@@ -15,7 +15,11 @@ fragmented_parse_test_() ->
     [{"parse 8 bytes at a time",
       ?_assertMatch(
          {_, [#ofp_message{body = #ofp_hello{}}]},
-         parse_all_fragments(Parser, hello_fragments(8)))}].
+         parse_all_fragments(Parser, hello_fragments(8)))},
+     {"parse 7 bytes at a time",
+      ?_assertMatch(
+         {_, [#ofp_message{body = #ofp_hello{}}]},
+         parse_all_fragments(Parser, hello_fragments(7)))}].
 
 hello() ->
     <<16#04, 16#00, 16#00, 16#10, 16#00, 16#00, 16#00, 16#00,
