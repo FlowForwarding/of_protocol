@@ -64,8 +64,6 @@ parse(Binary, #ofp_parser{module = Module, stack = Stack} = Parser, Messages) ->
     case Module:decode(NewBinary) of
         {error, binary_too_small} ->
             {ok, Parser#ofp_parser{stack = NewBinary}, Messages};
-        {error, _} ->
-            {ok, Parser#ofp_parser{stack = <<>>}, Messages};
         {ok, Message, Leftovers} ->
             parse(Leftovers, Parser#ofp_parser{stack = <<>>},
                   [Message | Messages])
