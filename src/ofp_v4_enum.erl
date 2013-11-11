@@ -318,8 +318,10 @@
                                  apply_actions,
                                  apply_actions_miss,
                                  match,
-                                 wildcards,
-                                 write_setfield,
+                                 %% 9 is not used
+                                 {wildcards, 10},
+                                 %% 11 is not used
+                                 {write_setfield, 12},
                                  write_setfield_miss,
                                  apply_setfield,
                                  apply_setfield_miss,

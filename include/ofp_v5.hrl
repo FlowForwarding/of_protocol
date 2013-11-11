@@ -24,7 +24,7 @@
 
 -define(OFPP_MAX, 16#ffffff00). %% port number
 -define(OFPQ_MAX, 16#fffffffe). %% queue id
--define(OFPG_MAX, 16#fffffffd). %% group id
+-define(OFPG_MAX, 16#ffffff00). %% group id
 -define(OFPTT_MAX, 16#fe).      %% table id
 -define(OFPCML_MAX, 16#ffe5).   %% buffer id
 -define(OFPCML_NO_BUFFER, 16#ffff).   %% buffer id
@@ -131,6 +131,11 @@
 -define(OFP_MAX_TABLE_NAME_LEN, 32). %% table name string
 -define(DESC_STR_LEN, 256).          %% switch description string
 -define(SERIAL_NUM_LEN, 32).         %% serial number string
+
+%% OXM Vlan Id values -----------------------------------------------------------
+
+-define(OFPVID_PRESENT, 16#1000).
+-define(OFPVID_NONE, 16#0000).
 
 %%%-----------------------------------------------------------------------------
 %%% OFP Message Body
@@ -1420,21 +1425,21 @@
                              | cant_sync
                              | bad_priority.
 
--type ofp_goup_mod_failed() :: group_exists
-                             | invalid_group
-                             | weight_unsupported
-                             | out_of_groups
-                             | out_of_buckets
-                             | chaining_unsupported
-                             | watch_unsupported
-                             | loop
-                             | unknown_group
-                             | chained_group
-                             | bad_type
-                             | bad_command
-                             | bad_bucket
-                             | bad_watch
-                             | eperm.
+-type ofp_group_mod_failed() :: group_exists
+                              | invalid_group
+                              | weight_unsupported
+                              | out_of_groups
+                              | out_of_buckets
+                              | chaining_unsupported
+                              | watch_unsupported
+                              | loop
+                              | unknown_group
+                              | chained_group
+                              | bad_type
+                              | bad_command
+                              | bad_bucket
+                              | bad_watch
+                              | eperm.
 
 -type ofp_port_mod_failed() :: bad_port
                              | bad_hw_addr
@@ -1524,7 +1529,7 @@
                         | ofp_bad_instruction()
                         | ofp_bad_match()
                         | ofp_flow_mod_failed()
-                        | ofp_goup_mod_failed()
+                        | ofp_group_mod_failed()
                         | ofp_port_mod_failed()
                         | ofp_table_mod_failed()
                         | ofp_queue_op_failed()
