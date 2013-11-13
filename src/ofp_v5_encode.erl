@@ -690,6 +690,26 @@ encode_body(#ofp_role_request{role = Role, generation_id = Gen}) ->
 encode_body(#ofp_role_reply{role = Role, generation_id = Gen}) ->
     RoleInt = ofp_v5_enum:to_int(controller_role, Role),
     <<RoleInt:32, 0:32, Gen:64>>;
+encode_body(#ofp_role_status{role = Role,
+                             reason = Reason,
+                             generation_id = Gen,
+                             properties = Properties}) ->
+    RoleInt = ofp_v5_enum:to_int(controller_role, Role),
+    ReasonInt = ofp_v5_enum:to_int(controller_role_reason, Reason),
+    EncodedProperties =
+        lists:map(fun(#ofp_role_prop_experimenter{
+                         experimenter = Experimenter,
+                         exp_type = ExpType,
+                         data = Data}) ->
+                          PropTypeInt = ofp_v5_enum:to_int(role_prop_type, experimenter),
+                          UnpaddedLength = byte_size(Data) + 12,
+                          Padding = (UnpaddedLength + 7) div 8 * 8 - UnpaddedLength,
+                          <<PropTypeInt:16, UnpaddedLength:16,
+                            Experimenter:32, ExpType:32,
+                            Data/binary, 0:Padding/unit:8>>
+                  end, Properties),
+    PropertiesBin = list_to_binary(EncodedProperties),
+    <<RoleInt:32, ReasonInt:8, 0:24, Gen:64, PropertiesBin/binary>>;
 encode_body(#ofp_get_async_request{}) ->
     <<>>;
 encode_body(#ofp_get_async_reply{packet_in_mask = PacketInMask,
@@ -1057,6 +1077,8 @@ type_int(#ofp_role_request{}) ->
     ofp_v5_enum:to_int(type, role_request);
 type_int(#ofp_role_reply{}) ->
     ofp_v5_enum:to_int(type, role_reply);
+type_int(#ofp_role_status{}) ->
+    ofp_v5_enum:to_int(type, role_status);
 type_int(#ofp_get_async_request{}) ->
     ofp_v5_enum:to_int(type, get_async_request);
 type_int(#ofp_get_async_reply{}) ->

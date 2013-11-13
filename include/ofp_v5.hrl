@@ -1263,6 +1263,30 @@
 -type ofp_role_reply() :: #ofp_role_reply{}.
 
 %%%-----------------------------------------------------------------------------
+%%% Role Status Message (version 1.4.0, section 7.4.4)
+%%%-----------------------------------------------------------------------------
+
+-type ofp_controller_role_reason() :: master_request
+                                    | config
+                                    | experimenter.
+
+-record(ofp_role_status, {
+          role :: ofp_controller_role(),
+          reason :: ofp_controller_role_reason(),
+          generation_id :: non_neg_integer(),
+          properties = [] :: [ofp_role_prop()]
+         }).
+-type ofp_role_status() :: #ofp_role_status{}.
+
+-record(ofp_role_prop_experimenter, {
+          experimenter :: non_neg_integer(),
+          exp_type :: non_neg_integer(),
+          data = <<>> :: binary()
+         }).
+
+-type ofp_role_prop() :: #ofp_role_prop_experimenter{}.
+
+%%%-----------------------------------------------------------------------------
 %%% Set Asynchronous Configuration Message (A 3.10)
 %%%-----------------------------------------------------------------------------
 

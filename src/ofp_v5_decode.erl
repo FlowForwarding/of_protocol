@@ -1193,6 +1193,12 @@ decode_body(role_reply, Binary) ->
     <<RoleInt:32, _Pad:32, Gen:64>> = Binary,
     Role = ofp_v5_enum:to_atom(controller_role, RoleInt),
     #ofp_role_reply{role = Role, generation_id = Gen};
+decode_body(role_status, Binary) ->
+    <<RoleInt:32, ReasonInt:8, _Pad:24, Gen:64, PropertiesBin/binary>> = Binary,
+    Role = ofp_v5_enum:to_atom(controller_role, RoleInt),
+    Reason = ofp_v5_enum:to_atom(controller_role_reason, ReasonInt),
+    #ofp_role_status{role = Role, reason = Reason, generation_id = Gen,
+                     properties = decode_role_status_properties(PropertiesBin)};
 
 decode_body(get_async_request, _) ->
     #ofp_get_async_request{};
@@ -1214,6 +1220,22 @@ decode_body(meter_mod, Binary) ->
     Bands = decode_bands(BandsBin),
     #ofp_meter_mod{command = Command, flags = Flags, meter_id = MeterId,
                    bands = Bands}.
+
+decode_role_status_properties(<<TypeInt:16, Length:16, Rest/binary>>) ->
+    Padding = (Length + 7) div 8 * 8 - Length,
+    PropLength = Length - 4,
+    <<This:PropLength/binary, _Padded:Padding/binary, Tail/binary>> = Rest,
+    Property =
+        case ofp_v5_enum:to_atom(role_prop_type, TypeInt) of
+            experimenter ->
+                <<Experimenter:32, ExpType:32, Data/binary>> = This,
+                #ofp_role_prop_experimenter{experimenter = Experimenter,
+                                            exp_type = ExpType,
+                                            data = Data}
+        end,
+    [Property | decode_role_status_properties(Tail)];
+decode_role_status_properties(<<>>) ->
+    [].
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions

@@ -65,7 +65,9 @@
               get_async_reply,
               set_async,
               %% Meters and rate limiters configuration messages
-              meter_mod
+              meter_mod,
+              %% Controller role change event messages
+              role_status
              ]}).
 
 %%------------------------------------------------------------------------------
@@ -340,6 +342,14 @@
                          equal,
                          master,
                          slave]}).
+
+%% Role Status Messages --------------------------------------------------------
+
+-enum({controller_role_reason, [master_request,
+                                config,
+                                experimenter]}).
+
+-enum({role_prop_type, [{experimenter, 16#ffff}]}).
 
 %%------------------------------------------------------------------------------
 %% Asynchronous Messages
