@@ -22,6 +22,7 @@
 -export([create_error/2,
          create_role/2,
          extract_role/1,
+         role_status/3,
          create_async/1,
          extract_async/1,
          filter_out_message/3,
@@ -49,6 +50,14 @@ create_role(Role, GenId) ->
 extract_role(#ofp_role_request{role = Role,
                                generation_id = GenId}) ->
     {Role, GenId}.
+
+%% @doc Create role status message.
+-spec role_status(ofp_controller_role(), ofp_controller_role_reason(), integer()) ->
+                         ofp_role_status().
+role_status(Role, Reason, GenId) ->
+    #ofp_role_status{role = Role,
+                     reason = Reason,
+                     generation_id = GenId}.
 
 %% @doc Create async filters message.
 -spec create_async(#async_config{}) -> #ofp_get_async_reply{}.

@@ -193,7 +193,21 @@ handle_call({send, Message}, _From, #state{version = Version} = State) ->
 handle_call({controlling_process, Pid}, _From, State) ->
     {reply, ok, State#state{parent = Pid}};
 handle_call(make_slave, _From, #state{role = master,
-                                      ets = Tid} = State) ->
+                                      ets = Tid,
+                                      version = Version,
+                                      generation_id = CurrentGenId} = State) ->
+    if Version >= 5 ->
+            RoleStatus =
+                case CurrentGenId of
+                    undefined ->
+                        role_status(Version, slave, master_request, max_generation_id());
+                    _ ->
+                        role_status(Version, slave, master_request, CurrentGenId)
+                end,
+            do_send(#ofp_message{body = RoleStatus}, State);
+       true ->
+            do_nothing
+    end,
     %% Make auxiliary connections slave as well
     [make_slave(Pid) || {_, Pid} <- ets:lookup(Tid, self())],
     {reply, ok, State#state{role = slave}};
@@ -684,6 +698,9 @@ create_role(Version, Role, GenId) ->
 
 extract_role(Version, RoleRequest) ->
     (client_module(Version)):extract_role(RoleRequest).
+
+role_status(Version, Role, Reason, GenId) when Version >= 5 ->
+    (client_module(Version)):role_status(Role, Reason, GenId).
 
 create_async(Version, Masks) when Version >= 4 ->
     (client_module(Version)):create_async(Masks).
