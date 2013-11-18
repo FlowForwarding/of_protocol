@@ -94,6 +94,10 @@
                  local,
                  any]}).
 
+-enum({port_desc_properties, [ethernet,
+                              optical,
+                              {experimenter, 16#ffff}]}).
+
 -enum({port_features, ['10mb_hd',
                        '10mb_fd',
                        '100mb_hd',
@@ -110,6 +114,11 @@
                        autoneg,
                        pause,
                        pause_asym]}).
+
+-enum({optical_port_features, [rx_tune,
+                               tx_tune,
+                               tx_pwr,
+                               use_freq]}).
 
 %% Queue Structures ------------------------------------------------------------
 

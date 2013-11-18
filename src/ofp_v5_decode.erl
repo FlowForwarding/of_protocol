@@ -106,22 +106,15 @@ decode_match_field(<<Header:4/bytes, Binary/bytes>>) ->
 
 %% @doc Decode port structure.
 decode_port(Binary) ->
-    <<PortNoInt:32, _Pad:32, HWAddr:6/bytes, _Pad:16, NameBin:16/bytes,
-      ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
-      AdvertisedBin:4/bytes, SupportedBin:4/bytes, PeerBin:4/bytes,
-      CurrSpeed:32, MaxSpeed:32>> = Binary,
+    <<PortNoInt:32, _Length:16, _:16, HWAddr:6/bytes, _:16, NameBin:16/bytes,
+      ConfigBin:4/bytes, StateBin:4/bytes, PropertiesBin/binary>> = Binary,
     PortNo = get_id(port_no, PortNoInt),
     Name = ofp_utils:strip_string(NameBin),
     Config = binary_to_flags(port_config, ConfigBin),
     State = binary_to_flags(port_state, StateBin),
-    Curr = binary_to_flags(port_features, CurrBin),
-    Advertised = binary_to_flags(port_features, AdvertisedBin),
-    Supported = binary_to_flags(port_features, SupportedBin),
-    Peer = binary_to_flags(port_features, PeerBin),
+    Properties = decode_port_properties(PropertiesBin),
     #ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
-              config = Config, state = State, curr = Curr,
-              advertised = Advertised, supported = Supported,
-              peer = Peer, curr_speed = CurrSpeed, max_speed = MaxSpeed}.
+              config = Config, state = State, properties = Properties}.
 
 decode_port_list(Binary) ->
     decode_port_list(Binary, []).
@@ -129,9 +122,52 @@ decode_port_list(Binary) ->
 decode_port_list(<<>>, Ports) ->
     lists:reverse(Ports);
 decode_port_list(Binary, Ports) ->
-    <<PortBin:?PORT_SIZE/bytes, Rest/bytes>> = Binary,
+    <<_PortNo:32, Length:16, _/binary>> = Binary,
+    <<PortBin:Length/bytes, Rest/bytes>> = Binary,
     Port = decode_port(PortBin),
     decode_port_list(Rest, [Port | Ports]).
+
+decode_port_properties(<<>>) ->
+    [];
+decode_port_properties(<<TypeInt:16, Length:16, Rest/binary>>) ->
+    Type = ofp_v5_enum:to_atom(port_desc_properties, TypeInt),
+    RemainingLength = Length - 4,
+    PaddingLength = (Length + 7) div 8 * 8 - Length,
+    <<PropBin:RemainingLength/bytes, _:PaddingLength/bytes, Tail/binary>> = Rest,
+    [decode_port_property(Type, PropBin) | decode_port_properties(Tail)].
+
+decode_port_property(ethernet, Binary) ->
+    <<_:32, CurrBin:4/bytes, AdvertisedBin:4/bytes, SupportedBin:4/bytes,
+      PeerBin:4/bytes, CurrSpeed:32, MaxSpeed:32>> = Binary,
+    Curr = binary_to_flags(port_features, CurrBin),
+    Advertised = binary_to_flags(port_features, AdvertisedBin),
+    Supported = binary_to_flags(port_features, SupportedBin),
+    Peer = binary_to_flags(port_features, PeerBin),
+    #ofp_port_desc_prop_ethernet{
+       curr = Curr, advertised = Advertised, supported = Supported,
+       peer = Peer, curr_speed = CurrSpeed, max_speed = MaxSpeed};
+decode_port_property(optical, Binary) ->
+    <<_:32, SupportedBin:4/bytes, TxMinFreqLmda:32, TxMaxFreqLmda:32, TxGridFreqLmda:32,
+      RxMinFreqLmda:32, RxMaxFreqLmda:32, RxGridFreqLmda:32,
+      TxPwrMin:16, TxPwrMax:16>> = Binary,
+    Supported = binary_to_flags(optical_port_features, SupportedBin),
+    #ofp_port_desc_prop_optical{
+       supported = Supported,
+       tx_min_freq_lmda = TxMinFreqLmda,
+       tx_max_freq_lmda = TxMaxFreqLmda,
+       tx_grid_freq_lmda = TxGridFreqLmda,
+       rx_min_freq_lmda = RxMinFreqLmda,
+       rx_max_freq_lmda = RxMaxFreqLmda,
+       rx_grid_freq_lmda = RxGridFreqLmda,
+       tx_pwr_min = TxPwrMin,
+       tx_pwr_max = TxPwrMax
+      };
+decode_port_property(experimenter, Binary) ->
+    <<Experimenter:32, ExpType:32, Data/binary>> = Binary,
+    #ofp_port_desc_prop_experimenter{
+       experimenter = Experimenter,
+       exp_type = ExpType,
+       data = Data}.
 
 %% @doc Decode queues
 decode_queues(Binary) ->
@@ -917,7 +953,7 @@ decode_body(flow_removed, Binary) ->
                       hard_timeout = Hard, packet_count = PCount,
                       byte_count = BCount, match = Match};
 decode_body(port_status, Binary) ->
-    <<ReasonInt:8, _Pad:56, PortBin:?PORT_SIZE/bytes>> = Binary,
+    <<ReasonInt:8, _Pad:56, PortBin/bytes>> = Binary,
     Reason = ofp_v5_enum:to_atom(port_reason, ReasonInt),
     Port = decode_port(PortBin),
     #ofp_port_status{reason = Reason, desc = Port};

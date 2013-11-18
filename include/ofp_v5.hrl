@@ -80,7 +80,6 @@
 
 %% Structure sizes (in bytes) --------------------------------------------------
 
--define(PORT_SIZE, 64).
 -define(PACKET_QUEUE_SIZE, 16).
 -define(QUEUE_PROP_MIN_RATE_SIZE, 16).
 -define(QUEUE_PROP_MAX_RATE_SIZE, 16).
@@ -234,6 +233,11 @@
           name :: binary(),
           config = [] :: [ofp_port_config()],
           state = [] :: [ofp_port_state()],
+          properties = [] :: [ofp_port_desc_property()]
+         }).
+-type ofp_port() :: #ofp_port{}.
+
+-record(ofp_port_desc_prop_ethernet, {
           curr = [] :: [ofp_port_feature()],
           advertised = [] :: [ofp_port_feature()],
           supported = [] :: [ofp_port_feature()],
@@ -241,7 +245,33 @@
           curr_speed = 0 :: integer(),
           max_speed = 0 :: integer()
          }).
--type ofp_port() :: #ofp_port{}.
+
+-type ofp_optical_port_feature() :: rx_tune
+                                  | tx_tune
+                                  | tx_pwr
+                                  | use_freq.
+
+-record(ofp_port_desc_prop_optical, {
+          supported = [] :: [ofp_optical_port_feature()],
+          tx_min_freq_lmda :: non_neg_integer(),
+          tx_max_freq_lmda :: non_neg_integer(),
+          tx_grid_freq_lmda :: non_neg_integer(),
+          rx_min_freq_lmda :: non_neg_integer(),
+          rx_max_freq_lmda :: non_neg_integer(),
+          rx_grid_freq_lmda :: non_neg_integer(),
+          tx_pwr_min :: non_neg_integer(),
+          tx_pwr_max :: non_neg_integer()
+         }).
+
+-record(ofp_port_desc_prop_experimenter, {
+          experimenter :: non_neg_integer(),
+          exp_type :: non_neg_integer(),
+          data = <<>> :: binary()
+         }).
+
+-type ofp_port_desc_property() :: #ofp_port_desc_prop_ethernet{}
+                                | #ofp_port_desc_prop_optical{}
+                                | #ofp_port_desc_prop_experimenter{}.
 
 %%%-----------------------------------------------------------------------------
 %%% Queue Structures (A 2.2)

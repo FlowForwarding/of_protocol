@@ -81,24 +81,53 @@ encode_struct(#ofp_field{class = Class, name = Field, has_mask = HasMask,
     <<ClassInt:16, FieldInt:7, HasMaskInt:1, Len2:8, Rest/bytes>>;
 
 encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
-                        config = Config, state = State, curr = Curr,
-                        advertised = Advertised, supported = Supported,
-                        peer = Peer, curr_speed = CurrSpeed,
-                        max_speed = MaxSpeed}) ->
+                        config = Config, state = State,
+                        properties = Properties}) ->
     PortNoInt = get_id(port_no, PortNo),
     NameBin = ofp_utils:encode_string(Name, ?OFP_MAX_PORT_NAME_LEN),
     ConfigBin = flags_to_binary(port_config, Config, 4),
     StateBin = flags_to_binary(port_state, State, 4),
+    PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties)),
+    Length = 40 + byte_size(PropertiesBin),
+    <<PortNoInt:32, Length:16, 0:16, HWAddr:?OFP_ETH_ALEN/bytes, 0:16,
+      NameBin:?OFP_MAX_PORT_NAME_LEN/bytes,
+      ConfigBin:4/bytes, StateBin:4/bytes,
+      PropertiesBin/binary>>;
+encode_struct(#ofp_port_desc_prop_ethernet{
+                 curr = Curr, advertised = Advertised, supported = Supported,
+                 peer = Peer, curr_speed = CurrSpeed, max_speed = MaxSpeed}) ->
+    TypeInt = ofp_v5_enum:to_int(port_desc_properties, ethernet),
     CurrBin = flags_to_binary(port_features, Curr, 4),
     AdvertisedBin = flags_to_binary(port_features, Advertised, 4),
     SupportedBin = flags_to_binary(port_features, Supported, 4),
     PeerBin = flags_to_binary(port_features, Peer, 4),
-    <<PortNoInt:32, 0:32, HWAddr:?OFP_ETH_ALEN/bytes, 0:16,
-      NameBin:?OFP_MAX_PORT_NAME_LEN/bytes,
-      ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
-      AdvertisedBin:4/bytes, SupportedBin:4/bytes,
+    <<TypeInt:16, 32:16, 0:32,
+      CurrBin:4/bytes, AdvertisedBin:4/bytes, SupportedBin:4/bytes,
       PeerBin:4/bytes, CurrSpeed:32, MaxSpeed:32>>;
-
+encode_struct(#ofp_port_desc_prop_optical{
+                 supported = Supported,
+                 tx_min_freq_lmda = TxMinFreqLmda,
+                 tx_max_freq_lmda = TxMaxFreqLmda,
+                 tx_grid_freq_lmda = TxGridFreqLmda,
+                 rx_min_freq_lmda = RxMinFreqLmda,
+                 rx_max_freq_lmda = RxMaxFreqLmda,
+                 rx_grid_freq_lmda = RxGridFreqLmda,
+                 tx_pwr_min = TxPwrMin,
+                 tx_pwr_max = TxPwrMax}) ->
+    TypeInt = ofp_v5_enum:to_int(port_desc_properties, optical),
+    SupportedBin = flags_to_binary(optical_port_features, Supported, 4),
+    <<TypeInt:16, 40:16, 0:32,
+      SupportedBin:4/bytes, TxMinFreqLmda:32, TxMaxFreqLmda:32, TxGridFreqLmda:32,
+      RxMinFreqLmda:32, RxMaxFreqLmda:32, RxGridFreqLmda:32,
+      TxPwrMin:16, TxPwrMax:16>>;
+encode_struct(#ofp_port_desc_prop_experimenter{
+       experimenter = Experimenter,
+       exp_type = ExpType,
+       data = Data}) ->
+    TypeInt = ofp_v5_enum:to_int(port_desc_properties, experimenter),
+    Length = byte_size(Data) + 12,
+    Padding = (Length + 7) div 8 * 8 - Length,
+    <<TypeInt:16, Length:16, Experimenter:32, ExpType:32, Data/binary, 0:Padding/unit:8>>;
 encode_struct(#ofp_packet_queue{queue_id = Queue, port_no = Port,
                                 properties = Props}) ->
     PropsBin = encode_list(Props),
