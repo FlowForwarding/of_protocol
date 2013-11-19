@@ -178,7 +178,8 @@
                               mpls_bos,
                               pbb_isid,
                               tunnel_id,
-                              ipv6_exthdr]}).
+                              ipv6_exthdr,
+                              {pbb_uca, 41}]}).
 
 -enum({vlan_id, [none,
                  {present, 16#1000}]}).

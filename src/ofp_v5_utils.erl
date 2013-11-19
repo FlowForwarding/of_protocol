@@ -195,6 +195,8 @@ required(pbb_isid) ->
     {eth_type,<<16#88E7:16>>};
 required(ipv6_exthdr) ->
     {eth_type,<<16#86dd:16>>};
+required(pbb_uca) ->
+    {eth_type,<<16#88e7:16>>};
 required(_) ->
     none.
 

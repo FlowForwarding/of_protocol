@@ -28,7 +28,7 @@
 -include("ofp_v5.hrl").
 
 %% @doc Get field's length in bits.
-%% From OpenFlow 1.3 spec page 44.
+%% From OpenFlow 1.4 spec, section 7.2.2.7, table 12
 -spec tlv_length(atom()) -> integer().
 tlv_length(in_port)        -> 32;
 tlv_length(in_phy_port)    -> 32;
@@ -69,4 +69,5 @@ tlv_length(mpls_tc)        -> 3;
 tlv_length(mpls_bos)       -> 1;
 tlv_length(pbb_isid)       -> 24;
 tlv_length(tunnel_id)      -> 64;
-tlv_length(ipv6_exthdr)    -> 9.
+tlv_length(ipv6_exthdr)    -> 9;
+tlv_length(pbb_uca)        -> 1.
