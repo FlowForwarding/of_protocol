@@ -241,8 +241,8 @@
 
 -enum({table, [{all, 16#ff}]}).
 
--enum({table_config, [continue,
-                      drop]}).
+-enum({table_config, [{eviction, 2},
+                      vacancy_events]}).
 
 %% Modify State Messages -------------------------------------------------------
 

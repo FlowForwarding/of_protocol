@@ -493,9 +493,10 @@ encode_body(#ofp_port_mod{port_no = Port, hw_addr = Addr,
     AdvertiseBin = flags_to_binary(port_features, Advertise, 4),
     <<PortInt:32, 0:32, Addr:6/bytes, 0:16, ConfigBin:4/bytes,
       MaskBin:4/bytes, AdvertiseBin:4/bytes, 0:32>>;
-encode_body(#ofp_table_mod{table_id = Table}) ->
+encode_body(#ofp_table_mod{table_id = Table, config = Config}) ->
     TableInt = get_id(table, Table),
-    <<TableInt:8, 0:24, 0:32>>;
+    ConfigBin = flags_to_binary(table_config, Config, 4),
+    <<TableInt:8, 0:24, ConfigBin:4/bytes>>;
 %% Multipart Messages ----------------------------------------------------------
 encode_body(#ofp_desc_request{flags = Flags}) ->
     TypeInt = ofp_v5_enum:to_int(multipart_type, desc),
@@ -781,15 +782,18 @@ table_features(#ofp_table_features{table_id = TableId,
                                    name = Name,
                                    metadata_match = MetadataMatch,
                                    metadata_write = MetadataWrite,
+                                   capabilities = Capabilities,
                                    max_entries = MaxEntries,
                                    properties = Properties}) ->
     TableIdInt = get_id(table, TableId),
     NamePadding = (?OFP_MAX_TABLE_NAME_LEN - byte_size(Name)) * 8,
+    CapabilitiesBin = flags_to_binary(table_config, Capabilities, 4),
     PropertiesBin = list_to_binary([table_feature_prop(Property)
                                     || Property <- Properties]),
     Length = 64 + byte_size(PropertiesBin),
     <<Length:16, TableIdInt:8, 0:40, Name/bytes, 0:NamePadding,
-      MetadataMatch:8/bytes, MetadataWrite:8/bytes, 0:32, MaxEntries:32,
+      MetadataMatch:8/bytes, MetadataWrite:8/bytes,
+      CapabilitiesBin:4/bytes, MaxEntries:32,
       PropertiesBin/bytes>>.
 
 table_feature_prop(#ofp_table_feature_prop_instructions{} = Prop) ->

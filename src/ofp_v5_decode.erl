@@ -434,15 +434,17 @@ table_features(Binary, TableFeatures) ->
     <<Length:16, _/bytes>> = Binary,
     PropsLength = Length - ?OFP_TABLE_FEATURES_SIZE,
     <<_:16, TableIdInt:8, _:40, Name:?OFP_MAX_TABLE_NAME_LEN/bytes,
-      MetadataMatch:8/bytes, MetadataWrite:8/bytes, _:32, MaxEntries:32,
+      MetadataMatch:8/bytes, MetadataWrite:8/bytes, CapabilitiesBin:4/bytes, MaxEntries:32,
       PropertiesBin:PropsLength/bytes, Rest/bytes>> = Binary,
     TableId = get_id(table, TableIdInt),
     StrippedName = ofp_utils:strip_string(Name),
+    Capabilities = binary_to_flags(table_config, CapabilitiesBin),
     Properties = table_feature_prop(PropertiesBin, []),
     TableFeature = #ofp_table_features{table_id = TableId,
                                        name = StrippedName,
                                        metadata_match = MetadataMatch,
                                        metadata_write = MetadataWrite,
+                                       capabilities = Capabilities,
                                        max_entries = MaxEntries,
                                        properties = Properties},
     table_features(Rest, [TableFeature | TableFeatures]).
@@ -1010,9 +1012,10 @@ decode_body(port_mod, Binary) ->
     #ofp_port_mod{port_no = Port, hw_addr = Addr,
                   config = Config, mask = Mask, advertise = Advertise};
 decode_body(table_mod, Binary) ->
-    <<TableInt:8, _Pad:24, _ConfigInt:32>> = Binary,
+    <<TableInt:8, _Pad:24, ConfigBin:4/bytes>> = Binary,
     Table = get_id(table, TableInt),
-    #ofp_table_mod{table_id = Table};
+    Config = binary_to_flags(table_config, ConfigBin),
+    #ofp_table_mod{table_id = Table, config = Config};
 decode_body(multipart_request, Binary) ->
     <<TypeInt:16, FlagsBin:16/bits, _Pad:32, Data/bytes>> = Binary,
     Type = ofp_v5_enum:to_atom(multipart_type, TypeInt),

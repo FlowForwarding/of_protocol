@@ -623,8 +623,12 @@
 -type ofp_table_id() :: all
                       | integer().
 
+-type ofp_table_config() :: eviction
+                          | vacancy_events.
+
 -record(ofp_table_mod, {
-          table_id = all :: ofp_table_id()
+          table_id = all :: ofp_table_id(),
+          config = [] :: [ofp_table_config()]
          }).
 -type ofp_table_mod() :: #ofp_table_mod{}.
 
@@ -954,6 +958,7 @@
           name :: bitstring(),
           metadata_match :: binary(),
           metadata_write :: binary(),
+          capabilities = [] :: [ofp_table_config()],
           max_entries :: integer(),
           properties = [] :: [ofp_table_feature_property()]
          }).
