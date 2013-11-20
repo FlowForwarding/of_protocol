@@ -628,9 +628,34 @@
 
 -record(ofp_table_mod, {
           table_id = all :: ofp_table_id(),
-          config = [] :: [ofp_table_config()]
+          config = [] :: [ofp_table_config()],
+          properties = [] :: [ofp_table_mod_property()]
          }).
 -type ofp_table_mod() :: #ofp_table_mod{}.
+
+-type ofp_table_mod_prop_eviction_flag() :: other
+                                          | importance
+                                          | lifetime.
+
+-record(ofp_table_mod_prop_eviction, {
+          flags = [] :: [ofp_table_mod_prop_eviction_flag()]
+         }).
+
+-record(ofp_table_mod_prop_vacancy, {
+          vacancy_down :: byte(),
+          vacancy_up :: byte(),
+          vacancy :: byte()
+         }).
+
+-record(ofp_table_mod_prop_experimenter, {
+          experimenter :: integer(),
+          exp_type :: integer(),
+          data = <<>> :: binary()
+         }).
+
+-type ofp_table_mod_property() :: #ofp_table_mod_prop_eviction{}
+                                | #ofp_table_mod_prop_vacancy{}
+                                | #ofp_table_mod_prop_experimenter{}.
 
 %%%-----------------------------------------------------------------------------
 %%% Nodify State Messages (A 3.4)

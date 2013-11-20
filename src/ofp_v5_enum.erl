@@ -244,6 +244,14 @@
 -enum({table_config, [{eviction, 2},
                       vacancy_events]}).
 
+-enum({table_mod_prop_type, [{eviction, 2},
+                             vacancy,
+                             {experimenter, 16#ffff}]}).
+
+-enum({table_mod_prop_eviction_flag, [other,
+                                      importance,
+                                      lifetime]}).
+
 %% Modify State Messages -------------------------------------------------------
 
 -enum({buffer_id, [{no_buffer, 16#ffffffff}]}).

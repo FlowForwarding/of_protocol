@@ -350,7 +350,23 @@ encode_struct(#ofp_meter_config{flags = Flags, meter_id = MeterId,
     FlagsBin = flags_to_binary(meter_flag, Flags, 2),
     BandsBin = encode_list(Bands),
     Length = ?METER_CONFIG_SIZE + byte_size(BandsBin),
-    <<Length:16, FlagsBin:16/bits, MeterIdInt:32, BandsBin/bytes>>.
+    <<Length:16, FlagsBin:16/bits, MeterIdInt:32, BandsBin/bytes>>;
+encode_struct(#ofp_table_mod_prop_eviction{flags = Flags}) ->
+    FlagsBin = flags_to_binary(table_mod_prop_eviction_flag, Flags, 4),
+    encode_property(ofp_v5_enum:to_int(table_mod_prop_type, eviction),
+                    <<FlagsBin:4/bytes>>);
+encode_struct(#ofp_table_mod_prop_vacancy{
+                 vacancy_down = VacancyDown,
+                 vacancy_up = VacancyUp,
+                 vacancy = Vacancy}) ->
+    Data = <<VacancyDown:8, VacancyUp:8, Vacancy:8, 0:8>>,
+    encode_property(ofp_v5_enum:to_int(table_mod_prop_type, vacancy), Data);
+encode_struct(#ofp_table_mod_prop_experimenter{
+                 experimenter = Experimenter,
+                 exp_type = ExpType,
+                 data = Data}) ->
+    Bin = <<Experimenter:32, ExpType:32, Data/binary>>,
+    encode_property(ofp_v5_enum:to_int(table_mod_prop_type, experimenter), Bin).
 
 encode_async_masks({PacketInMask1, PacketInMask2},
                    {PortStatusMask1, PortStatusMask2},
@@ -493,10 +509,11 @@ encode_body(#ofp_port_mod{port_no = Port, hw_addr = Addr,
     AdvertiseBin = flags_to_binary(port_features, Advertise, 4),
     <<PortInt:32, 0:32, Addr:6/bytes, 0:16, ConfigBin:4/bytes,
       MaskBin:4/bytes, AdvertiseBin:4/bytes, 0:32>>;
-encode_body(#ofp_table_mod{table_id = Table, config = Config}) ->
+encode_body(#ofp_table_mod{table_id = Table, config = Config, properties = Properties}) ->
     TableInt = get_id(table, Table),
     ConfigBin = flags_to_binary(table_config, Config, 4),
-    <<TableInt:8, 0:24, ConfigBin:4/bytes>>;
+    PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties)),
+    <<TableInt:8, 0:24, ConfigBin:4/bytes, PropertiesBin/binary>>;
 %% Multipart Messages ----------------------------------------------------------
 encode_body(#ofp_desc_request{flags = Flags}) ->
     TypeInt = ofp_v5_enum:to_int(multipart_type, desc),
@@ -761,6 +778,22 @@ encode_body(#ofp_meter_mod{command = Command,
     <<CommandInt:16, FlagsBin:2/bytes, MeterIdInt:32, BandsBin/bytes>>;
 encode_body(Other) ->
     throw({bad_message, Other}).
+
+%% This function can be used to encode a property.
+%% It assumes that the property begins with:
+%%
+%%    uint16_t type;
+%%    uint16_t length;
+%%
+%% where length does not include the padding necessary to make the
+%% length of each property a multiple of 8.
+%%
+%% The resulting binary includes padding.
+encode_property(TypeInt, Data) ->
+    LengthWithoutPadding = byte_size(Data) + 4,
+    Padding = (LengthWithoutPadding + 7) div 8 * 8 - LengthWithoutPadding,
+    <<TypeInt:16, LengthWithoutPadding:16,
+      Data/binary, 0:Padding/unit:8>>.
 
 %% A.3.5.5 Table Features ------------------------------------------------------
 

@@ -1012,10 +1012,11 @@ decode_body(port_mod, Binary) ->
     #ofp_port_mod{port_no = Port, hw_addr = Addr,
                   config = Config, mask = Mask, advertise = Advertise};
 decode_body(table_mod, Binary) ->
-    <<TableInt:8, _Pad:24, ConfigBin:4/bytes>> = Binary,
+    <<TableInt:8, _Pad:24, ConfigBin:4/bytes, PropertiesBin/binary>> = Binary,
     Table = get_id(table, TableInt),
     Config = binary_to_flags(table_config, ConfigBin),
-    #ofp_table_mod{table_id = Table, config = Config};
+    #ofp_table_mod{table_id = Table, config = Config,
+                   properties = decode_table_mod_properties(PropertiesBin)};
 decode_body(multipart_request, Binary) ->
     <<TypeInt:16, FlagsBin:16/bits, _Pad:32, Data/bytes>> = Binary,
     Type = ofp_v5_enum:to_atom(multipart_type, TypeInt),
@@ -1260,21 +1261,55 @@ decode_body(meter_mod, Binary) ->
     #ofp_meter_mod{command = Command, flags = Flags, meter_id = MeterId,
                    bands = Bands}.
 
-decode_role_status_properties(<<TypeInt:16, Length:16, Rest/binary>>) ->
+%% This function can be used to extract properties from a binary.
+%% It assumes that each property begins with:
+%%
+%%    uint16_t type;
+%%    uint16_t length;
+%%
+%% where length does not include the padding necessary to make the
+%% length of each property a multiple of 8.
+%%
+%% It converts the type to an atom using ofp_v5_enum:to_atom, and
+%% returns a list of the type [{Type :: atom(), Data :: binary()}].
+%% The Data binary does not contain the type and length fields.
+extract_properties(Enum, <<TypeInt:16, Length:16, Rest/binary>>) ->
+    Type = ofp_v5_enum:to_atom(Enum, TypeInt),
     Padding = (Length + 7) div 8 * 8 - Length,
     PropLength = Length - 4,
     <<This:PropLength/binary, _Padded:Padding/binary, Tail/binary>> = Rest,
-    Property =
-        case ofp_v5_enum:to_atom(role_prop_type, TypeInt) of
-            experimenter ->
-                <<Experimenter:32, ExpType:32, Data/binary>> = This,
-                #ofp_role_prop_experimenter{experimenter = Experimenter,
-                                            exp_type = ExpType,
-                                            data = Data}
-        end,
-    [Property | decode_role_status_properties(Tail)];
-decode_role_status_properties(<<>>) ->
+    [{Type, This} | extract_properties(Enum, Tail)];
+extract_properties(_Enum, <<>>) ->
     [].
+
+decode_role_status_properties(Bin) ->
+    lists:map(
+      fun({experimenter, PropBin}) ->
+              <<Experimenter:32, ExpType:32, Data/binary>> = PropBin,
+              #ofp_role_prop_experimenter{experimenter = Experimenter,
+                                          exp_type = ExpType,
+                                          data = Data}
+      end, extract_properties(role_prop_type, Bin)).
+
+decode_table_mod_properties(Bin) ->
+    lists:map(
+      fun({eviction, PropBin}) ->
+              <<FlagsBin:4/bytes>> = PropBin,
+              #ofp_table_mod_prop_eviction{
+                 flags = binary_to_flags(table_mod_prop_eviction_flag, FlagsBin)};
+         ({vacancy, PropBin}) ->
+              <<VacancyDown:8, VacancyUp:8, Vacancy:8, _Pad:8>> = PropBin,
+              #ofp_table_mod_prop_vacancy{
+                 vacancy_down = VacancyDown,
+                 vacancy_up = VacancyUp,
+                 vacancy = Vacancy};
+         ({experimenter, PropBin}) ->
+              <<Experimenter:32, ExpType:32, Data/binary>> = PropBin,
+              #ofp_table_mod_prop_experimenter{
+                 experimenter = Experimenter,
+                 exp_type = ExpType,
+                 data = Data}
+      end, extract_properties(table_mod_prop_type, Bin)).
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions
