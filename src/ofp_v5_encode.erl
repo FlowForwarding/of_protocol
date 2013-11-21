@@ -366,7 +366,24 @@ encode_struct(#ofp_table_mod_prop_experimenter{
                  exp_type = ExpType,
                  data = Data}) ->
     Bin = <<Experimenter:32, ExpType:32, Data/binary>>,
-    encode_property(ofp_v5_enum:to_int(table_mod_prop_type, experimenter), Bin).
+    encode_property(ofp_v5_enum:to_int(table_mod_prop_type, experimenter), Bin);
+encode_struct(#ofp_port_mod_prop_ethernet{advertise = Advertise}) ->
+    AdvertiseBin = flags_to_binary(port_features, Advertise, 4),
+    encode_property(ofp_v5_enum:to_int(port_mod_prop_type, ethernet), AdvertiseBin);
+encode_struct(#ofp_port_mod_prop_optical{
+                 configure = Configure, freq_lmda = FreqLmda,
+                 fl_offset = FlOffset, grid_span = GridSpan,
+                 tx_pwr = TxPwr}) ->
+    ConfigureBin = flags_to_binary(optical_port_features, Configure, 4),
+    Bin = <<ConfigureBin:4/bytes, FreqLmda:32, FlOffset:32/signed,
+            GridSpan:32, TxPwr:32>>,
+    encode_property(ofp_v5_enum:to_int(port_mod_prop_type, optical), Bin);
+encode_struct(#ofp_port_mod_prop_experimenter{
+                 experimenter = Experimenter,
+                 exp_type = ExpType,
+                 data = Data}) ->
+    Bin = <<Experimenter:32, ExpType:32, Data/binary>>,
+    encode_property(ofp_v5_enum:to_int(port_mod_prop_type, experimenter), Bin).
 
 encode_async_masks({PacketInMask1, PacketInMask2},
                    {PortStatusMask1, PortStatusMask2},
@@ -502,13 +519,13 @@ encode_body(#ofp_group_mod{command = Command, type = Type,
     <<CommandInt:16, TypeInt:8, 0:8, GroupInt:32, BucketsBin/bytes>>;
 encode_body(#ofp_port_mod{port_no = Port, hw_addr = Addr,
                           config = Config, mask = Mask,
-                          advertise = Advertise}) ->
+                          properties = Properties}) ->
     PortInt = get_id(port_no, Port),
     ConfigBin = flags_to_binary(port_config, Config, 4),
     MaskBin = flags_to_binary(port_config, Mask, 4),
-    AdvertiseBin = flags_to_binary(port_features, Advertise, 4),
+    PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties)),
     <<PortInt:32, 0:32, Addr:6/bytes, 0:16, ConfigBin:4/bytes,
-      MaskBin:4/bytes, AdvertiseBin:4/bytes, 0:32>>;
+      MaskBin:4/bytes, PropertiesBin/binary>>;
 encode_body(#ofp_table_mod{table_id = Table, config = Config, properties = Properties}) ->
     TableInt = get_id(table, Table),
     ConfigBin = flags_to_binary(table_config, Config, 4),

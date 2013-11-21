@@ -730,9 +730,31 @@
           hw_addr :: binary(),
           config = [] :: [ofp_port_config()],
           mask = [] :: [ofp_port_config()],
-          advertise = [] :: [ofp_port_feature()]
+          properties = [] :: [ofp_port_mod_property()]
          }).
 -type ofp_port_mod() :: #ofp_port_mod{}.
+
+-record(ofp_port_mod_prop_ethernet, {
+          advertise = [] :: [ofp_port_feature()]
+         }).
+
+-record(ofp_port_mod_prop_optical, {
+          configure = [] :: [ofp_optical_port_feature()],
+          freq_lmda :: non_neg_integer(),
+          fl_offset :: integer(),
+          grid_span :: non_neg_integer(),
+          tx_pwr :: non_neg_integer()
+         }).
+
+-record(ofp_port_mod_prop_experimenter, {
+          experimenter :: integer(),
+          exp_type :: integer(),
+          data = <<>> :: binary()
+         }).
+
+-type ofp_port_mod_property() :: #ofp_port_mod_prop_ethernet{}
+                               | #ofp_port_mod_prop_optical{}
+                               | #ofp_port_mod_prop_experimenter{}.
 
 %%% Meter Modification Message (A 3.4.4) ---------------------------------------
 

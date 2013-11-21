@@ -348,6 +348,12 @@
                                  {experimenter, 16#fffe},
                                  experimenter_miss]}).
 
+%% Port Configuration Messages -------------------------------------------------
+
+-enum({port_mod_prop_type, [ethernet,
+                            optical,
+                            {experimenter, 16#ffff}]}).
+
 %% Queue Configuration Messages ------------------------------------------------
 
 %% Packet-Out Messages ---------------------------------------------------------

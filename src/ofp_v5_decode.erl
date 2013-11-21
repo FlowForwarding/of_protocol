@@ -1004,13 +1004,13 @@ decode_body(group_mod, Binary) ->
 decode_body(port_mod, Binary) ->
     <<PortInt:32, _Pad:32, Addr:6/bytes,
       _Pad:16, ConfigBin:4/bytes, MaskBin:4/bytes,
-      AdvertiseBin:4/bytes, _Pad:32>> = Binary,
+      PropertiesBin/binary>> = Binary,
     Port = get_id(port_no, PortInt),
     Config = binary_to_flags(port_config, ConfigBin),
     Mask = binary_to_flags(port_config, MaskBin),
-    Advertise = binary_to_flags(port_features, AdvertiseBin),
     #ofp_port_mod{port_no = Port, hw_addr = Addr,
-                  config = Config, mask = Mask, advertise = Advertise};
+                  config = Config, mask = Mask,
+                  properties = decode_port_mod_properties(PropertiesBin)};
 decode_body(table_mod, Binary) ->
     <<TableInt:8, _Pad:24, ConfigBin:4/bytes, PropertiesBin/binary>> = Binary,
     Table = get_id(table, TableInt),
@@ -1310,6 +1310,27 @@ decode_table_mod_properties(Bin) ->
                  exp_type = ExpType,
                  data = Data}
       end, extract_properties(table_mod_prop_type, Bin)).
+
+decode_port_mod_properties(Bin) ->
+    lists:map(
+      fun({ethernet, PropBin}) ->
+              <<AdvertiseBin:4/bytes>> = PropBin,
+              Advertise = binary_to_flags(port_features, AdvertiseBin),
+              #ofp_port_mod_prop_ethernet{advertise = Advertise};
+         ({optical, PropBin}) ->
+              <<ConfigureBin:4/bytes, FreqLmda:32, FlOffset:32/signed,
+                GridSpan:32, TxPwr:32>> = PropBin,
+              Configure = binary_to_flags(optical_port_features, ConfigureBin),
+              #ofp_port_mod_prop_optical{configure = Configure, freq_lmda = FreqLmda,
+                                         fl_offset = FlOffset, grid_span = GridSpan,
+                                         tx_pwr = TxPwr};
+         ({experimenter, PropBin}) ->
+              <<Experimenter:32, ExpType:32, Data/binary>> = PropBin,
+              #ofp_port_mod_prop_experimenter{
+                 experimenter = Experimenter,
+                 exp_type = ExpType,
+                 data = Data}
+      end, extract_properties(port_mod_prop_type, Bin)).
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions
