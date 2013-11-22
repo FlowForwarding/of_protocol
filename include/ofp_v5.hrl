@@ -115,7 +115,6 @@
 -define(FLOW_STATS_SIZE, 56).
 -define(TABLE_STATS_SIZE, 24).
 -define(OFP_TABLE_FEATURES_SIZE, 64).
--define(QUEUE_STATS_SIZE, 40).
 -define(GROUP_STATS_SIZE, 40).
 -define(GROUP_DESC_STATS_SIZE, 8).
 -define(METER_BAND_SIZE, 16).
@@ -1109,7 +1108,8 @@
           tx_packets = 0 :: integer(),
           tx_errors  = 0 :: integer(),
           duration_sec  = 0 :: integer(),
-          duration_nsec = 0 :: integer()
+          duration_nsec = 0 :: integer(),
+          properties = [] :: [ofp_queue_stats_property()]
          }).
 -type ofp_queue_stats() :: #ofp_queue_stats{}.
 
@@ -1125,6 +1125,13 @@
           body = [] :: [ofp_queue_stats()]
          }).
 -type ofp_queue_stats_reply() :: #ofp_queue_stats_reply{}.
+
+-record(ofp_queue_stats_prop_experimenter, {
+          experimenter :: integer(),
+          exp_type :: integer(),
+          data = <<>> :: binary()
+         }).
+-type ofp_queue_stats_property() :: #ofp_queue_stats_prop_experimenter{}.
 
 %%% Group Statistics (A 3.5.9) -------------------------------------------------
 

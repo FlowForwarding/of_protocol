@@ -348,8 +348,18 @@ encode_struct(#ofp_port_stats_prop_experimenter{
 encode_struct(#ofp_queue_stats{port_no = Port, queue_id = Queue,
                                tx_bytes = Bytes, tx_packets = Packets,
                                tx_errors = Errors, duration_sec = DSec,
-                               duration_nsec = DNSec}) ->
-    <<Port:32, Queue:32, Bytes:64, Packets:64, Errors:64, DSec:32, DNSec:32>>;
+                               duration_nsec = DNSec, properties = Properties}) ->
+    PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties)),
+    Length = 48 + byte_size(PropertiesBin),
+    <<Length:16, 0:48, Port:32, Queue:32,
+      Bytes:64, Packets:64, Errors:64, DSec:32, DNSec:32,
+      PropertiesBin/binary>>;
+encode_struct(#ofp_queue_stats_prop_experimenter{
+                 experimenter = Experimenter,
+                 exp_type = ExpType,
+                 data = Data}) ->
+    Bin = <<Experimenter:32, ExpType:32, Data/binary>>,
+    encode_property(ofp_v5_enum:to_int(queue_stats_prop_type, experimenter), Bin);
 encode_struct(#ofp_group_stats{group_id = Group, ref_count = RefCount,
                                packet_count = PCount, byte_count = BCount,
                                duration_sec = DSec, duration_nsec = DNSec,

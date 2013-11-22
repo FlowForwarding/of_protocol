@@ -751,14 +751,29 @@ decode_port_stats_properties(PropertiesBin) ->
                  data = Data}
       end, extract_properties(port_stats_prop_type, PropertiesBin)).
 
-decode_queue_stats(Binary) ->
-    <<PortInt:32, QueueInt:32, Bytes:64,
-      Packets:64, Errors:64, DSec:32, DNSec:32>> = Binary,
+decode_queue_stats(<<>>) ->
+    [];
+decode_queue_stats(<<EntryLength:16, _/binary>> = Binary) ->
+    <<ThisEntry:EntryLength/bytes, Tail/binary>> = Binary,
+    <<_:16, _:48, PortInt:32, QueueInt:32, Bytes:64,
+      Packets:64, Errors:64, DSec:32, DNSec:32,
+      PropertiesBin/binary>> = ThisEntry,
     Port = get_id(port_no, PortInt),
     Queue = get_id(queue, QueueInt),
-    #ofp_queue_stats{port_no = Port, queue_id = Queue, tx_bytes = Bytes,
+    [#ofp_queue_stats{port_no = Port, queue_id = Queue, tx_bytes = Bytes,
                      tx_packets = Packets, tx_errors = Errors,
-                     duration_sec = DSec, duration_nsec = DNSec}.
+                     duration_sec = DSec, duration_nsec = DNSec,
+                     properties = decode_queue_stats_properties(PropertiesBin)}
+     | decode_queue_stats(Tail)].
+
+decode_queue_stats_properties(PropertiesBin) ->
+    lists:map(fun({experimenter, PropBin}) ->
+                      <<Experimenter:32, ExpType:32, Data/binary>> = PropBin,
+                      #ofp_queue_stats_prop_experimenter{
+                         experimenter = Experimenter,
+                         exp_type = ExpType,
+                         data = Data}
+              end, extract_properties(queue_stats_prop_type, PropertiesBin)).
 
 decode_group_stats(Binary) ->
     <<_:16, _Pad:16, GroupInt:32, RefCount:32,
@@ -1190,9 +1205,7 @@ decode_body(multipart_reply, Binary) ->
             StatsLength = size(Binary) - ?QUEUE_STATS_REPLY_SIZE +
                 ?OFP_HEADER_SIZE,
             <<StatsBin:StatsLength/bytes>> = Data,
-            Stats = [decode_queue_stats(QStats)
-                     || QStats <- ofp_utils:split_binaries(StatsBin,
-                                                           ?QUEUE_STATS_SIZE)],
+            Stats = decode_queue_stats(StatsBin),
             #ofp_queue_stats_reply{flags = Flags, body = Stats};
         group_stats ->
             StatsLength = size(Binary) - ?GROUP_STATS_REPLY_SIZE +

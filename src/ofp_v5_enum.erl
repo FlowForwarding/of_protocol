@@ -368,6 +368,10 @@
                             optical,
                             {experimenter, 16#ffff}]}).
 
+%% Queue Statistics ------------------------------------------------------------
+
+-enum({queue_stats_prop_type, [{experimenter, 16#ffff}]}).
+
 %% Queue Configuration Messages ------------------------------------------------
 
 %% Packet-Out Messages ---------------------------------------------------------
