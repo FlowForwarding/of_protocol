@@ -481,7 +481,8 @@
                          bad_experimenter,
                          bad_exp_type,
                          bad_len,
-                         eperm]}).
+                         eperm,
+                         dup_inst]}).
 
 -enum({bad_match, [bad_type,
                    bad_len,
