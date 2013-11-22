@@ -115,7 +115,6 @@
 -define(FLOW_STATS_SIZE, 56).
 -define(TABLE_STATS_SIZE, 24).
 -define(OFP_TABLE_FEATURES_SIZE, 64).
--define(PORT_STATS_SIZE, 112).
 -define(QUEUE_STATS_SIZE, 40).
 -define(GROUP_STATS_SIZE, 40).
 -define(GROUP_DESC_STATS_SIZE, 8).
@@ -1024,6 +1023,8 @@
 
 -record(ofp_port_stats, {
           port_no          :: ofp_port_no(),
+          duration_sec  = 0 :: integer(),
+          duration_nsec = 0 :: integer(),
           rx_packets    = 0 :: integer(),
           tx_packets    = 0 :: integer(),
           rx_bytes      = 0 :: integer(),
@@ -1032,12 +1033,7 @@
           tx_dropped    = 0 :: integer(),
           rx_errors     = 0 :: integer(),
           tx_errors     = 0 :: integer(),
-          rx_frame_err  = 0 :: integer(),
-          rx_over_err   = 0 :: integer(),
-          rx_crc_err    = 0 :: integer(),
-          collisions    = 0 :: integer(),
-          duration_sec  = 0 :: integer(),
-          duration_nsec = 0 :: integer()
+          properties    = [] :: [ofp_port_stats_property()]
          }).
 -type ofp_port_stats() :: #ofp_port_stats{}.
 
@@ -1052,6 +1048,44 @@
           body = [] :: [ofp_port_stats()]
          }).
 -type ofp_port_stats_reply() :: #ofp_port_stats_reply{}.
+
+-record(ofp_port_stats_prop_ethernet, {
+          rx_frame_err  = 0 :: non_neg_integer(),
+          rx_over_err   = 0 :: non_neg_integer(),
+          rx_crc_err    = 0 :: non_neg_integer(),
+          collisions    = 0 :: non_neg_integer()
+         }).
+
+-record(ofp_port_stats_prop_optical, {
+          flags = [] :: [ofp_port_stats_optical_flag()],
+          tx_freq_lmda = 0 :: non_neg_integer(),
+          tx_offset    = 0 :: non_neg_integer(),
+          tx_grid_span = 0 :: non_neg_integer(),
+          rx_freq_lmda = 0 :: non_neg_integer(),
+          rx_offset    = 0 :: non_neg_integer(),
+          rx_grid_span = 0 :: non_neg_integer(),
+          tx_pwr       = 0 :: non_neg_integer(),
+          rx_pwr       = 0 :: non_neg_integer(),
+          bias_current = 0 :: non_neg_integer(),
+          temperature  = 0 :: non_neg_integer()
+         }).
+
+-type ofp_port_stats_optical_flag() :: rx_tune
+                                     | tx_tune
+                                     | tx_pwr
+                                     | rx_pwr
+                                     | tx_bias
+                                     | tx_temp.
+
+-record(ofp_port_stats_prop_experimenter, {
+          experimenter :: integer(),
+          exp_type :: integer(),
+          data = <<>> :: binary()
+         }).
+
+-type ofp_port_stats_property() :: #ofp_port_stats_prop_ethernet{}
+                                 | #ofp_port_stats_prop_optical{}
+                                 | #ofp_port_stats_prop_experimenter{}.
 
 %%% Port Description (A 3.5.7) -------------------------------------------------
 

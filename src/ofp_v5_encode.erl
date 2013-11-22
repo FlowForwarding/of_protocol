@@ -295,18 +295,56 @@ encode_struct(#ofp_table_stats{table_id = Table, active_count = ACount,
                                matched_count = MCount}) ->
     <<Table:8, 0:24, ACount:32, LCount:64, MCount:64>>;
 encode_struct(#ofp_port_stats{port_no = Port,
+                              duration_sec = DSec, duration_nsec = DNSec,
                               rx_packets = RXPackets, tx_packets = TXPackets,
                               rx_bytes = RXBytes, tx_bytes = TXBytes,
                               rx_dropped = RXDropped, tx_dropped = TXDropped,
                               rx_errors = RXErrors, tx_errors = TXErrors,
-                              rx_frame_err = FrameErr, rx_over_err = OverErr,
-                              rx_crc_err = CRCErr, collisions = Collisions,
-                              duration_sec = DSec, duration_nsec = DNSec}) ->
+                              properties = Properties}) ->
     PortInt = get_id(port_no, Port),
-    <<PortInt:32, 0:32, RXPackets:64,
-      TXPackets:64, RXBytes:64, TXBytes:64, RXDropped:64, TXDropped:64,
-      RXErrors:64, TXErrors:64, FrameErr:64, OverErr:64, CRCErr:64,
-      Collisions:64, DSec:32, DNSec:32>>;
+    PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties)),
+    Length = 80 + byte_size(PropertiesBin),
+    <<Length:16, 0:16, PortInt:32, DSec:32, DNSec:32,
+      RXPackets:64, TXPackets:64, RXBytes:64, TXBytes:64,
+      RXDropped:64, TXDropped:64, RXErrors:64, TXErrors:64,
+      PropertiesBin/binary>>;
+encode_struct(#ofp_port_stats_prop_ethernet{
+                 rx_frame_err = FrameErr, rx_over_err = OverErr,
+                 rx_crc_err = CRCErr, collisions = Collisions}) ->
+    Bin = <<0:32, FrameErr:64, OverErr:64, CRCErr:64, Collisions:64>>,
+    encode_property(ofp_v5_enum:to_int(port_stats_prop_type, ethernet), Bin);
+encode_struct(#ofp_port_stats_prop_optical{
+                 flags = Flags,
+                 tx_freq_lmda = TxFreqLmda,
+                 tx_offset = TxOffset,
+                 tx_grid_span = TxGridSpan,
+                 rx_freq_lmda = RxFreqLmda,
+                 rx_offset = RxOffset,
+                 rx_grid_span = RxGridSpan,
+                 tx_pwr = TxPwr,
+                 rx_pwr = RxPwr,
+                 bias_current = BiasCurrent,
+                 temperature = Temperature}) ->
+    FlagsBin = flags_to_binary(port_stats_optical_flag, Flags, 4),
+    Bin = <<0:32,
+            FlagsBin:4/bytes,
+            TxFreqLmda:32,
+            TxOffset:32,
+            TxGridSpan:32,
+            RxFreqLmda:32,
+            RxOffset:32,
+            RxGridSpan:32,
+            TxPwr:16,
+            RxPwr:16,
+            BiasCurrent:16,
+            Temperature:16>>,
+    encode_property(ofp_v5_enum:to_int(port_stats_prop_type, optical), Bin);
+encode_struct(#ofp_port_stats_prop_experimenter{
+                 experimenter = Experimenter,
+                 exp_type = ExpType,
+                 data = Data}) ->
+    Bin = <<Experimenter:32, ExpType:32, Data/binary>>,
+    encode_property(ofp_v5_enum:to_int(port_stats_prop_type, experimenter), Bin);
 encode_struct(#ofp_queue_stats{port_no = Port, queue_id = Queue,
                                tx_bytes = Bytes, tx_packets = Packets,
                                tx_errors = Errors, duration_sec = DSec,

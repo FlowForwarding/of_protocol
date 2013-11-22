@@ -348,6 +348,20 @@
                                  {experimenter, 16#fffe},
                                  experimenter_miss]}).
 
+%% Port Statistics -------------------------------------------------------------
+
+-enum({port_stats_prop_type, [ethernet,
+                              optical,
+                              {experimenter, 16#ffff}]}).
+
+-enum({port_stats_optical_flag, [rx_tune,
+                                 tx_tune,
+                                 tx_pwr,
+                                 %% 3 is not used
+                                 {rx_pwr, 4},
+                                 tx_bias,
+                                 tx_temp]}).
+
 %% Port Configuration Messages -------------------------------------------------
 
 -enum({port_mod_prop_type, [ethernet,
