@@ -325,6 +325,9 @@
                         meter_features,
                         table_features,
                         port_desc,
+                        table_desc,
+                        queue_desc,
+                        flow_monitor,
                         {experimenter, 16#ffff}]}).
 
 %% A.3.5.5 Table Features ------------------------------------------------------
