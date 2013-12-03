@@ -431,7 +431,16 @@ encode_struct(#ofp_port_mod_prop_experimenter{
                  exp_type = ExpType,
                  data = Data}) ->
     Bin = <<Experimenter:32, ExpType:32, Data/binary>>,
-    encode_property(ofp_v5_enum:to_int(port_mod_prop_type, experimenter), Bin).
+    encode_property(ofp_v5_enum:to_int(port_mod_prop_type, experimenter), Bin);
+encode_struct(#ofp_table_desc{
+                 table_id = Table,
+                 config = Config,
+                 properties = Properties}) ->
+    TableInt = get_id(table, Table),
+    ConfigBin = flags_to_binary(table_config, Config, 4),
+    PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties)),
+    Length = 8 + byte_size(PropertiesBin),
+    <<Length:16, TableInt:8, 0:8, ConfigBin:4/bytes, PropertiesBin/binary>>.
 
 encode_async_masks({PacketInMask1, PacketInMask2},
                    {PortStatusMask1, PortStatusMask2},
@@ -770,6 +779,15 @@ encode_body(#ofp_meter_features_reply{flags = Flags, max_meter = MaxMeter,
     CapabilitiesBin = flags_to_binary(meter_flag, Capabilities, 4),
     <<TypeInt:16, FlagsBin/bytes, 0:32, MaxMeter:32, BandTypesBin:32/bits,
       CapabilitiesBin:32/bits, MaxBands:8, MaxColor:8, 0:16>>;
+encode_body(#ofp_table_desc_request{flags = Flags}) ->
+    TypeInt = ofp_v5_enum:to_int(multipart_type, table_desc),
+    FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
+    <<TypeInt:16, FlagsBin/bytes, 0:32>>;
+encode_body(#ofp_table_desc_reply{flags = Flags, tables = Tables}) ->
+    TypeInt = ofp_v5_enum:to_int(multipart_type, table_desc),
+    FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
+    TablesBin = list_to_binary(lists:map(fun encode_struct/1, Tables)),
+    <<TypeInt:16, FlagsBin/bytes, 0:32, TablesBin/binary>>;
 encode_body(#ofp_experimenter_request{flags = Flags,
                                       experimenter = Experimenter,
                                       exp_type = ExpType, data = Data}) ->
@@ -1196,6 +1214,10 @@ type_int(#ofp_experimenter_request{}) ->
     ofp_v5_enum:to_int(type, multipart_request);
 type_int(#ofp_experimenter_reply{}) ->
     ofp_v5_enum:to_int(type, multipart_reply);
+type_int(#ofp_table_desc_request{}) ->
+    ofp_v5_enum:to_int(type, multipart_request);
+type_int(#ofp_table_desc_reply{}) ->
+    ofp_v5_enum:to_int(type, multipart_reply);
 type_int(#ofp_barrier_request{}) ->
     ofp_v5_enum:to_int(type, barrier_request);
 type_int(#ofp_barrier_reply{}) ->
@@ -1218,5 +1240,6 @@ type_int(#ofp_set_async{}) ->
     ofp_v5_enum:to_int(type, set_async);
 type_int(#ofp_meter_mod{}) ->
     ofp_v5_enum:to_int(type, meter_mod).
+
 
 

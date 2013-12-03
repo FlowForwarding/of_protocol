@@ -1278,6 +1278,25 @@
          }).
 -type ofp_meter_features_reply() :: #ofp_meter_features_reply{}.
 
+%%% Table Description ----------------------------------------------------------
+
+-record(ofp_table_desc_request, {
+          flags = [] :: [ofp_multipart_request_flag()]
+         }).
+-type ofp_table_desc_request() :: #ofp_table_desc_request{}.
+
+-record(ofp_table_desc, {
+          table_id :: ofp_table_id(),
+          config = [] :: [ofp_table_config()],
+          properties = [] :: [ofp_table_mod_property()]
+         }).
+
+-record(ofp_table_desc_reply, {
+          flags = [] :: [ofp_multipart_reply_flag()],
+          tables = [] :: [#ofp_table_desc{}]
+         }).
+-type ofp_table_desc_reply() :: #ofp_table_desc_reply{}.
+
 %%% Experimenter Multipart (A 3.5.15) ------------------------------------------
 
 -record(ofp_experimenter_request, {
@@ -1310,6 +1329,7 @@
                                | ofp_meter_stats_request()
                                | ofp_meter_config_request()
                                | ofp_meter_features_request()
+                               | ofp_table_desc_request()
                                | ofp_experimenter_request().
 
 -type ofp_multipart_reply() :: ofp_desc_reply()
@@ -1326,6 +1346,7 @@
                              | ofp_meter_stats_reply()
                              | ofp_meter_config_reply()
                              | ofp_meter_features_reply()
+                             | ofp_table_desc_reply()
                              | ofp_experimenter_reply().
 
 %%%-----------------------------------------------------------------------------

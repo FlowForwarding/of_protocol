@@ -889,6 +889,20 @@ decode_meter_config_list(Binary, MeterConfigs) ->
                                     bands = Bands},
     decode_meter_config_list(Rest2, [MeterConfig | MeterConfigs]).
 
+decode_table_desc(<<>>) ->
+    [];
+decode_table_desc(<<TotalLength:16, TableIdInt:8, _Pad:8, ConfigBin:32/bits,
+                    Rest/binary>>) ->
+    PropertiesLength = TotalLength - 8,
+    <<PropertiesBin:PropertiesLength/bytes, Tail/binary>> = Rest,
+
+    TableId = get_id(table, TableIdInt),
+    Config = binary_to_flags(table_config, ConfigBin),
+    Properties = decode_table_mod_properties(PropertiesBin),
+
+    [#ofp_table_desc{table_id = TableId, config = Config, properties = Properties}
+     | decode_table_desc(Tail)].
+
 decode_bitmap(_, Index, _, Acc) when Index >= 32 ->
     Acc;
 decode_bitmap(Int, Index, Base, Acc) when Int band (1 bsl Index) == 0 ->
@@ -1142,6 +1156,8 @@ decode_body(multipart_request, Binary) ->
             #ofp_meter_config_request{flags = Flags, meter_id = MeterId};
         meter_features ->
             #ofp_meter_features_request{flags = Flags};
+        table_desc ->
+            #ofp_table_desc_request{flags = Flags};
         experimenter ->
             DataLength = size(Binary) - ?EXPERIMENTER_STATS_REQUEST_SIZE + ?OFP_HEADER_SIZE,
             <<Experimenter:32, ExpType:32,
@@ -1251,6 +1267,9 @@ decode_body(multipart_reply, Binary) ->
                                       capabilities = Capabilities, 
                                       max_bands = MaxBands,
                                       max_color = MaxColor};
+        table_desc ->
+            Tables = decode_table_desc(Data),
+            #ofp_table_desc_reply{flags = Flags, tables = Tables};
         experimenter ->
             DataLength = size(Binary) - ?EXPERIMENTER_STATS_REPLY_SIZE +
                 ?OFP_HEADER_SIZE,
