@@ -903,6 +903,19 @@ decode_table_desc(<<TotalLength:16, TableIdInt:8, _Pad:8, ConfigBin:32/bits,
     [#ofp_table_desc{table_id = TableId, config = Config, properties = Properties}
      | decode_table_desc(Tail)].
 
+decode_queue_desc(<<>>) ->
+    [];
+decode_queue_desc(<<PortInt:32, QueueInt:32, TotalLength:16, _Pad:48, Rest/binary>>) ->
+    PropertiesLength = TotalLength - 16,
+    <<PropertiesBin:PropertiesLength/bytes, Tail/binary>> = Rest,
+
+    Port = get_id(port_no, PortInt),
+    Queue = get_id(queue, QueueInt),
+    Properties = decode_queue_desc_properties(PropertiesBin),
+
+    [#ofp_queue_desc{port_no = Port, queue_id = Queue, properties = Properties}
+     | decode_queue_desc(Tail)].
+
 decode_bitmap(_, Index, _, Acc) when Index >= 32 ->
     Acc;
 decode_bitmap(Int, Index, Base, Acc) when Int band (1 bsl Index) == 0 ->
@@ -1158,6 +1171,12 @@ decode_body(multipart_request, Binary) ->
             #ofp_meter_features_request{flags = Flags};
         table_desc ->
             #ofp_table_desc_request{flags = Flags};
+        queue_desc ->
+            <<PortInt:32, QueueInt:32>> = Data,
+            Port = get_id(port_no, PortInt),
+            Queue = get_id(queue, QueueInt),
+            #ofp_queue_desc_request{flags = Flags, port_no = Port,
+                                    queue_id = Queue};
         experimenter ->
             DataLength = size(Binary) - ?EXPERIMENTER_STATS_REQUEST_SIZE + ?OFP_HEADER_SIZE,
             <<Experimenter:32, ExpType:32,
@@ -1270,6 +1289,9 @@ decode_body(multipart_reply, Binary) ->
         table_desc ->
             Tables = decode_table_desc(Data),
             #ofp_table_desc_reply{flags = Flags, tables = Tables};
+        queue_desc ->
+            Queues = decode_queue_desc(Data),
+            #ofp_queue_desc_reply{flags = Flags, queues = Queues};
         experimenter ->
             DataLength = size(Binary) - ?EXPERIMENTER_STATS_REPLY_SIZE +
                 ?OFP_HEADER_SIZE,
@@ -1400,6 +1422,22 @@ decode_port_mod_properties(Bin) ->
                  exp_type = ExpType,
                  data = Data}
       end, extract_properties(port_mod_prop_type, Bin)).
+
+decode_queue_desc_properties(Bin) ->
+    lists:map(
+      fun({min_rate, PropBin}) ->
+              <<Rate:16, _Pad:16>> = PropBin,
+              #ofp_queue_desc_prop_min_rate{rate = Rate};
+         ({max_rate, PropBin}) ->
+              <<Rate:16, _Pad:16>> = PropBin,
+              #ofp_queue_desc_prop_max_rate{rate = Rate};
+         ({experimenter, PropBin}) ->
+              <<Experimenter:32, ExpType:32, Data/binary>> = PropBin,
+              #ofp_queue_desc_prop_experimenter{
+                 experimenter = Experimenter,
+                 exp_type = ExpType,
+                 data = Data}
+      end, extract_properties(queue_desc_prop_type, Bin)).
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions

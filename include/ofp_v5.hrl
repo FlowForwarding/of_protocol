@@ -1297,6 +1297,41 @@
          }).
 -type ofp_table_desc_reply() :: #ofp_table_desc_reply{}.
 
+%%% Queue Description ----------------------------------------------------------
+
+-record(ofp_queue_desc_request, {
+          flags = [] :: [ofp_multipart_request_flag()],
+          port_no :: ofp_port_no(),
+          queue_id :: ofp_queue_id()}).
+
+-record(ofp_queue_desc, {
+          port_no :: ofp_port_no(),
+          queue_id :: ofp_queue_id(),
+          properties = [] :: [ofp_queue_desc_property()]
+         }).
+
+-record(ofp_queue_desc_prop_min_rate, {
+          rate :: non_neg_integer()
+         }).
+
+-record(ofp_queue_desc_prop_max_rate, {
+          rate :: non_neg_integer()
+         }).
+
+-record(ofp_queue_desc_prop_experimenter, {
+          experimenter :: integer(),
+          exp_type :: integer(),
+          data = <<>> :: binary()
+         }).
+-type ofp_queue_desc_property() :: #ofp_queue_desc_prop_min_rate{}
+                                 | #ofp_queue_desc_prop_max_rate{}
+                                 | #ofp_queue_desc_prop_experimenter{}.
+
+-record(ofp_queue_desc_reply, {
+          flags = [] :: [ofp_multipart_reply_flag()],
+          queues = [] :: [#ofp_queue_desc{}]
+         }).
+
 %%% Experimenter Multipart (A 3.5.15) ------------------------------------------
 
 -record(ofp_experimenter_request, {

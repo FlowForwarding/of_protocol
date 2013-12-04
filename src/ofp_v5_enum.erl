@@ -122,7 +122,7 @@
 
 %% Queue Structures ------------------------------------------------------------
 
-%% Note: Not in the specification
+%% OFPQ_ALL in the specification
 -enum({queue, [{all, 16#ffffffff}]}).
 
 -enum({queue_properties, [{min_rate, 1},
@@ -374,6 +374,12 @@
 %% Queue Statistics ------------------------------------------------------------
 
 -enum({queue_stats_prop_type, [{experimenter, 16#ffff}]}).
+
+%% Queue Description -----------------------------------------------------------
+
+-enum({queue_desc_prop_type, [{min_rate, 1},
+                              max_rate,
+                              {experimenter, 16#ffff}]}).
 
 %% Queue Configuration Messages ------------------------------------------------
 

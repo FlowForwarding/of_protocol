@@ -440,7 +440,25 @@ encode_struct(#ofp_table_desc{
     ConfigBin = flags_to_binary(table_config, Config, 4),
     PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties)),
     Length = 8 + byte_size(PropertiesBin),
-    <<Length:16, TableInt:8, 0:8, ConfigBin:4/bytes, PropertiesBin/binary>>.
+    <<Length:16, TableInt:8, 0:8, ConfigBin:4/bytes, PropertiesBin/binary>>;
+encode_struct(#ofp_queue_desc{port_no = Port, queue_id = Queue, properties = Properties}) ->
+    PortInt = get_id(port_no, Port),
+    QueueInt = get_id(queue, Queue),
+    PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties)),
+    Length = 16 + byte_size(PropertiesBin),
+    <<PortInt:32, QueueInt:32, Length:16, 0:48, PropertiesBin/binary>>;
+encode_struct(#ofp_queue_desc_prop_min_rate{rate = Rate}) ->
+    TypeInt = ofp_v5_enum:to_int(queue_desc_prop_type, min_rate),
+    encode_property(TypeInt, <<Rate:16, 0:16>>);
+encode_struct(#ofp_queue_desc_prop_max_rate{rate = Rate}) ->
+    TypeInt = ofp_v5_enum:to_int(queue_desc_prop_type, max_rate),
+    encode_property(TypeInt, <<Rate:16, 0:16>>);
+encode_struct(#ofp_queue_desc_prop_experimenter{
+                 experimenter = Experimenter,
+                 exp_type = ExpType,
+                 data = Data}) ->
+    Bin = <<Experimenter:32, ExpType:32, Data/binary>>,
+    encode_property(ofp_v5_enum:to_int(queue_desc_prop_type, experimenter), Bin).
 
 encode_async_masks({PacketInMask1, PacketInMask2},
                    {PortStatusMask1, PortStatusMask2},
@@ -788,6 +806,20 @@ encode_body(#ofp_table_desc_reply{flags = Flags, tables = Tables}) ->
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     TablesBin = list_to_binary(lists:map(fun encode_struct/1, Tables)),
     <<TypeInt:16, FlagsBin/bytes, 0:32, TablesBin/binary>>;
+encode_body(#ofp_queue_desc_request{flags = Flags,
+                                    port_no = Port,
+                                    queue_id = Queue}) ->
+    TypeInt = ofp_v5_enum:to_int(multipart_type, queue_desc),
+    FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
+    PortInt = get_id(port_no, Port),
+    QueueInt = get_id(queue, Queue),
+    <<TypeInt:16, FlagsBin/bytes, 0:32,
+      PortInt:32, QueueInt:32>>;
+encode_body(#ofp_queue_desc_reply{flags = Flags, queues = Queues}) ->
+    TypeInt = ofp_v5_enum:to_int(multipart_type, queue_desc),
+    FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
+    QueuesBin = list_to_binary(lists:map(fun encode_struct/1, Queues)),
+    <<TypeInt:16, FlagsBin/bytes, 0:32, QueuesBin/binary>>;
 encode_body(#ofp_experimenter_request{flags = Flags,
                                       experimenter = Experimenter,
                                       exp_type = ExpType, data = Data}) ->
@@ -1217,6 +1249,10 @@ type_int(#ofp_experimenter_reply{}) ->
 type_int(#ofp_table_desc_request{}) ->
     ofp_v5_enum:to_int(type, multipart_request);
 type_int(#ofp_table_desc_reply{}) ->
+    ofp_v5_enum:to_int(type, multipart_reply);
+type_int(#ofp_queue_desc_request{}) ->
+    ofp_v5_enum:to_int(type, multipart_request);
+type_int(#ofp_queue_desc_reply{}) ->
     ofp_v5_enum:to_int(type, multipart_reply);
 type_int(#ofp_barrier_request{}) ->
     ofp_v5_enum:to_int(type, barrier_request);
