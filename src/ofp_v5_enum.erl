@@ -408,9 +408,12 @@
 
 %% Packet-In Message -----------------------------------------------------------
 
--enum({packet_in_reason, [no_match,
-                          action,
-                          invalid_ttl]}).
+-enum({packet_in_reason, [table_miss,
+                          apply_action,
+                          invalid_ttl,
+                          action_set,
+                          group,
+                          packet_out]}).
 
 %% Flow Removed Message --------------------------------------------------------
 

@@ -71,7 +71,12 @@
          }).
 
 -record(async_config, {
-          master_equal_packet_in = [no_match, action],
+          master_equal_packet_in =
+              [
+               %% Defaults for v4:
+               no_match, action,
+               %% Defaults for v5:
+               table_miss, apply_action, action_set, group, packet_out],
           master_equal_port_status = [add, delete, modify],
           master_equal_flow_removed = [idle_timeout, hard_timeout,
                                        delete, group_delete],

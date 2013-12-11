@@ -1501,9 +1501,12 @@
 %%% Packet-In Message (A 4.1)
 %%%-----------------------------------------------------------------------------
 
--type ofp_packet_in_reason() :: no_match
-                              | action
-                              | invalid_ttl.
+-type ofp_packet_in_reason() :: table_miss
+                              | apply_action
+                              | invalid_ttl
+                              | action_set
+                              | group
+                              | packet_out.
 
 -type ofp_packet_in_bytes() :: integer()
                              | no_buffer.

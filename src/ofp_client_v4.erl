@@ -59,7 +59,10 @@ create_async(#async_config{
                 slave_packet_in = SP,
                 slave_port_status = SS,
                 slave_flow_removed = SF}) ->
-    #ofp_get_async_reply{packet_in_mask = {MEP, SP},
+    %% Ensure that we don't try to send v5 values
+    MEP4 = MEP -- [table_miss, apply_action, action_set, group, packet_out],
+    SP4 = SP -- [table_miss, apply_action, action_set, group, packet_out],
+    #ofp_get_async_reply{packet_in_mask = {MEP4, SP4},
                          port_status_mask = {MES, SS},
                          flow_removed_mask = {MEF, SF}}.
 
