@@ -23,6 +23,7 @@
 -define(MOD(Version), case Version of
                           3 -> ofp_v3;
                           4 -> ofp_v4;
+                          5 -> ofp_v5;
                           _ -> unsupported
                       end).
 
