@@ -74,7 +74,7 @@
           master_equal_packet_in = [no_match, action],
           master_equal_port_status = [add, delete, modify],
           master_equal_flow_removed = [idle_timeout, hard_timeout,
-                                       delete, group_delete],
+                                       delete, group_delete, meter_delete],
           slave_packet_in = [],
           slave_port_status = [add, delete, modify],
           slave_flow_removed = []
