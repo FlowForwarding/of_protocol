@@ -79,7 +79,7 @@
                table_miss, apply_action, action_set, group, packet_out],
           master_equal_port_status = [add, delete, modify],
           master_equal_flow_removed = [idle_timeout, hard_timeout,
-                                       delete, group_delete],
+                                       delete, group_delete, meter_delete],
           slave_packet_in = [],
           slave_port_status = [add, delete, modify],
           slave_flow_removed = []

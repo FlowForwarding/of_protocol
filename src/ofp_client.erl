@@ -258,15 +258,16 @@ handle_info(timeout, #state{resource_id = ResourceId,
                     TCPAux = get_opt(tcp, AuxConnections, 0),
                     [begin
                          Args = [generate_aux_resource_id(ResourceId, AuxId),
-                                 Host, Port, tcp, Opts, {aux, AuxId, self()}],
+                                 {remote_peer, Host, Port, tcp},
+                                 Opts, {aux, AuxId, self()}],
                          {ok, Pid} = supervisor:start_child(Sup, Args),
                          ets:insert(Tid, {self(), Pid})
                      end || AuxId <- lists:seq(1, TCPAux)],
                     TLSAux = get_opt(tls, AuxConnections, 0),
                     [begin
                          Args = [generate_aux_resource_id(ResourceId, AuxId),
-                                 Host, Port, tls, Opts,
-                                 {aux, AuxId, self()}],
+                                 {remote_peer, Host, Port, tls},
+                                 Opts, {aux, AuxId, self()}],
                          {ok, Pid} = supervisor:start_child(Sup, Args),
                          ets:insert(Tid, {self(), Pid})
                      end || AuxId <- lists:seq(1, TLSAux)];

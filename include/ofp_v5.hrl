@@ -1528,7 +1528,8 @@
 -type ofp_flow_removed_reason() :: idle_timeout
                                  | hard_timeout
                                  | delete
-                                 | group_delete.
+                                 | group_delete
+                                 | meter_delete.
 
 -record(ofp_flow_removed, {
           cookie :: binary(),
