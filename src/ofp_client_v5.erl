@@ -70,7 +70,7 @@ create_async(#async_config{
                 slave_flow_removed = SF}) ->
     %% Ensure that we don't try to send v4 values
     MEP5 = MEP -- [no_match, action],
-    SP = SP -- [no_match, action],
+    SP5 = SP -- [no_match, action],
     #ofp_get_async_reply{packet_in_mask = {MEP5, SP5},
                          port_status_mask = {MES, SS},
                          flow_removed_mask = {MEF, SF}}.
