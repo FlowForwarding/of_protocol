@@ -417,7 +417,8 @@
 -enum({flow_removed_reason, [idle_timeout,
                              hard_timeout,
                              delete,
-                             group_delete]}).
+                             group_delete,
+                             meter_delete]}).
 
 %% Port Status Message ---------------------------------------------------------
 
