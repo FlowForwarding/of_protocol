@@ -10,7 +10,7 @@
 -export([split_binaries/2,
          encode_string/2,
          strip_string/1,
-         cut_bits/2,
+         cut_bits/3,
          uncut_bits/2,
          padding/2,
          binary_to_flags/3,
@@ -60,18 +60,18 @@ strip_string(Binary, Byte) when Byte >= 0 ->
 strip_string(_, _) ->
     <<>>.
 
--spec cut_bits(binary(), integer()) -> binary().
-cut_bits(Binary, Bits) ->
-    ByteSize = byte_size(Binary) * 8,
+%% @doc Truncate Binary to Bits bits and then pad to WireBits.
+-spec cut_bits(binary(), integer(), non_neg_integer()) -> binary().
+cut_bits(Binary, Bits, WireBits) ->
     BitSize = bit_size(Binary),
     <<Int:BitSize>> = Binary,
     TruncBin = <<Int:Bits>>,
-    Padding = ByteSize - Bits,
+    Padding = WireBits - Bits,
     << 0:Padding, TruncBin/bits >>.
 
-%% @doc Revert a byte aligned binary to state befor cutting bits.
+%% @doc Revert a byte aligned binary to state before cutting bits.
 %% It removes padding introduced by cut_bits/2 and alignes the binary
-%%to the correct size.
+%% to the correct size.
 -spec uncut_bits(binary(), integer()) -> binary().
 uncut_bits(Binary, RequiredBitSize) ->
     BitSize = bit_size(Binary),
