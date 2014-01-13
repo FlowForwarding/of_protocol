@@ -1177,6 +1177,23 @@ decode_body(multipart_request, Binary) ->
             Queue = get_id(queue, QueueInt),
             #ofp_queue_desc_request{flags = Flags, port_no = Port,
                                     queue_id = Queue};
+        flow_monitor ->
+            <<MId:32, PortInt:32, GroupInt:32, MonFlagsBin:16/bits, 
+              TableInt:8, CmdInt:8, MatchBin/bytes>> = Data,
+            Port = get_id(port_no, PortInt),
+            Group = get_id(group, GroupInt),
+            MonFlags = binary_to_flags(flow_monitor_flags, MonFlagsBin),
+            TableId = get_id(table, TableInt),
+            Cmd = ofp_v5_enum:to_atom(flow_monitor_command, CmdInt),
+            Match = decode_match(MatchBin),
+            #ofp_flow_monitor_request{flags = Flags,
+                                      monitor_id = MId,
+                                      out_port = Port,
+                                      out_group = Group,
+                                      monitor_flags = MonFlags,
+                                      table_id = TableId,
+                                      command = Cmd,
+                                      match = Match};
         experimenter ->
             DataLength = size(Binary) - ?EXPERIMENTER_STATS_REQUEST_SIZE + ?OFP_HEADER_SIZE,
             <<Experimenter:32, ExpType:32,
@@ -1292,6 +1309,16 @@ decode_body(multipart_reply, Binary) ->
         queue_desc ->
             Queues = decode_queue_desc(Data),
             #ofp_queue_desc_reply{flags = Flags, queues = Queues};
+        flow_monitor ->
+            Updates = case size(Data) of
+                          0 ->
+                              %% Empty utdate list
+                              [];
+                          _ ->
+                              decode_flow_updates(Data)
+                      end,
+            #ofp_flow_monitor_reply{flags = Flags,
+                                    updates = Updates};
         experimenter ->
             DataLength = size(Binary) - ?EXPERIMENTER_STATS_REPLY_SIZE +
                 ?OFP_HEADER_SIZE,
@@ -1438,6 +1465,74 @@ decode_queue_desc_properties(Bin) ->
                  exp_type = ExpType,
                  data = Data}
       end, extract_properties(queue_desc_prop_type, Bin)).
+
+decode_flow_updates(Data) ->
+    <<Length:16, EventInt:16, Bin/bytes>> = Data,
+    Event = ofp_v5_enum:to_atom(flow_update_event, EventInt),
+    case Event of
+        Event when Event =:= paused;
+                   Event =:= resumed ->
+            decode_flow_update(Event, Length, Bin);
+        _ ->
+            L = case Length of  %% Size of remainder of this update 
+                    8 -> 4;
+                    _ -> Length - 12  %% 32 + Match + Instr is not the real size of the payload 
+                end,
+            case size(Bin) of
+                L ->
+                    [decode_flow_update(Event, Length, Bin)];
+                _ ->
+                    <<RecBin:L/bytes, Remainder/binary>> = Bin,
+                    [decode_flow_update(Event, L + 4, RecBin) | 
+                     decode_flow_updates(Remainder)]
+            end
+    end.
+
+decode_flow_update(abbrev, Length, <<Xid:32>>) ->
+    #ofp_flow_update_abbrev{length = Length,
+                            event = abbrev,
+                            xid = Xid};
+decode_flow_update(Event, Length, _Data) when Event =:= paused;
+                                              Event =:= resumed ->
+    #ofp_flow_update_paused{length = Length,
+                            event = Event};
+decode_flow_update(Event, Length, Data) ->
+    <<TableInt:8, ReasonInt:8, ITO:16, HTO:16, Priority:16, 
+      0:32, Cookie:8/bytes, MatchAndInstr/binary>> = Data, 
+    TableId = get_id(table, TableInt),
+    Reason = ofp_v5_enum:to_atom(flow_removed_reason, ReasonInt),
+    {Match, InstrBin} = decode_match_with_remainder(MatchAndInstr),
+    Instructions = 
+        case InstrBin of
+            no_value -> [];
+            _ -> decode_instructions(InstrBin)
+        end,
+    #ofp_flow_update_full{length = Length,
+                          event = Event,
+                          table_id = TableId,
+                          reason = Reason,
+                          idle_timeout = ITO,
+                          hard_timeout = HTO,
+                          priority = Priority,
+                          cookie = Cookie,
+                          match = Match,
+                          instructions = Instructions}.
+
+decode_match_with_remainder(Binary) ->
+    <<1:16, NoPadLength:16, More/binary>> = Binary,
+    FieldsBinLength = (NoPadLength - 4),
+    Padding = ((NoPadLength + 7) div 8) * 8 - NoPadLength,
+    {FieldsBin, Remainder} = 
+        case byte_size(More) - FieldsBinLength - Padding of
+            0 ->
+                <<FBin:FieldsBinLength/bytes, _:Padding/bytes>> = More,
+                {FBin, no_value};
+            _ ->
+                <<FBin:FieldsBinLength/bytes, _:Padding/bytes, R/binary>> = More,
+                {FBin, R}
+        end,
+    Fields = decode_match_fields(FieldsBin),
+    {#ofp_match{fields = Fields}, Remainder}.
 
 %%%-----------------------------------------------------------------------------
 %%% Internal functions

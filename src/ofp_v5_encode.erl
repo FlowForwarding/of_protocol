@@ -458,7 +458,29 @@ encode_struct(#ofp_queue_desc_prop_experimenter{
                  exp_type = ExpType,
                  data = Data}) ->
     Bin = <<Experimenter:32, ExpType:32, Data/binary>>,
-    encode_property(ofp_v5_enum:to_int(queue_desc_prop_type, experimenter), Bin).
+    encode_property(ofp_v5_enum:to_int(queue_desc_prop_type, experimenter), Bin);
+encode_struct(#ofp_flow_update_full{
+                 event = Event,
+                 table_id = TableId,
+                 reason = Reason,
+                 idle_timeout = ITO,
+                 hard_timeout = HTO,
+                 priority = Priority,
+                 cookie = Cookie,
+                 match = Match,
+                 instructions = Instructions}) ->
+    EventInt = ofp_v5_enum:to_int(flow_update_event, Event),
+    TableInt = get_id(table, TableId),
+    ReasonInt = ofp_v5_enum:to_int(flow_removed_reason, Reason),
+    MatchBin = encode_struct(Match),
+    InstrsBin = encode_list(Instructions),
+    Length = 32 + byte_size(MatchBin) + byte_size(InstrsBin),
+    <<Length:16, EventInt:16, TableInt:8, ReasonInt:8, ITO:16, HTO:16, Priority:16, 
+      0:32, Cookie:8/bytes, MatchBin/bytes, InstrsBin/bytes>>;
+encode_struct(#ofp_flow_update_abbrev{event = Event,
+                                      xid = XId}) ->
+    EventInt = ofp_v5_enum:to_int(flow_update_event, Event),
+    <<8:16, EventInt:16, XId:32>>.
 
 encode_async_masks({PacketInMask1, PacketInMask2},
                    {PortStatusMask1, PortStatusMask2},
@@ -820,13 +842,39 @@ encode_body(#ofp_queue_desc_reply{flags = Flags, queues = Queues}) ->
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     QueuesBin = list_to_binary(lists:map(fun encode_struct/1, Queues)),
     <<TypeInt:16, FlagsBin/bytes, 0:32, QueuesBin/binary>>;
-encode_body(#ofp_experimenter_request{flags = Flags,
-                                      experimenter = Experimenter,
-                                      exp_type = ExpType, data = Data}) ->
-    TypeInt = ofp_v5_enum:to_int(multipart_type, experimenter),
+encode_body(#ofp_flow_monitor_request{flags = Flags,
+                                      monitor_id = MId,
+                                      out_port = Port,
+                                      out_group = Group,
+                                      monitor_flags = MonFlags,
+                                      table_id = TableId,
+                                      command = Cmd,
+                                      match = Match}) ->
+    TypeInt = ofp_v5_enum:to_int(multipart_type, flow_monitor),
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
-    <<TypeInt:16, FlagsBin:2/bytes, 0:32,
-      Experimenter:32, ExpType:32, Data/bytes>>;
+    PortInt = get_id(port_no, Port),
+    GroupInt = get_id(group, Group),
+    MonFlagsBin = flags_to_binary(flow_monitor_flags, MonFlags, 2),
+    TableInt = get_id(table, TableId),
+    CmdInt = ofp_v5_enum:to_int(flow_monitor_command, Cmd),
+    MatchBin = encode_struct(Match),
+    <<TypeInt:16, FlagsBin/bytes, 0:32, MId:32, PortInt:32, GroupInt:32, 
+      MonFlagsBin/bytes, TableInt:8, CmdInt:8, MatchBin/bytes>>;
+encode_body(#ofp_flow_monitor_reply{flags = Flags,
+                                    updates = Updates}) ->
+    TypeInt = ofp_v5_enum:to_int(multipart_type, flow_monitor),
+    FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
+    UpdatesBin = case Updates of
+                     #ofp_flow_update_paused{event = Event} ->
+                         EventInt = ofp_v5_enum:to_int(flow_update_event, Event),
+                         <<8:16, EventInt:16, 0:32>>;
+                     [] ->
+                         %% No updates, e.g., rewply to a request w/o initial flag set
+                         <<>>;
+                     _ ->
+                        encode_list(Updates)
+                 end, 
+    <<TypeInt:16, FlagsBin:16/bits, 0:32, UpdatesBin/binary>>;
 encode_body(#ofp_experimenter_reply{flags = Flags,
                                     experimenter = Experimenter,
                                     exp_type = ExpType, data = Data}) ->
@@ -1241,6 +1289,10 @@ type_int(#ofp_meter_config_reply{}) ->
 type_int(#ofp_meter_features_request{}) ->
     ofp_v5_enum:to_int(type, multipart_request);
 type_int(#ofp_meter_features_reply{}) ->
+    ofp_v5_enum:to_int(type, multipart_reply);
+type_int(#ofp_flow_monitor_request{}) ->
+    ofp_v5_enum:to_int(type, multipart_request);
+type_int(#ofp_flow_monitor_reply{}) ->
     ofp_v5_enum:to_int(type, multipart_reply);
 type_int(#ofp_experimenter_request{}) ->
     ofp_v5_enum:to_int(type, multipart_request);

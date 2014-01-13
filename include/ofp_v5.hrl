@@ -1332,6 +1332,72 @@
           queues = [] :: [#ofp_queue_desc{}]
          }).
 
+%%% Flow monitoring (7.3.5.17 of spec 1.4)
+
+-type ofp_flow_monitor_command() :: add
+                                  | modify
+                                  | delete.
+
+-type ofp_flow_monitor_flag() :: initial
+                               | add
+                               | removed
+                               | modify
+                               | instructions
+                               | no_abbrev.
+
+-record(ofp_flow_monitor_request, {
+          flags = []       :: [ofp_multipart_request_flag()],
+          monitor_id       :: integer(),
+          out_port         :: ofp_port_no(),
+          out_group        :: ofp_group_id(),
+          monitor_flags    :: [ofp_flow_monitor_flag()],
+          table_id         :: ofp_table_id(),
+          command          :: ofp_flow_monitor_command(),
+          match            :: ofp_match()
+                   }).
+
+-type ofp_flow_monitor_request() :: #ofp_flow_monitor_request{}.
+
+-type ofp_flow_update_event() :: initial
+                               | added
+                               | removed
+                               | modified
+                               | abbrev
+                               | paused
+                               | resumed.
+
+-record(ofp_flow_update_full, {
+          length            :: integer(),
+          event             :: ofp_flow_update_event(),
+          table_id          :: ofp_table_id(),
+          reason            :: ofp_flow_removed_reason(),
+          idle_timeout      :: integer(),
+          hard_timeout      :: integer(),
+          priority          :: integer(),
+          cookie = <<0:64>> :: binary(),
+          match             :: ofp_match(),
+          instructions = [] :: [ofp_instruction()]
+         }).
+
+-record(ofp_flow_update_abbrev, {
+          length = 8 :: integer(),
+          event      :: ofp_flow_update_event(),
+          xid        :: integer()
+         }).
+
+-record(ofp_flow_update_paused, {
+          length = 8 :: integer(),
+          event      :: ofp_flow_update_event()
+         }).
+
+-record(ofp_flow_monitor_reply, {
+          flags = [] :: [ofp_multipart_reply_flag()],
+          updates = [] :: [#ofp_flow_update_full{}
+                           | #ofp_flow_update_abbrev{}] 
+                        | #ofp_flow_update_paused{}
+         }).
+-type ofp_flow_monitor_reply() :: #ofp_flow_monitor_reply{}.
+
 %%% Experimenter Multipart (A 3.5.15) ------------------------------------------
 
 -record(ofp_experimenter_request, {

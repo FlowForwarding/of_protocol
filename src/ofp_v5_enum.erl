@@ -385,6 +385,28 @@
 
 %% Packet-Out Messages ---------------------------------------------------------
 
+%% Flow Monitor Messages ---------------------------------------------------------
+
+-enum({flow_monitor_command, [add,
+                              modify,
+                              delete]}).
+
+-enum({flow_monitor_flags, [initial,
+                            add,
+                            removed,
+                            modify,
+                            instructions,
+                            no_abbrev,
+                            only_own]}).
+
+-enum({flow_update_event, [initial,
+                           added,
+                           removed, 
+                           modified,
+                           abbrev,
+                           paused,
+                           resumed]}).
+
 %% Barrier Messages ------------------------------------------------------------
 
 %% Role Request Messages -------------------------------------------------------
