@@ -44,7 +44,6 @@ flow_updates_test() ->
                        body    = #ofp_flow_monitor_reply{
                          flags = [],
                          updates = [#ofp_flow_update_full{
-                                       length            = 56, 
                                        event             = modified,
                                        table_id          = 8,
                                        reason            = meter_delete,

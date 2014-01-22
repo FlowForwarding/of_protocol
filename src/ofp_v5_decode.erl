@@ -1472,7 +1472,7 @@ decode_flow_updates(Data) ->
     case Event of
         Event when Event =:= paused;
                    Event =:= resumed ->
-            decode_flow_update(Event, Length, Bin);
+            decode_flow_update(Event, Bin);
         _ ->
             L = case Length of  %% Size of remainder of this update 
                     8 -> 4;
@@ -1480,23 +1480,21 @@ decode_flow_updates(Data) ->
                 end,
             case size(Bin) of
                 L ->
-                    [decode_flow_update(Event, Length, Bin)];
+                    [decode_flow_update(Event, Bin)];
                 _ ->
                     <<RecBin:L/bytes, Remainder/binary>> = Bin,
-                    [decode_flow_update(Event, L + 4, RecBin) | 
+                    [decode_flow_update(Event, RecBin) |
                      decode_flow_updates(Remainder)]
             end
     end.
 
-decode_flow_update(abbrev, Length, <<Xid:32>>) ->
-    #ofp_flow_update_abbrev{length = Length,
-                            event = abbrev,
+decode_flow_update(abbrev, <<Xid:32>>) ->
+    #ofp_flow_update_abbrev{event = abbrev,
                             xid = Xid};
-decode_flow_update(Event, Length, _Data) when Event =:= paused;
+decode_flow_update(Event, _Data) when Event =:= paused;
                                               Event =:= resumed ->
-    #ofp_flow_update_paused{length = Length,
-                            event = Event};
-decode_flow_update(Event, Length, Data) ->
+    #ofp_flow_update_paused{event = Event};
+decode_flow_update(Event, Data) ->
     <<TableInt:8, ReasonInt:8, ITO:16, HTO:16, Priority:16, 
       0:32, Cookie:8/bytes, MatchAndInstr/binary>> = Data, 
     TableId = get_id(table, TableInt),
@@ -1507,8 +1505,7 @@ decode_flow_update(Event, Length, Data) ->
             no_value -> [];
             _ -> decode_instructions(InstrBin)
         end,
-    #ofp_flow_update_full{length = Length,
-                          event = Event,
+    #ofp_flow_update_full{event = Event,
                           table_id = TableId,
                           reason = Reason,
                           idle_timeout = ITO,

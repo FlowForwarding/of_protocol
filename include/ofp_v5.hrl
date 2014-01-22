@@ -1367,7 +1367,6 @@
                                | resumed.
 
 -record(ofp_flow_update_full, {
-          length            :: integer(),
           event             :: ofp_flow_update_event(),
           table_id          :: ofp_table_id(),
           reason            :: ofp_flow_removed_reason(),
@@ -1380,13 +1379,11 @@
          }).
 
 -record(ofp_flow_update_abbrev, {
-          length = 8 :: integer(),
           event      :: ofp_flow_update_event(),
           xid        :: integer()
          }).
 
 -record(ofp_flow_update_paused, {
-          length = 8 :: integer(),
           event      :: ofp_flow_update_event()
          }).
 
