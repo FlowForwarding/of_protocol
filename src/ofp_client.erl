@@ -381,8 +381,10 @@ handle_send(#ofp_message{type = packet_in} = Message,
         _Else ->
             do_filter_send(Message, State)
     end;
-handle_send(#ofp_message{type = multipart_reply} = Message, State) ->
-    Replies = ofp_client_v4:split_multipart(Message),
+handle_send(#ofp_message{type = multipart_reply} = Message, 
+            #state{version = Version} = State) ->
+    Module = client_module(Version),
+    Replies = Module:split_multipart(Message),
     Results = [do_send(Reply, State) || Reply <- Replies],
     case lists:all(fun(X) -> X == ok end, Results) of
         true ->

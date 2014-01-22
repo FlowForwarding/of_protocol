@@ -215,6 +215,10 @@ type_atom(#ofp_table_desc_request{}) ->
     multipart_request;
 type_atom(#ofp_table_desc_reply{}) ->
     multipart_reply;
+type_atom(#ofp_flow_monitor_request{}) ->
+    multipart_request;
+type_atom(#ofp_flow_monitor_reply{}) ->
+    multipart_reply;
 type_atom(#ofp_experimenter_request{}) ->
     multipart_request;
 type_atom(#ofp_experimenter_reply{}) ->
