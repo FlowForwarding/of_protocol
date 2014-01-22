@@ -842,6 +842,13 @@ encode_body(#ofp_queue_desc_reply{flags = Flags, queues = Queues}) ->
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     QueuesBin = list_to_binary(lists:map(fun encode_struct/1, Queues)),
     <<TypeInt:16, FlagsBin/bytes, 0:32, QueuesBin/binary>>;
+encode_body(#ofp_experimenter_request{flags = Flags,
+                                      experimenter = Experimenter,
+                                      exp_type = ExpType, data = Data}) ->
+    TypeInt = ofp_v5_enum:to_int(multipart_type, experimenter),
+    FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
+    <<TypeInt:16, FlagsBin:2/bytes, 0:32,
+      Experimenter:32, ExpType:32, Data/bytes>>;
 encode_body(#ofp_flow_monitor_request{flags = Flags,
                                       monitor_id = MId,
                                       out_port = Port,
