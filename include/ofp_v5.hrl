@@ -1390,8 +1390,8 @@
 -record(ofp_flow_monitor_reply, {
           flags = [] :: [ofp_multipart_reply_flag()],
           updates = [] :: [#ofp_flow_update_full{}
-                           | #ofp_flow_update_abbrev{}] 
-                        | #ofp_flow_update_paused{}
+                           | #ofp_flow_update_abbrev{}
+                           | #ofp_flow_update_paused{}]
          }).
 -type ofp_flow_monitor_reply() :: #ofp_flow_monitor_reply{}.
 
