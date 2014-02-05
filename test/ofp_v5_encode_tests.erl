@@ -76,7 +76,7 @@ flow_update_paused_test() ->
                        xid     = 0,
                        body    = #ofp_flow_monitor_reply{
                          flags = [],
-                         updates = #ofp_flow_update_paused{event = resumed}}},
+                         updates = [#ofp_flow_update_paused{event = resumed}]}},
     {ok, EMsg} = of_protocol:encode(Msg),
     {ok, DMsg, _Rest} = of_protocol:decode(EMsg),
     ?assertEqual(Msg, DMsg).

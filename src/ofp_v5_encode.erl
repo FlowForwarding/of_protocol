@@ -480,7 +480,10 @@ encode_struct(#ofp_flow_update_full{
 encode_struct(#ofp_flow_update_abbrev{event = Event,
                                       xid = XId}) ->
     EventInt = ofp_v5_enum:to_int(flow_update_event, Event),
-    <<8:16, EventInt:16, XId:32>>.
+    <<8:16, EventInt:16, XId:32>>;
+encode_struct(#ofp_flow_update_paused{event = Event}) ->
+    EventInt = ofp_v5_enum:to_int(flow_update_event, Event),
+    <<8:16, EventInt:16, 0:32>>.
 
 encode_async_masks({PacketInMask1, PacketInMask2},
                    {PortStatusMask1, PortStatusMask2},
@@ -871,16 +874,7 @@ encode_body(#ofp_flow_monitor_reply{flags = Flags,
                                     updates = Updates}) ->
     TypeInt = ofp_v5_enum:to_int(multipart_type, flow_monitor),
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
-    UpdatesBin = case Updates of
-                     #ofp_flow_update_paused{event = Event} ->
-                         EventInt = ofp_v5_enum:to_int(flow_update_event, Event),
-                         <<8:16, EventInt:16, 0:32>>;
-                     [] ->
-                         %% No updates, e.g., rewply to a request w/o initial flag set
-                         <<>>;
-                     _ ->
-                        encode_list(Updates)
-                 end, 
+    UpdatesBin = encode_list(Updates),
     <<TypeInt:16, FlagsBin:16/bits, 0:32, UpdatesBin/binary>>;
 encode_body(#ofp_experimenter_reply{flags = Flags,
                                     experimenter = Experimenter,

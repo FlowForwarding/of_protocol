@@ -1310,13 +1310,7 @@ decode_body(multipart_reply, Binary) ->
             Queues = decode_queue_desc(Data),
             #ofp_queue_desc_reply{flags = Flags, queues = Queues};
         flow_monitor ->
-            Updates = case size(Data) of
-                          0 ->
-                              %% Empty utdate list
-                              [];
-                          _ ->
-                              decode_flow_updates(Data)
-                      end,
+            Updates = decode_flow_updates(Data),
             #ofp_flow_monitor_reply{flags = Flags,
                                     updates = Updates};
         experimenter ->
@@ -1466,27 +1460,17 @@ decode_queue_desc_properties(Bin) ->
                  data = Data}
       end, extract_properties(queue_desc_prop_type, Bin)).
 
-decode_flow_updates(Data) ->
-    <<Length:16, EventInt:16, Bin/bytes>> = Data,
+decode_flow_updates(<<>>) ->
+    [];
+decode_flow_updates(<<Length:16, EventInt:16, Bin/bytes>>) ->
     Event = ofp_v5_enum:to_atom(flow_update_event, EventInt),
-    case Event of
-        Event when Event =:= paused;
-                   Event =:= resumed ->
-            decode_flow_update(Event, Bin);
-        _ ->
-            L = case Length of  %% Size of remainder of this update 
-                    8 -> 4;
-                    _ -> Length - 12  %% 32 + Match + Instr is not the real size of the payload 
-                end,
-            case size(Bin) of
-                L ->
-                    [decode_flow_update(Event, Bin)];
-                _ ->
-                    <<RecBin:L/bytes, Remainder/binary>> = Bin,
-                    [decode_flow_update(Event, RecBin) |
-                     decode_flow_updates(Remainder)]
-            end
-    end.
+    L = case Length of  %% Size of remainder of this update 
+	    8 -> 4;
+	    _ -> Length - 12  %% 32 + Match + Instr is not the real size of the payload 
+	end,
+    <<RecBin:L/bytes, Remainder/binary>> = Bin,
+    [decode_flow_update(Event, RecBin) |
+     decode_flow_updates(Remainder)].
 
 decode_flow_update(abbrev, <<Xid:32>>) ->
     #ofp_flow_update_abbrev{event = abbrev,
