@@ -1371,7 +1371,35 @@ decode_body(meter_mod, Binary) ->
     MeterId = get_id(meter_id, MeterIdInt),
     Bands = decode_bands(BandsBin),
     #ofp_meter_mod{command = Command, flags = Flags, meter_id = MeterId,
-                   bands = Bands}.
+                   bands = Bands};
+decode_body(bundle_control, Binary) ->
+    <<BundleId:32, TypeInt:16, FlagsBin:2/bytes, PropertiesBin/bytes>> = Binary,
+    Type = ofp_v5_enum:to_atom(bundle_ctrl_type, TypeInt),
+    Flags = binary_to_flags(bundle_flag, FlagsBin),
+    Properties = decode_bundle_properties(PropertiesBin),
+    #ofp_bundle_ctrl_msg{
+       bundle_id = BundleId,
+       type = Type,
+       flags = Flags,
+       properties = Properties};
+decode_body(bundle_add_message, Binary) ->
+    <<BundleId:32, _:16, FlagsBin:2/bytes, Rest/binary>> = Binary,
+    Flags = binary_to_flags(bundle_flag, FlagsBin),
+    <<_Version:8, _Type:8, MsgLength:16, _/binary>> = Rest,
+    <<MsgBin:MsgLength/bytes, Rest2/binary>> = Rest,
+    {ok, Message, _} = do(MsgBin),
+    PadLength = (MsgLength + 7) div 8 * 8 - MsgLength,
+    if PadLength < byte_size(Rest2) ->
+            <<_:PadLength/bytes, PropertiesBin/binary>> = Rest2;
+       true ->
+            PropertiesBin = <<>>
+    end,
+    Properties = decode_bundle_properties(PropertiesBin),
+    #ofp_bundle_add_msg{
+       bundle_id = BundleId,
+       flags = Flags,
+       message = Message,
+       properties = Properties}.
 
 %% This function can be used to extract properties from a binary.
 %% It assumes that each property begins with:
@@ -1459,6 +1487,16 @@ decode_queue_desc_properties(Bin) ->
                  exp_type = ExpType,
                  data = Data}
       end, extract_properties(queue_desc_prop_type, Bin)).
+
+decode_bundle_properties(Bin) ->
+    lists:map(
+         fun({experimenter, PropBin}) ->
+              <<Experimenter:32, ExpType:32, Data/binary>> = PropBin,
+              #ofp_bundle_prop_experimenter{
+                 experimenter = Experimenter,
+                 exp_type = ExpType,
+                 data = Data}
+         end, extract_properties(bundle_prop_type, Bin)).
 
 decode_flow_updates(<<>>) ->
     [];

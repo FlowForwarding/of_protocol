@@ -1557,6 +1557,43 @@
 -type ofp_set_async() :: #ofp_set_async{}.
 
 %%%-----------------------------------------------------------------------------
+%%% Bundle Messages (version 1.4.0, section 7.3.9)
+%%%-----------------------------------------------------------------------------
+-type ofp_bundle_ctrl_type() :: open_request
+                              | open_reply
+                              | close_request
+                              | close_reply
+                              | commit_request
+                              | commit_reply
+                              | discard_request
+                              | discard_reply.
+
+-type ofp_bundle_flag() :: atomic
+                         | ordered.
+
+-record(ofp_bundle_prop_experimenter, {
+          experimenter :: non_neg_integer(),
+          exp_type :: non_neg_integer(),
+          data = <<>> :: binary()
+         }).
+
+-type ofp_bundle_prop() :: #ofp_bundle_prop_experimenter{}.
+
+-record(ofp_bundle_ctrl_msg, {
+          bundle_id :: non_neg_integer(),
+          type :: ofp_bundle_ctrl_type(),
+          flags = [] :: [ofp_bundle_flag()],
+          properties = [] :: [ofp_bundle_prop()]
+         }).
+
+-record(ofp_bundle_add_msg, {
+          bundle_id :: non_neg_integer(),
+          flags = [] :: [ofp_bundle_flag()],
+          message :: ofp_message(),
+          properties = [] :: [ofp_bundle_flag()]
+         }).
+
+%%%-----------------------------------------------------------------------------
 %%% Asynchronous Messages (A 4)
 %%%-----------------------------------------------------------------------------
 

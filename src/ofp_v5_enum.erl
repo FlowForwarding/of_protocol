@@ -67,7 +67,14 @@
               %% Meters and rate limiters configuration messages
               meter_mod,
               %% Controller role change event messages
-              role_status
+              role_status,
+              %% Asynchronous messages.
+              table_status,
+              %% Request forwarding by the switch.
+              requestforward,
+              %% Bundle operations (multiple messages as a single operation).
+              bundle_control,
+              bundle_add_message
              ]}).
 
 %%------------------------------------------------------------------------------
@@ -423,6 +430,22 @@
                                 experimenter]}).
 
 -enum({role_prop_type, [{experimenter, 16#ffff}]}).
+
+%% Bundle Messages -------------------------------------------------------------
+
+-enum({bundle_ctrl_type, [open_request,
+                          open_reply,
+                          close_request,
+                          close_reply,
+                          commit_request,
+                          commit_reply,
+                          discard_request,
+                          discard_reply]}).
+
+-enum({bundle_flag, [atomic,
+                     ordered]}).
+
+-enum({bundle_prop_type, [{experimenter, 16#ffff}]}).
 
 %%------------------------------------------------------------------------------
 %% Asynchronous Messages

@@ -483,7 +483,17 @@ encode_struct(#ofp_flow_update_abbrev{event = Event,
     <<8:16, EventInt:16, XId:32>>;
 encode_struct(#ofp_flow_update_paused{event = Event}) ->
     EventInt = ofp_v5_enum:to_int(flow_update_event, Event),
-    <<8:16, EventInt:16, 0:32>>.
+    <<8:16, EventInt:16, 0:32>>;
+encode_struct(#ofp_bundle_prop_experimenter{
+                 experimenter = Experimenter,
+                 exp_type = ExpType,
+                 data = Data}) ->
+    PropTypeInt = ofp_v5_enum:to_int(bundle_prop_type, experimenter),
+    encode_property(PropTypeInt,
+                    <<Experimenter:32,
+                      ExpType:32,
+                      Data/binary>>).
+
 
 encode_async_masks({PacketInMask1, PacketInMask2},
                    {PortStatusMask1, PortStatusMask2},
@@ -940,6 +950,33 @@ encode_body(#ofp_meter_mod{command = Command,
     MeterIdInt = get_id(meter_id, MeterId),
     BandsBin = encode_list(Bands),
     <<CommandInt:16, FlagsBin:2/bytes, MeterIdInt:32, BandsBin/bytes>>;
+encode_body(#ofp_bundle_ctrl_msg{bundle_id = BundleId,
+                                 type = Type,
+                                 flags = Flags,
+                                 properties = Properties}) ->
+    TypeInt = ofp_v5_enum:to_int(bundle_ctrl_type, Type),
+    FlagsBin = flags_to_binary(bundle_flag, Flags, 2),
+    EncodedProperties = lists:map(fun encode_struct/1, Properties),
+    PropertiesBin = list_to_binary(EncodedProperties),
+    <<BundleId:32, TypeInt:16, FlagsBin:2/bytes, PropertiesBin/binary>>;
+encode_body(#ofp_bundle_add_msg{bundle_id = BundleId,
+                                flags = Flags,
+                                message = Message,
+                                properties = Properties}) ->
+    FlagsBin = flags_to_binary(bundle_flag, Flags, 2),
+    MessageBin = do(Message),
+    case Properties of
+        [] ->
+            Padding = <<>>,
+            PropertiesBin = <<>>;
+        [_|_] ->
+            MsgLen = byte_size(MessageBin),
+            PadLen = (MsgLen + 7) div 8 * 8 - MsgLen,
+            Padding = <<0:(PadLen*8)>>,
+            PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties))
+    end,
+    <<BundleId:32, 0:16, FlagsBin:2/bytes, MessageBin/binary,
+      Padding/binary, PropertiesBin/binary>>;
 encode_body(Other) ->
     throw({bad_message, Other}).
 
@@ -1328,7 +1365,8 @@ type_int(#ofp_get_async_reply{}) ->
 type_int(#ofp_set_async{}) ->
     ofp_v5_enum:to_int(type, set_async);
 type_int(#ofp_meter_mod{}) ->
-    ofp_v5_enum:to_int(type, meter_mod).
-
-
-
+    ofp_v5_enum:to_int(type, meter_mod);
+type_int(#ofp_bundle_ctrl_msg{}) ->
+    ofp_v5_enum:to_int(type, bundle_control);
+type_int(#ofp_bundle_add_msg{}) ->
+    ofp_v5_enum:to_int(type, bundle_add_message).
