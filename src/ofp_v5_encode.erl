@@ -931,6 +931,11 @@ encode_body(#ofp_role_status{role = Role,
                   end, Properties),
     PropertiesBin = list_to_binary(EncodedProperties),
     <<RoleInt:32, ReasonInt:8, 0:24, Gen:64, PropertiesBin/binary>>;
+encode_body(#ofp_table_status{reason = Reason,
+                              table = Table}) ->
+    ReasonInt = ofp_v5_enum:to_int(table_reason, Reason),
+    TableBin = encode_struct(Table),
+    <<ReasonInt:8, 0:56, TableBin/binary>>;
 encode_body(#ofp_get_async_request{}) ->
     <<>>;
 encode_body(#ofp_get_async_reply{packet_in_mask = PacketInMask,
@@ -1358,6 +1363,8 @@ type_int(#ofp_role_reply{}) ->
     ofp_v5_enum:to_int(type, role_reply);
 type_int(#ofp_role_status{}) ->
     ofp_v5_enum:to_int(type, role_status);
+type_int(#ofp_table_status{}) ->
+    ofp_v5_enum:to_int(type, table_status);
 type_int(#ofp_get_async_request{}) ->
     ofp_v5_enum:to_int(type, get_async_request);
 type_int(#ofp_get_async_reply{}) ->
