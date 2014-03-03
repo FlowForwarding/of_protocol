@@ -1502,10 +1502,7 @@ decode_flow_updates(<<>>) ->
     [];
 decode_flow_updates(<<Length:16, EventInt:16, Bin/bytes>>) ->
     Event = ofp_v5_enum:to_atom(flow_update_event, EventInt),
-    L = case Length of  %% Size of remainder of this update 
-	    8 -> 4;
-	    _ -> Length - 12  %% 32 + Match + Instr is not the real size of the payload 
-	end,
+    L = Length - 4,
     <<RecBin:L/bytes, Remainder/binary>> = Bin,
     [decode_flow_update(Event, RecBin) |
      decode_flow_updates(Remainder)].
