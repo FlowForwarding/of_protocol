@@ -1352,6 +1352,10 @@ decode_body(role_status, Binary) ->
     #ofp_role_status{role = Role, reason = Reason, generation_id = Gen,
                      properties = decode_role_status_properties(PropertiesBin)};
 
+decode_body(requestforward, Binary) ->
+    {ok, Request, _} = do(Binary),
+    #ofp_requestforward{request = Request};
+
 decode_body(get_async_request, _) ->
     #ofp_get_async_request{};
 decode_body(get_async_reply, Binary) ->
