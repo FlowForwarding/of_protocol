@@ -474,7 +474,7 @@ encode_struct(#ofp_flow_update_full{
     ReasonInt = ofp_v5_enum:to_int(flow_removed_reason, Reason),
     MatchBin = encode_struct(Match),
     InstrsBin = encode_list(Instructions),
-    Length = 32 + byte_size(MatchBin) + byte_size(InstrsBin),
+    Length = 24 + byte_size(MatchBin) + byte_size(InstrsBin),
     <<Length:16, EventInt:16, TableInt:8, ReasonInt:8, ITO:16, HTO:16, Priority:16, 
       0:32, Cookie:8/bytes, MatchBin/bytes, InstrsBin/bytes>>;
 encode_struct(#ofp_flow_update_abbrev{event = Event,
