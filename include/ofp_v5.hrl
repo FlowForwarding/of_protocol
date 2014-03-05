@@ -176,6 +176,8 @@
       | ofp_get_async_request()
       | ofp_get_async_reply()
       | ofp_set_async()
+        %% Request forwarding by the switch
+      | ofp_requestforward()
         %% Meters and rate limiters configuration messages
       | ofp_meter_mod().
 
@@ -1528,6 +1530,15 @@
          }).
 
 -type ofp_role_prop() :: #ofp_role_prop_experimenter{}.
+
+%%%-----------------------------------------------------------------------------
+%%% Request Forward Message (version 1.4.0, section 7.4.6)
+%%%-----------------------------------------------------------------------------
+
+-record(ofp_requestforward, {
+          request :: ofp_message()
+         }).
+-type ofp_requestforward() :: #ofp_requestforward{}.
 
 %%%-----------------------------------------------------------------------------
 %%% Set Asynchronous Configuration Message (A 3.10)
