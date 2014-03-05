@@ -1359,6 +1359,11 @@ decode_body(table_status, Binary) ->
     Reason = ofp_v5_enum:to_atom(table_reason, ReasonInt),
     Table = decode_table_desc(TableBin),
     #ofp_table_status{reason = Reason, table = Table};
+
+decode_body(requestforward, Binary) ->
+    {ok, Request, _} = do(Binary),
+    #ofp_requestforward{request = Request};
+
 decode_body(get_async_request, _) ->
     #ofp_get_async_request{};
 decode_body(get_async_reply, Binary) ->
