@@ -889,19 +889,22 @@ decode_meter_config_list(Binary, MeterConfigs) ->
                                     bands = Bands},
     decode_meter_config_list(Rest2, [MeterConfig | MeterConfigs]).
 
-decode_table_desc(<<>>) ->
-    [];
-decode_table_desc(<<TotalLength:16, TableIdInt:8, _Pad:8, ConfigBin:32/bits,
-                    Rest/binary>>) ->
-    PropertiesLength = TotalLength - 8,
-    <<PropertiesBin:PropertiesLength/bytes, Tail/binary>> = Rest,
-
+decode_table_desc(<<_:16, TableIdInt:8, _Pad:8, ConfigBin:32/bits,
+                    PropertiesBin/bytes>>) ->
     TableId = get_id(table, TableIdInt),
     Config = binary_to_flags(table_config, ConfigBin),
     Properties = decode_table_mod_properties(PropertiesBin),
 
-    [#ofp_table_desc{table_id = TableId, config = Config, properties = Properties}
-     | decode_table_desc(Tail)].
+    #ofp_table_desc{table_id = TableId, config = Config,
+                    properties = Properties}.
+
+decode_table_desc_list(<<>>) ->
+    [];
+decode_table_desc_list(Binary) ->
+    <<TotalLength:16, _/binary>> = Binary,
+    <<TableBin:TotalLength/bytes, Tail/binary>> = Binary,
+
+    [decode_table_desc(TableBin) | decode_table_desc_list(Tail)].
 
 decode_queue_desc(<<>>) ->
     [];
@@ -1304,7 +1307,7 @@ decode_body(multipart_reply, Binary) ->
                                       max_bands = MaxBands,
                                       max_color = MaxColor};
         table_desc ->
-            Tables = decode_table_desc(Data),
+            Tables = decode_table_desc_list(Data),
             #ofp_table_desc_reply{flags = Flags, tables = Tables};
         queue_desc ->
             Queues = decode_queue_desc(Data),
@@ -1351,7 +1354,11 @@ decode_body(role_status, Binary) ->
     Reason = ofp_v5_enum:to_atom(controller_role_reason, ReasonInt),
     #ofp_role_status{role = Role, reason = Reason, generation_id = Gen,
                      properties = decode_role_status_properties(PropertiesBin)};
-
+decode_body(table_status, Binary) ->
+    <<ReasonInt:8, _Pad:56, TableBin/binary>> = Binary,
+    Reason = ofp_v5_enum:to_atom(table_reason, ReasonInt),
+    Table = decode_table_desc(TableBin),
+    #ofp_table_status{reason = Reason, table = Table};
 decode_body(get_async_request, _) ->
     #ofp_get_async_request{};
 decode_body(get_async_reply, Binary) ->

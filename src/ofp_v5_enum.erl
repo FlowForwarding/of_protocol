@@ -431,6 +431,11 @@
 
 -enum({role_prop_type, [{experimenter, 16#ffff}]}).
 
+%% Table Status Messages -------------------------------------------------------
+
+-enum({table_reason, [{vacancy_down, 3},
+                      {vacancy_up, 4}]}).
+
 %% Bundle Messages -------------------------------------------------------------
 
 -enum({bundle_ctrl_type, [open_request,
