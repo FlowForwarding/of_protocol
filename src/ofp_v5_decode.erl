@@ -889,19 +889,22 @@ decode_meter_config_list(Binary, MeterConfigs) ->
                                     bands = Bands},
     decode_meter_config_list(Rest2, [MeterConfig | MeterConfigs]).
 
-decode_table_desc(<<>>) ->
-    [];
-decode_table_desc(<<TotalLength:16, TableIdInt:8, _Pad:8, ConfigBin:32/bits,
-                    Rest/binary>>) ->
-    PropertiesLength = TotalLength - 8,
-    <<PropertiesBin:PropertiesLength/bytes, Tail/binary>> = Rest,
-
+decode_table_desc(<<_:16, TableIdInt:8, _Pad:8, ConfigBin:32/bits,
+                    PropertiesBin/bytes>>) ->
     TableId = get_id(table, TableIdInt),
     Config = binary_to_flags(table_config, ConfigBin),
     Properties = decode_table_mod_properties(PropertiesBin),
 
-    [#ofp_table_desc{table_id = TableId, config = Config, properties = Properties}
-     | decode_table_desc(Tail)].
+    #ofp_table_desc{table_id = TableId, config = Config,
+                    properties = Properties}.
+
+decode_table_desc_list(<<>>) ->
+    [];
+decode_table_desc_list(Binary) ->
+    <<TotalLength:16, _/binary>> = Binary,
+    <<TableBin:TotalLength/bytes, Tail/binary>> = Binary,
+
+    [decode_table_desc(TableBin) | decode_table_desc_list(Tail)].
 
 decode_queue_desc(<<>>) ->
     [];
@@ -1304,7 +1307,7 @@ decode_body(multipart_reply, Binary) ->
                                       max_bands = MaxBands,
                                       max_color = MaxColor};
         table_desc ->
-            Tables = decode_table_desc(Data),
+            Tables = decode_table_desc_list(Data),
             #ofp_table_desc_reply{flags = Flags, tables = Tables};
         queue_desc ->
             Queues = decode_queue_desc(Data),
@@ -1351,6 +1354,15 @@ decode_body(role_status, Binary) ->
     Reason = ofp_v5_enum:to_atom(controller_role_reason, ReasonInt),
     #ofp_role_status{role = Role, reason = Reason, generation_id = Gen,
                      properties = decode_role_status_properties(PropertiesBin)};
+decode_body(table_status, Binary) ->
+    <<ReasonInt:8, _Pad:56, TableBin/binary>> = Binary,
+    Reason = ofp_v5_enum:to_atom(table_reason, ReasonInt),
+    Table = decode_table_desc(TableBin),
+    #ofp_table_status{reason = Reason, table = Table};
+
+decode_body(requestforward, Binary) ->
+    {ok, Request, _} = do(Binary),
+    #ofp_requestforward{request = Request};
 
 decode_body(get_async_request, _) ->
     #ofp_get_async_request{};
@@ -1371,7 +1383,35 @@ decode_body(meter_mod, Binary) ->
     MeterId = get_id(meter_id, MeterIdInt),
     Bands = decode_bands(BandsBin),
     #ofp_meter_mod{command = Command, flags = Flags, meter_id = MeterId,
-                   bands = Bands}.
+                   bands = Bands};
+decode_body(bundle_control, Binary) ->
+    <<BundleId:32, TypeInt:16, FlagsBin:2/bytes, PropertiesBin/bytes>> = Binary,
+    Type = ofp_v5_enum:to_atom(bundle_ctrl_type, TypeInt),
+    Flags = binary_to_flags(bundle_flag, FlagsBin),
+    Properties = decode_bundle_properties(PropertiesBin),
+    #ofp_bundle_ctrl_msg{
+       bundle_id = BundleId,
+       type = Type,
+       flags = Flags,
+       properties = Properties};
+decode_body(bundle_add_message, Binary) ->
+    <<BundleId:32, _:16, FlagsBin:2/bytes, Rest/binary>> = Binary,
+    Flags = binary_to_flags(bundle_flag, FlagsBin),
+    <<_Version:8, _Type:8, MsgLength:16, _/binary>> = Rest,
+    <<MsgBin:MsgLength/bytes, Rest2/binary>> = Rest,
+    {ok, Message, _} = do(MsgBin),
+    PadLength = (MsgLength + 7) div 8 * 8 - MsgLength,
+    if PadLength < byte_size(Rest2) ->
+            <<_:PadLength/bytes, PropertiesBin/binary>> = Rest2;
+       true ->
+            PropertiesBin = <<>>
+    end,
+    Properties = decode_bundle_properties(PropertiesBin),
+    #ofp_bundle_add_msg{
+       bundle_id = BundleId,
+       flags = Flags,
+       message = Message,
+       properties = Properties}.
 
 %% This function can be used to extract properties from a binary.
 %% It assumes that each property begins with:
@@ -1460,14 +1500,21 @@ decode_queue_desc_properties(Bin) ->
                  data = Data}
       end, extract_properties(queue_desc_prop_type, Bin)).
 
+decode_bundle_properties(Bin) ->
+    lists:map(
+         fun({experimenter, PropBin}) ->
+              <<Experimenter:32, ExpType:32, Data/binary>> = PropBin,
+              #ofp_bundle_prop_experimenter{
+                 experimenter = Experimenter,
+                 exp_type = ExpType,
+                 data = Data}
+         end, extract_properties(bundle_prop_type, Bin)).
+
 decode_flow_updates(<<>>) ->
     [];
 decode_flow_updates(<<Length:16, EventInt:16, Bin/bytes>>) ->
     Event = ofp_v5_enum:to_atom(flow_update_event, EventInt),
-    L = case Length of  %% Size of remainder of this update 
-	    8 -> 4;
-	    _ -> Length - 12  %% 32 + Match + Instr is not the real size of the payload 
-	end,
+    L = Length - 4,
     <<RecBin:L/bytes, Remainder/binary>> = Bin,
     [decode_flow_update(Event, RecBin) |
      decode_flow_updates(Remainder)].

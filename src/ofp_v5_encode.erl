@@ -476,7 +476,7 @@ encode_struct(#ofp_flow_update_full{
     ReasonInt = ofp_v5_enum:to_int(flow_removed_reason, Reason),
     MatchBin = encode_struct(Match),
     InstrsBin = encode_list(Instructions),
-    Length = 32 + byte_size(MatchBin) + byte_size(InstrsBin),
+    Length = 24 + byte_size(MatchBin) + byte_size(InstrsBin),
     <<Length:16, EventInt:16, TableInt:8, ReasonInt:8, ITO:16, HTO:16, Priority:16, 
       0:32, Cookie:8/bytes, MatchBin/bytes, InstrsBin/bytes>>;
 encode_struct(#ofp_flow_update_abbrev{event = Event,
@@ -485,7 +485,17 @@ encode_struct(#ofp_flow_update_abbrev{event = Event,
     <<8:16, EventInt:16, XId:32>>;
 encode_struct(#ofp_flow_update_paused{event = Event}) ->
     EventInt = ofp_v5_enum:to_int(flow_update_event, Event),
-    <<8:16, EventInt:16, 0:32>>.
+    <<8:16, EventInt:16, 0:32>>;
+encode_struct(#ofp_bundle_prop_experimenter{
+                 experimenter = Experimenter,
+                 exp_type = ExpType,
+                 data = Data}) ->
+    PropTypeInt = ofp_v5_enum:to_int(bundle_prop_type, experimenter),
+    encode_property(PropTypeInt,
+                    <<Experimenter:32,
+                      ExpType:32,
+                      Data/binary>>).
+
 
 encode_async_masks({PacketInMask1, PacketInMask2},
                    {PortStatusMask1, PortStatusMask2},
@@ -923,6 +933,13 @@ encode_body(#ofp_role_status{role = Role,
                   end, Properties),
     PropertiesBin = list_to_binary(EncodedProperties),
     <<RoleInt:32, ReasonInt:8, 0:24, Gen:64, PropertiesBin/binary>>;
+encode_body(#ofp_table_status{reason = Reason,
+                              table = Table}) ->
+    ReasonInt = ofp_v5_enum:to_int(table_reason, Reason),
+    TableBin = encode_struct(Table),
+    <<ReasonInt:8, 0:56, TableBin/binary>>;
+encode_body(#ofp_requestforward{request = Request}) ->
+    do(Request);
 encode_body(#ofp_get_async_request{}) ->
     <<>>;
 encode_body(#ofp_get_async_reply{packet_in_mask = PacketInMask,
@@ -942,6 +959,33 @@ encode_body(#ofp_meter_mod{command = Command,
     MeterIdInt = get_id(meter_id, MeterId),
     BandsBin = encode_list(Bands),
     <<CommandInt:16, FlagsBin:2/bytes, MeterIdInt:32, BandsBin/bytes>>;
+encode_body(#ofp_bundle_ctrl_msg{bundle_id = BundleId,
+                                 type = Type,
+                                 flags = Flags,
+                                 properties = Properties}) ->
+    TypeInt = ofp_v5_enum:to_int(bundle_ctrl_type, Type),
+    FlagsBin = flags_to_binary(bundle_flag, Flags, 2),
+    EncodedProperties = lists:map(fun encode_struct/1, Properties),
+    PropertiesBin = list_to_binary(EncodedProperties),
+    <<BundleId:32, TypeInt:16, FlagsBin:2/bytes, PropertiesBin/binary>>;
+encode_body(#ofp_bundle_add_msg{bundle_id = BundleId,
+                                flags = Flags,
+                                message = Message,
+                                properties = Properties}) ->
+    FlagsBin = flags_to_binary(bundle_flag, Flags, 2),
+    MessageBin = do(Message),
+    case Properties of
+        [] ->
+            Padding = <<>>,
+            PropertiesBin = <<>>;
+        [_|_] ->
+            MsgLen = byte_size(MessageBin),
+            PadLen = (MsgLen + 7) div 8 * 8 - MsgLen,
+            Padding = <<0:(PadLen*8)>>,
+            PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties))
+    end,
+    <<BundleId:32, 0:16, FlagsBin:2/bytes, MessageBin/binary,
+      Padding/binary, PropertiesBin/binary>>;
 encode_body(Other) ->
     throw({bad_message, Other}).
 
@@ -1323,6 +1367,10 @@ type_int(#ofp_role_reply{}) ->
     ofp_v5_enum:to_int(type, role_reply);
 type_int(#ofp_role_status{}) ->
     ofp_v5_enum:to_int(type, role_status);
+type_int(#ofp_table_status{}) ->
+    ofp_v5_enum:to_int(type, table_status);
+type_int(#ofp_requestforward{}) ->
+    ofp_v5_enum:to_int(type, requestforward);
 type_int(#ofp_get_async_request{}) ->
     ofp_v5_enum:to_int(type, get_async_request);
 type_int(#ofp_get_async_reply{}) ->
@@ -1330,7 +1378,8 @@ type_int(#ofp_get_async_reply{}) ->
 type_int(#ofp_set_async{}) ->
     ofp_v5_enum:to_int(type, set_async);
 type_int(#ofp_meter_mod{}) ->
-    ofp_v5_enum:to_int(type, meter_mod).
-
-
-
+    ofp_v5_enum:to_int(type, meter_mod);
+type_int(#ofp_bundle_ctrl_msg{}) ->
+    ofp_v5_enum:to_int(type, bundle_control);
+type_int(#ofp_bundle_add_msg{}) ->
+    ofp_v5_enum:to_int(type, bundle_add_message).

@@ -177,8 +177,11 @@
       | ofp_get_async_request()
       | ofp_get_async_reply()
       | ofp_set_async()
+        %% Request forwarding by the switch
+      | ofp_requestforward()
         %% Meters and rate limiters configuration messages
-      | ofp_meter_mod().
+      | ofp_meter_mod()
+      | ofp_table_status().
 
 %%%-----------------------------------------------------------------------------
 %%% Common Structures (A 2)
@@ -1291,6 +1294,7 @@
           config = [] :: [ofp_table_config()],
           properties = [] :: [ofp_table_mod_property()]
          }).
+-type ofp_table_desc() :: #ofp_table_desc{}.
 
 -record(ofp_table_desc_reply, {
           flags = [] :: [ofp_multipart_reply_flag()],
@@ -1531,6 +1535,28 @@
 -type ofp_role_prop() :: #ofp_role_prop_experimenter{}.
 
 %%%-----------------------------------------------------------------------------
+%%% Table Status Message (version 1.4.0, section 7.4.5)
+%%%-----------------------------------------------------------------------------
+
+-type ofp_table_reason() :: vacancy_down
+                          | vacancy_up.
+
+-record(ofp_table_status, {
+          reason :: ofp_table_reason(),
+          table :: ofp_table_desc()
+         }).
+-type ofp_table_status() :: #ofp_table_status{}.
+
+%%%-----------------------------------------------------------------------------
+%%% Request Forward Message (version 1.4.0, section 7.4.6)
+%%%-----------------------------------------------------------------------------
+
+-record(ofp_requestforward, {
+          request :: ofp_message()
+         }).
+-type ofp_requestforward() :: #ofp_requestforward{}.
+
+%%%-----------------------------------------------------------------------------
 %%% Set Asynchronous Configuration Message (A 3.10)
 %%%-----------------------------------------------------------------------------
 
@@ -1556,6 +1582,43 @@
                                            [ofp_flow_removed_reason()]}
          }).
 -type ofp_set_async() :: #ofp_set_async{}.
+
+%%%-----------------------------------------------------------------------------
+%%% Bundle Messages (version 1.4.0, section 7.3.9)
+%%%-----------------------------------------------------------------------------
+-type ofp_bundle_ctrl_type() :: open_request
+                              | open_reply
+                              | close_request
+                              | close_reply
+                              | commit_request
+                              | commit_reply
+                              | discard_request
+                              | discard_reply.
+
+-type ofp_bundle_flag() :: atomic
+                         | ordered.
+
+-record(ofp_bundle_prop_experimenter, {
+          experimenter :: non_neg_integer(),
+          exp_type :: non_neg_integer(),
+          data = <<>> :: binary()
+         }).
+
+-type ofp_bundle_prop() :: #ofp_bundle_prop_experimenter{}.
+
+-record(ofp_bundle_ctrl_msg, {
+          bundle_id :: non_neg_integer(),
+          type :: ofp_bundle_ctrl_type(),
+          flags = [] :: [ofp_bundle_flag()],
+          properties = [] :: [ofp_bundle_prop()]
+         }).
+
+-record(ofp_bundle_add_msg, {
+          bundle_id :: non_neg_integer(),
+          flags = [] :: [ofp_bundle_flag()],
+          message :: ofp_message(),
+          properties = [] :: [ofp_bundle_flag()]
+         }).
 
 %%%-----------------------------------------------------------------------------
 %%% Asynchronous Messages (A 4)
