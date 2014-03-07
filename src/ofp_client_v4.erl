@@ -27,7 +27,9 @@
          filter_out_message/3,
          type_atom/1,
          add_aux_id/2,
-         split_multipart/1]).
+         split_multipart/1,
+         split_big_multipart/1
+         ]).
 
 -include("of_protocol.hrl").
 -include("ofp_v4.hrl").
@@ -260,6 +262,96 @@ split2(_, [], Head) ->
     {lists:reverse(Head), []};
 split2(N, [X | Tail], Head) ->
     split2(N - 1, Tail, [X | Head]).
+
+%% False inner boddies, cant be split into reliable complete messages.
+multipart_inner_body(#ofp_desc_request           {} = _Msg)                  -> false;
+multipart_inner_body(#ofp_desc_reply             {} = _Msg)                  -> false;
+multipart_inner_body(#ofp_flow_stats_request     {} = _Msg)                  -> false;
+multipart_inner_body(#ofp_flow_stats_reply       { body = InnerBody } = _Msg)-> {body,InnerBody};
+multipart_inner_body(#ofp_aggregate_stats_request{} = _Msg)                  -> false;
+multipart_inner_body(#ofp_aggregate_stats_reply  {} = _Msg)                  -> false;
+multipart_inner_body(#ofp_table_stats_request    {} = _Msg)                  -> false;
+multipart_inner_body(#ofp_table_stats_reply      { body = InnerBody } = _Msg)-> {body,InnerBody};
+multipart_inner_body(#ofp_table_features_request {} = _Msg)                  -> false;
+multipart_inner_body(#ofp_table_features_reply   {} = _Msg)                  -> false;
+multipart_inner_body(#ofp_port_stats_request     {} = _Msg)                  -> false;
+multipart_inner_body(#ofp_port_stats_reply       { body = InnerBody } = _Msg)-> {body,InnerBody};
+multipart_inner_body(#ofp_port_desc_request      {} = _Msg)                  -> false;
+multipart_inner_body(#ofp_port_desc_reply        { body = InnerBody } = _Msg)-> {body,InnerBody};
+multipart_inner_body(#ofp_queue_stats_request    {} = _Msg)                  -> false;
+multipart_inner_body(#ofp_queue_stats_reply      { body = InnerBody } = _Msg)-> {body,InnerBody};
+multipart_inner_body(#ofp_group_stats_request    {} = _Msg)                  -> false;
+multipart_inner_body(#ofp_group_stats_reply      { body = InnerBody } = _Msg)-> {body,InnerBody};
+multipart_inner_body(#ofp_group_desc_request     {} = _Msg)                  -> false;
+multipart_inner_body(#ofp_group_desc_reply       { body = InnerBody } = _Msg)-> {body,InnerBody};
+multipart_inner_body(#ofp_group_features_request {} = _Msg)                  -> false;
+multipart_inner_body(#ofp_group_features_reply   {} = _Msg)                  -> false;
+multipart_inner_body(#ofp_meter_stats_request    {} = _Msg)                  -> false;
+multipart_inner_body(#ofp_meter_stats_reply      { body = InnerBody } = _Msg)-> {body,InnerBody};
+multipart_inner_body(#ofp_meter_config_request   {} = _Msg)                  -> false;
+multipart_inner_body(#ofp_meter_config_reply     { body = InnerBody } = _Msg)-> {body,InnerBody};
+multipart_inner_body(#ofp_meter_features_request {} = _Msg)                  -> false;
+multipart_inner_body(#ofp_meter_features_reply   {} = _Msg)                  -> false;
+multipart_inner_body(#ofp_experimenter_request   {} = _Msg)                  -> false;
+multipart_inner_body(#ofp_experimenter_reply     {} = _Msg)                  -> false.
+
+remove_inner_body(#ofp_flow_stats_reply     {} = Body) -> Body#ofp_flow_stats_reply     { body = [] };
+remove_inner_body(#ofp_table_stats_reply    {} = Body) -> Body#ofp_table_stats_reply    { body = [] };
+remove_inner_body(#ofp_port_stats_reply     {} = Body) -> Body#ofp_port_stats_reply     { body = [] };
+remove_inner_body(#ofp_port_desc_reply      {} = Body) -> Body#ofp_port_desc_reply      { body = [] };
+remove_inner_body(#ofp_queue_stats_reply    {} = Body) -> Body#ofp_queue_stats_reply    { body = [] };
+remove_inner_body(#ofp_group_stats_reply    {} = Body) -> Body#ofp_group_stats_reply    { body = [] };
+remove_inner_body(#ofp_group_desc_reply     {} = Body) -> Body#ofp_group_desc_reply     { body = [] };
+remove_inner_body(#ofp_meter_stats_reply    {} = Body) -> Body#ofp_meter_stats_reply    { body = [] };
+remove_inner_body(#ofp_meter_config_reply   {} = Body) -> Body#ofp_meter_config_reply   { body = [] }.
+
+reasemble_inner_body(#ofp_flow_stats_reply     {} = Body,InnerBody) -> Body#ofp_flow_stats_reply     { body = InnerBody };
+reasemble_inner_body(#ofp_table_stats_reply    {} = Body,InnerBody) -> Body#ofp_table_stats_reply    { body = InnerBody };
+reasemble_inner_body(#ofp_port_stats_reply     {} = Body,InnerBody) -> Body#ofp_port_stats_reply     { body = InnerBody };
+reasemble_inner_body(#ofp_port_desc_reply      {} = Body,InnerBody) -> Body#ofp_port_desc_reply      { body = InnerBody };
+reasemble_inner_body(#ofp_queue_stats_reply    {} = Body,InnerBody) -> Body#ofp_queue_stats_reply    { body = InnerBody };
+reasemble_inner_body(#ofp_group_stats_reply    {} = Body,InnerBody) -> Body#ofp_group_stats_reply    { body = InnerBody };
+reasemble_inner_body(#ofp_group_desc_reply     {} = Body,InnerBody) -> Body#ofp_group_desc_reply     { body = InnerBody };
+reasemble_inner_body(#ofp_meter_stats_reply    {} = Body,InnerBody) -> Body#ofp_meter_stats_reply    { body = InnerBody };
+reasemble_inner_body(#ofp_meter_config_reply   {} = Body,InnerBody) -> Body#ofp_meter_config_reply   { body = InnerBody }.
+
+%% SPLIT THE MESSAGE INTO 2 bits, the Body and the rest,
+%% Encode and parse the REST, and use that size as the 
+%% Deduction for the maximum size.... ( - 16 )
+
+split_big_multipart(#ofp_message{type = _Type, version = V, body = Body} = Message) ->
+    case multipart_inner_body(Body) of
+        false ->
+            false;
+        {body,InnerBody} ->
+            SkeletonBody = Message#ofp_message{ body = remove_inner_body(Body) },
+            [ Message#ofp_message{body = reasemble_inner_body(Body,Chunk) } || 
+                Chunk <- split_big_multipart_structs(SkeletonBody,InnerBody,[],V) ]
+    end.
+
+split_big_multipart_structs(SkeletonBody,Body,Chunks,Version) ->
+    Module = encode_module(Version),
+    case split_structs_chunks(Body,[],0,Module) of
+        {ok,{[],Chunk}}   -> [Chunk|Chunks];
+        {ok,{Rest,Chunk}} -> split_big_multipart_structs(SkeletonBody,Rest,[Chunk|Chunks],Version)
+    end.
+
+split_structs_chunks([],Results,_TotalSize,_Module) ->
+    {ok,{[],Results}};
+split_structs_chunks([H|T],Results,TotalSize,Module) ->
+    Bin = Module:encode_struct(H),
+    NewTotalSize = byte_size(Bin) + TotalSize,
+    case NewTotalSize < ( ?OFPM_MAX_SIZE - 16 ) of %% 16 bytes for the ofp_message bin encasing the actual multipart message etc
+        true  -> split_structs_chunks(T,[H|Results],NewTotalSize,Module);
+        false -> {ok,{[H|T],Results}}
+    end.
+
+encode_module(3) ->
+    ofp_v3_encode;
+encode_module(4) ->
+    ofp_v4_encode;
+encode_module(5) ->
+    ofp_v5_encode.
 
 should_filter_out(Reason, Filter) ->
     not lists:member(Reason, Filter).

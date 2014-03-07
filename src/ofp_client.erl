@@ -381,12 +381,12 @@ handle_send(#ofp_message{type = packet_in} = Message,
         _Else ->
             do_filter_send(Message, State)
     end;
-handle_send(#ofp_message{type = multipart_reply} = Message, 
-            #state{version = Version} = State) ->
+handle_send(#ofp_message{type = Type} = Message, 
+            #state{version = Version} = State) when Type =:= multipart_reply ->
     Module = client_module(Version),
     Replies = Module:split_multipart(Message),
     Results = [do_send(Reply, State) || Reply <- Replies],
-    case lists:all(fun(X) -> X == ok end, Results) of
+    case lists:all(fun(X) -> X == ok end, lists:flatten(Results) ) of
         true ->
             ok;
         false ->
@@ -395,6 +395,27 @@ handle_send(#ofp_message{type = multipart_reply} = Message,
 handle_send(Message, State) ->
     do_filter_send(Message, State).
 
+do_send(#ofp_message{ type = Type } = Message, #state{controller = {_, _, Proto},
+                      socket = Socket,
+                      parser = Parser,
+                      version = Version} = State) when Type =:= multipart_reply ->
+    case ofp_parser:encode(Parser, Message#ofp_message{version = Version}) of
+        {ok, Binary} ->
+            case byte_size(Binary) < (1 bsl 16) of
+                true ->
+                    send(Proto, Socket, Binary);
+                false ->
+                    Module = client_module(Version),
+                    case Module:split_big_multipart(Message) of
+                        false ->
+                            {error, message_too_big};
+                        SplitList ->
+                            lists:map(fun(Msg) -> do_send(Msg,State) end, SplitList)
+                    end
+            end;
+        {error, Reason} ->
+            {error, Reason}
+    end;
 do_send(Message, #state{controller = {_, _, Proto},
                         socket = Socket,
                         parser = Parser,

@@ -28,7 +28,9 @@
          filter_out_message/3,
          type_atom/1,
          add_aux_id/2,
-         split_multipart/1]).
+         split_multipart/1,
+         split_big_multipart/1
+         ]).
 
 -include("of_protocol.hrl").
 -include("ofp_v5.hrl").
@@ -277,6 +279,44 @@ split2(_, [], Head) ->
     {lists:reverse(Head), []};
 split2(N, [X | Tail], Head) ->
     split2(N - 1, Tail, [X | Head]).
+
+
+split_big_multipart(#ofp_message{ version = Version,
+                                  body = #ofp_port_stats_reply{body = MultipartReplyBody} 
+                                } = Message) ->
+    Chunks = split_big_multipart_structs(MultipartReplyBody,[],Version),
+    [ Message#ofp_message{body = #ofp_port_stats_reply{body = Chunk} } || Chunk <- Chunks ];
+split_big_multipart(#ofp_message{ version = _Version,
+                                  body = _Body
+                                } = Message) ->
+    [Message].
+
+split_big_multipart_structs(Body,Chunks,Version) ->
+    Module = encode_module(Version),
+    case split_structs_chunks(Body,[],0,Module) of
+        {ok,{[],Chunk}} ->
+            [Chunk|Chunks];
+        {ok,{Rest,Chunk}} ->
+            split_big_multipart_structs(Rest,[Chunk|Chunks],Version)
+    end.
+
+split_structs_chunks([],Results,_TotalSize,_Module) ->
+    {ok,{[],Results}};
+split_structs_chunks([H|T],Results,TotalSize,Module) ->
+    Bin = Module:encode_struct(H),
+    NewTotalSize = byte_size(Bin) + TotalSize,
+    case NewTotalSize < ( ?OFPM_MAX_SIZE - 8 ) of 
+        true  -> split_structs_chunks(T,[H|Results],NewTotalSize,Module);
+        false -> {ok,{[H|T],Results}} %% Give back REST ( Remainder=[H|T] ) as starting point, for next itteration.
+    end.
+
+encode_module(3) ->
+    ofp_v3_encode;
+encode_module(4) ->
+    ofp_v4_encode;
+encode_module(5) ->
+    ofp_v5_encode.
+
 
 should_filter_out(Reason, Filter) ->
     not lists:member(Reason, Filter).

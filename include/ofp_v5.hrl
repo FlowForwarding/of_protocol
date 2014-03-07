@@ -29,6 +29,7 @@
 -define(OFPCML_MAX, 16#ffe5).   %% buffer id
 -define(OFPCML_NO_BUFFER, 16#ffff).   %% buffer id
 -define(OFPM_MAX, 16#ffff0000). %% flow meter number
+-define(OFPM_MAX_SIZE,16#10000). %% Max multipart message size
 
 %% Message sizes (in bytes) ----------------------------------------------------
 

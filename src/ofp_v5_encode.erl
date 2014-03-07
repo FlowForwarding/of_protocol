@@ -22,7 +22,9 @@
 %% @private
 -module(ofp_v5_encode).
 
--export([do/1]).
+-export([do/1,
+         encode_struct/1
+  ]).
 
 -include("of_protocol.hrl").
 -include("ofp_v5.hrl").
