@@ -23,7 +23,8 @@
 -module(ofp_v4_encode).
 
 -export([do/1,
-         encode_struct/1]).
+         encode_struct/1,
+         encode_body/1]).
 
 -include("of_protocol.hrl").
 -include("ofp_v4.hrl").

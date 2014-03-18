@@ -385,8 +385,8 @@ handle_send(#ofp_message{type = Type} = Message,
             #state{version = Version} = State) when Type =:= multipart_reply ->
     Module = client_module(Version),
     Replies = Module:split_multipart(Message),
-    Results = [do_send(Reply, State) || Reply <- Replies],
-    case lists:all(fun(X) -> X == ok end, lists:flatten(Results) ) of
+    Result = [do_send(Reply, State) || Reply <- Replies],
+    case lists:all(fun(X) -> X == ok end,lists:flatten(Result)) of
         true ->
             ok;
         false ->
