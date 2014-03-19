@@ -350,7 +350,7 @@ split_structs(Module,SkeletonBody,EnvelopeSize,TotalSize,[H|T],Msgs,Acc) ->
         false -> 
             M = SkeletonBody#ofp_message{ body = reasemble_inner_body(SkeletonBody#ofp_message.body,Acc,[more]) },
             {ok,B} = of_protocol:encode(M),
-            split_structs(Module,SkeletonBody,EnvelopeSize,EnvelopeSize,T,[M|Msgs],[])
+            split_structs(Module,SkeletonBody,EnvelopeSize,EnvelopeSize,[H|T],[M|Msgs],[])
     end.
 
 encode_module(3) ->
