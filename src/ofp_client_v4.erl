@@ -316,12 +316,11 @@ split_big_multipart(#ofp_message{version = Version, body = Body} = M) ->
             split_structs(Module,SkeletonBody,EnvelopeSize,EnvelopeSize,InnerBody,[],[])
     end.
 
-split_structs(Module,SkeletonBody,EnvelopeSize,_TotalSize,[],Msgs,[]) ->
+split_structs(_Module,_SkeletonBody,_EnvelopeSize,_TotalSize,[],Msgs,[]) ->
     lists:reverse(Msgs);
 
-split_structs(Module,SkeletonBody,EnvelopeSize,_TotalSize,[],Msgs,Acc) ->
+split_structs(_Module,SkeletonBody,_EnvelopeSize,_TotalSize,[],Msgs,Acc) ->
     M = SkeletonBody#ofp_message{ body = reasemble_inner_body(SkeletonBody#ofp_message.body,Acc,[]) },
-    {ok,B} = of_protocol:encode(M),
     lists:reverse([M|Msgs]);
 
 split_structs(Module,SkeletonBody,EnvelopeSize,TotalSize,[H|T],Msgs,Acc) ->
@@ -332,7 +331,6 @@ split_structs(Module,SkeletonBody,EnvelopeSize,TotalSize,[H|T],Msgs,Acc) ->
             split_structs(Module,SkeletonBody,EnvelopeSize,NewTotalSize,T,Msgs,[H|Acc]);
         false -> 
             M = SkeletonBody#ofp_message{ body = reasemble_inner_body(SkeletonBody#ofp_message.body,Acc,[more]) },
-            {ok,B} = of_protocol:encode(M),
             split_structs(Module,SkeletonBody,EnvelopeSize,EnvelopeSize,[H|T],[M|Msgs],[])
     end.
 
