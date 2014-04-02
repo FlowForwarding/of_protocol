@@ -185,7 +185,8 @@ handle_call({send, Message}, _From, #state{version = Version} = State) ->
                   Type == barrier_reply;
                   Type == queue_get_config_reply;
                   Type == role_reply;
-                  Type == get_async_reply ->
+                  Type == get_async_reply;
+                  Type == bundle_ctrl_msg ->
             {reply, handle_send(Message2, State), State};
         _Else ->
             {reply, {error, {bad_message, Message2}}, State}
@@ -469,7 +470,9 @@ handle_message(#ofp_message{version = Version, type = Type} = Message,
        Type == group_mod;
        Type == port_mod;
        Type == table_mod;
-       Type == meter_mod ->
+       Type == meter_mod;
+       Type == bundle_control;
+       Type == bundle_add_message ->
     %% Don't allow slave controllers to modify things.
     Error = create_error(Version, bad_request, is_slave),
     IsSlaveError = Message#ofp_message{body = Error},
@@ -490,7 +493,9 @@ handle_message(#ofp_message{type = Type} = Message,
        Type == multipart_request;
        Type == barrier_request;
        Type == queue_get_config_request;
-       Type == meter_mod ->
+       Type == meter_mod;
+       Type == bundle_control;
+       Type == bundle_add_message ->
     Parent ! {ofp_message, self(), Message},
     State;
 handle_message(_OtherMessage, State) ->

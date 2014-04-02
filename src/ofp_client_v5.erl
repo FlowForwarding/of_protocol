@@ -244,7 +244,11 @@ type_atom(#ofp_get_async_reply{}) ->
 type_atom(#ofp_set_async{}) ->
     set_async;
 type_atom(#ofp_meter_mod{}) ->
-    meter_mod.
+    meter_mod;
+type_atom(#ofp_bundle_ctrl_msg{}) ->
+    bundle_ctrl_msg;
+type_atom(#ofp_bundle_add_msg{}) ->
+    bundle_add_msg.
 
 add_aux_id(#ofp_features_reply{} = Reply, Id) ->
     Reply#ofp_features_reply{auxiliary_id = Id}.
