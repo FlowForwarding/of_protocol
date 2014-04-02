@@ -72,3 +72,15 @@ tlv_length(pbb_isid)       -> 24;
 tlv_length(tunnel_id)      -> 64;
 tlv_length(ipv6_exthdr)    -> 9;
 tlv_length(pbb_uca)        -> 1.
+
+%% @doc Get field's on-wire length in bits.
+%%
+%% NOTE: While the spec defines ipv6_flabel and mpls_label as 20-bit,
+%% ONF openflow.h defines them as 32-bit.  Other implementations seem
+%% to agree with 32-bit.  (Open vSwitch, Ryu, ofsoftswitch13, ...)
+%% Unfortunately ONF doesn't seem to publish openflow.h.
+%% Ben Pfaff kindly made it available at http://benpfaff.org/ofh/.
+-spec tlv_wire_length(atom()) -> integer().
+tlv_wire_length(ipv6_flabel) -> 32;
+tlv_wire_length(mpls_label) -> 32;
+tlv_wire_length(Type) -> tlv_length(Type).
