@@ -22,6 +22,7 @@
 -module(ofp_v3_map).
 
 -export([tlv_length/1]).
+-export([tlv_wire_length/1]).
 
 -include("of_protocol.hrl").
 -include("ofp_v3.hrl").
@@ -64,3 +65,15 @@ tlv_length(ipv6_nd_sll)    -> ?IPV6_ND_SLL_FIELD_LENGTH;
 tlv_length(ipv6_nd_tll)    -> ?IPV6_ND_TLL_FIELD_LENGTH;
 tlv_length(mpls_label)     -> ?MPLS_LABEL_FIELD_LENGTH;
 tlv_length(mpls_tc)        -> ?MPLS_TC_FIELD_LENGTH.
+
+%% @doc Get field's on-wire length in bits.
+%%
+%% NOTE: While the spec defines ipv6_flabel and mpls_label as 20-bit,
+%% ONF openflow.h defines them as 32-bit.  Other implementations seem
+%% to agree with 32-bit.  (Open vSwitch, Ryu, ...)
+%% Unfortunately ONF doesn't seem to publish openflow.h.
+%% Ben Pfaff kindly made it available at http://benpfaff.org/ofh/.
+-spec tlv_wire_length(atom()) -> integer().
+tlv_wire_length(ipv6_flabel) -> 32;
+tlv_wire_length(mpls_label) -> 32;
+tlv_wire_length(Type) -> tlv_length(Type).

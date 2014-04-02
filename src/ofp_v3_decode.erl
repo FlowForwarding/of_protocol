@@ -138,13 +138,13 @@ decode_match_field(<<Header:4/bytes, Binary/bytes>>) ->
     <<ClassInt:16, FieldInt:7, HasMaskInt:1,
       Length:8>> = Header,
     Class = ofp_v3_enum:to_atom(oxm_class, ClassInt),
-    Field = ofp_v3_enum:to_atom(oxm_ofb_match_fields, FieldInt),
     HasMask = (HasMaskInt =:= 1),
-    case Class of
+    {Field, BitLength} = case Class of
         openflow_basic ->
-            BitLength = ofp_v3_map:tlv_length(Field);
+            F = ofp_v3_enum:to_atom(oxm_ofb_match_fields, FieldInt),
+            {F, ofp_v3_map:tlv_length(F)};
         _ ->
-            BitLength = Length * 4
+            {FieldInt, Length * 8}
     end,
     case HasMask of
         false ->
