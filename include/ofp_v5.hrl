@@ -1617,7 +1617,7 @@
           bundle_id :: non_neg_integer(),
           flags = [] :: [ofp_bundle_flag()],
           message :: ofp_message(),
-          properties = [] :: [ofp_bundle_flag()]
+          properties = [] :: [ofp_bundle_prop()]
          }).
 
 %%%-----------------------------------------------------------------------------
