@@ -23,6 +23,7 @@
 -module(ofp_v5_map).
 
 -export([tlv_length/1]).
+-export([tlv_wire_length/1]).
 
 -include("of_protocol.hrl").
 -include("ofp_v5.hrl").
