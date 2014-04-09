@@ -16,12 +16,13 @@
 
 %% @author Erlang Solutions Ltd. <openflow@erlang-solutions.com>
 %% @copyright 2012 FlowForwarding.org
-%% @doc OpenFlow v4 specific functions for the client.
--module(ofp_client_v4).
+%% @doc OpenFlow v5 specific functions for the client.
+-module(ofp_client_v5).
 
 -export([create_error/2,
          create_role/2,
          extract_role/1,
+         role_status/3,
          create_async/1,
          extract_async/1,
          filter_out_message/3,
@@ -32,7 +33,7 @@
          ]).
 
 -include("of_protocol.hrl").
--include("ofp_v4.hrl").
+-include("ofp_v5.hrl").
 
 %% @doc Create an error message.
 -spec create_error(atom(), atom()) -> ofp_error_msg().
@@ -52,6 +53,14 @@ extract_role(#ofp_role_request{role = Role,
                                generation_id = GenId}) ->
     {Role, GenId}.
 
+%% @doc Create role status message.
+-spec role_status(ofp_controller_role(), ofp_controller_role_reason(), integer()) ->
+                         ofp_role_status().
+role_status(Role, Reason, GenId) ->
+    #ofp_role_status{role = Role,
+                     reason = Reason,
+                     generation_id = GenId}.
+
 %% @doc Create async filters message.
 -spec create_async(#async_config{}) -> #ofp_get_async_reply{}.
 create_async(#async_config{
@@ -61,10 +70,10 @@ create_async(#async_config{
                 slave_packet_in = SP,
                 slave_port_status = SS,
                 slave_flow_removed = SF}) ->
-    %% Ensure that we don't try to send v5 values
-    MEP4 = MEP -- [table_miss, apply_action, action_set, group, packet_out],
-    SP4 = SP -- [table_miss, apply_action, action_set, group, packet_out],
-    #ofp_get_async_reply{packet_in_mask = {MEP4, SP4},
+    %% Ensure that we don't try to send v4 values
+    MEP5 = MEP -- [no_match, action],
+    SP5 = SP -- [no_match, action],
+    #ofp_get_async_reply{packet_in_mask = {MEP5, SP5},
                          port_status_mask = {MES, SS},
                          flow_removed_mask = {MEF, SF}}.
 
@@ -204,6 +213,14 @@ type_atom(#ofp_meter_features_request{}) ->
     multipart_request;
 type_atom(#ofp_meter_features_reply{}) ->
     multipart_reply;
+type_atom(#ofp_table_desc_request{}) ->
+    multipart_request;
+type_atom(#ofp_table_desc_reply{}) ->
+    multipart_reply;
+type_atom(#ofp_flow_monitor_request{}) ->
+    multipart_request;
+type_atom(#ofp_flow_monitor_reply{}) ->
+    multipart_reply;
 type_atom(#ofp_experimenter_request{}) ->
     multipart_request;
 type_atom(#ofp_experimenter_reply{}) ->
@@ -227,7 +244,11 @@ type_atom(#ofp_get_async_reply{}) ->
 type_atom(#ofp_set_async{}) ->
     set_async;
 type_atom(#ofp_meter_mod{}) ->
-    meter_mod.
+    meter_mod;
+type_atom(#ofp_bundle_ctrl_msg{}) ->
+    bundle_ctrl_msg;
+type_atom(#ofp_bundle_add_msg{}) ->
+    bundle_add_msg.
 
 add_aux_id(#ofp_features_reply{} = Reply, Id) ->
     Reply#ofp_features_reply{auxiliary_id = Id}.

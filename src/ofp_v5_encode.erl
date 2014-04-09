@@ -18,16 +18,17 @@
 %% @author Konrad Kaplita <konrad.kaplita@erlang-solutions.com>
 %% @author Krzysztof Rutka <krzysztof.rutka@erlang-solutions.com>
 %% @copyright 2012 FlowForwarding.org
-%% @doc OpenFlow Protocol 1.3 (4) encoding implementation.
+%% @doc OpenFlow Protocol 1.4 (5) encoding implementation.
 %% @private
--module(ofp_v4_encode).
+-module(ofp_v5_encode).
 
 -export([do/1,
          encode_struct/1,
-         encode_body/1]).
+         encode_body/1
+  ]).
 
 -include("of_protocol.hrl").
--include("ofp_v4.hrl").
+-include("ofp_v5.hrl").
 
 %%------------------------------------------------------------------------------
 %% API functions
@@ -55,12 +56,12 @@ encode_struct(#ofp_match{fields = Fields}) ->
     <<1:16, Length:16, FieldsBin/bytes, 0:Padding>>;
 encode_struct(#ofp_field{class = Class, name = Field, has_mask = HasMask,
                          value = Value, mask = Mask}) ->
-    ClassInt = ofp_v4_enum:to_int(oxm_class, Class),
+    ClassInt = ofp_v5_enum:to_int(oxm_class, Class),
     {FieldInt, BitLength, WireBitLength} = case Class of
         openflow_basic ->
-            {ofp_v4_enum:to_int(oxm_ofb_match_fields, Field),
-             ofp_v4_map:tlv_length(Field),
-             ofp_v4_map:tlv_wire_length(Field)};
+            {ofp_v5_enum:to_int(oxm_ofb_match_fields, Field),
+             ofp_v5_map:tlv_length(Field),
+             ofp_v5_map:tlv_wire_length(Field)};
         _ ->
             Len = bit_size(Value),
             {Field, Len, Len}
@@ -81,123 +82,152 @@ encode_struct(#ofp_field{class = Class, name = Field, has_mask = HasMask,
     <<ClassInt:16, FieldInt:7, HasMaskInt:1, Len2:8, Rest/bytes>>;
 
 encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
-                        config = Config, state = State, curr = Curr,
-                        advertised = Advertised, supported = Supported,
-                        peer = Peer, curr_speed = CurrSpeed,
-                        max_speed = MaxSpeed}) ->
+                        config = Config, state = State,
+                        properties = Properties}) ->
     PortNoInt = get_id(port_no, PortNo),
     NameBin = ofp_utils:encode_string(Name, ?OFP_MAX_PORT_NAME_LEN),
     ConfigBin = flags_to_binary(port_config, Config, 4),
     StateBin = flags_to_binary(port_state, State, 4),
+    PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties)),
+    Length = 40 + byte_size(PropertiesBin),
+    <<PortNoInt:32, Length:16, 0:16, HWAddr:?OFP_ETH_ALEN/bytes, 0:16,
+      NameBin:?OFP_MAX_PORT_NAME_LEN/bytes,
+      ConfigBin:4/bytes, StateBin:4/bytes,
+      PropertiesBin/binary>>;
+encode_struct(#ofp_port_desc_prop_ethernet{
+                 curr = Curr, advertised = Advertised, supported = Supported,
+                 peer = Peer, curr_speed = CurrSpeed, max_speed = MaxSpeed}) ->
+    TypeInt = ofp_v5_enum:to_int(port_desc_properties, ethernet),
     CurrBin = flags_to_binary(port_features, Curr, 4),
     AdvertisedBin = flags_to_binary(port_features, Advertised, 4),
     SupportedBin = flags_to_binary(port_features, Supported, 4),
     PeerBin = flags_to_binary(port_features, Peer, 4),
-    <<PortNoInt:32, 0:32, HWAddr:?OFP_ETH_ALEN/bytes, 0:16,
-      NameBin:?OFP_MAX_PORT_NAME_LEN/bytes,
-      ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
-      AdvertisedBin:4/bytes, SupportedBin:4/bytes,
+    <<TypeInt:16, 32:16, 0:32,
+      CurrBin:4/bytes, AdvertisedBin:4/bytes, SupportedBin:4/bytes,
       PeerBin:4/bytes, CurrSpeed:32, MaxSpeed:32>>;
-
+encode_struct(#ofp_port_desc_prop_optical{
+                 supported = Supported,
+                 tx_min_freq_lmda = TxMinFreqLmda,
+                 tx_max_freq_lmda = TxMaxFreqLmda,
+                 tx_grid_freq_lmda = TxGridFreqLmda,
+                 rx_min_freq_lmda = RxMinFreqLmda,
+                 rx_max_freq_lmda = RxMaxFreqLmda,
+                 rx_grid_freq_lmda = RxGridFreqLmda,
+                 tx_pwr_min = TxPwrMin,
+                 tx_pwr_max = TxPwrMax}) ->
+    TypeInt = ofp_v5_enum:to_int(port_desc_properties, optical),
+    SupportedBin = flags_to_binary(optical_port_features, Supported, 4),
+    <<TypeInt:16, 40:16, 0:32,
+      SupportedBin:4/bytes, TxMinFreqLmda:32, TxMaxFreqLmda:32, TxGridFreqLmda:32,
+      RxMinFreqLmda:32, RxMaxFreqLmda:32, RxGridFreqLmda:32,
+      TxPwrMin:16, TxPwrMax:16>>;
+encode_struct(#ofp_port_desc_prop_experimenter{
+       experimenter = Experimenter,
+       exp_type = ExpType,
+       data = Data}) ->
+    TypeInt = ofp_v5_enum:to_int(port_desc_properties, experimenter),
+    Length = byte_size(Data) + 12,
+    Padding = (Length + 7) div 8 * 8 - Length,
+    <<TypeInt:16, Length:16, Experimenter:32, ExpType:32, Data/binary, 0:Padding/unit:8>>;
 encode_struct(#ofp_packet_queue{queue_id = Queue, port_no = Port,
                                 properties = Props}) ->
     PropsBin = encode_list(Props),
     Length = ?PACKET_QUEUE_SIZE + size(PropsBin),
     <<Queue:32, Port:32, Length:16, 0:48, PropsBin/bytes>>;
 encode_struct(#ofp_queue_prop_min_rate{rate = Rate}) ->
-    PropertyInt = ofp_v4_enum:to_int(queue_properties, min_rate),
+    PropertyInt = ofp_v5_enum:to_int(queue_properties, min_rate),
     <<PropertyInt:16, ?QUEUE_PROP_MIN_RATE_SIZE:16, 0:32, Rate:16, 0:48>>;
 encode_struct(#ofp_queue_prop_max_rate{rate = Rate}) ->
-    PropertyInt = ofp_v4_enum:to_int(queue_properties, max_rate),
+    PropertyInt = ofp_v5_enum:to_int(queue_properties, max_rate),
     <<PropertyInt:16, ?QUEUE_PROP_MAX_RATE_SIZE:16, 0:32, Rate:16, 0:48>>;
 encode_struct(#ofp_queue_prop_experimenter{experimenter = Experimenter,
                                            data = Data}) ->
     Length = ?QUEUE_PROP_EXPERIMENTER_SIZE + byte_size(Data),
-    PropertyInt = ofp_v4_enum:to_int(queue_properties, experimenter),
+    PropertyInt = ofp_v5_enum:to_int(queue_properties, experimenter),
     <<PropertyInt:16, Length:16, 0:32, Experimenter:32, 0:32, Data/bytes>>;
 
 encode_struct(#ofp_meter_band_drop{type = drop, rate = Rate,
                                    burst_size = BurstSize}) ->
-    TypeInt = ofp_v4_enum:to_int(meter_band_type, drop),
+    TypeInt = ofp_v5_enum:to_int(meter_band_type, drop),
     <<TypeInt:16, ?METER_BAND_SIZE:16, Rate:32, BurstSize:32, 0:32>>;
 encode_struct(#ofp_meter_band_dscp_remark{type = dscp_remark, rate = Rate,
                                           burst_size = BurstSize,
                                           prec_level = PrecLevel}) ->
-    TypeInt = ofp_v4_enum:to_int(meter_band_type, dscp_remark),
+    TypeInt = ofp_v5_enum:to_int(meter_band_type, dscp_remark),
     <<TypeInt:16, ?METER_BAND_SIZE:16, Rate:32, BurstSize:32,
       PrecLevel:8, 0:24>>;
 encode_struct(#ofp_meter_band_experimenter{type = experimenter, rate = Rate,
                                            burst_size = BurstSize,
                                            experimenter = Experimenter}) ->
-    TypeInt = ofp_v4_enum:to_int(meter_band_type, experimenter),
+    TypeInt = ofp_v5_enum:to_int(meter_band_type, experimenter),
     <<TypeInt:16, ?METER_BAND_SIZE:16, Rate:32, BurstSize:32, Experimenter:32>>;
 
 encode_struct(#ofp_action_output{port = Port, max_len = MaxLen}) ->
-    Type = ofp_v4_enum:to_int(action_type, output),
+    Type = ofp_v5_enum:to_int(action_type, output),
     Length = ?ACTION_OUTPUT_SIZE,
     PortInt = get_id(port_no, Port),
     MaxLenInt = get_id(max_len, MaxLen),
     <<Type:16, Length:16, PortInt:32, MaxLenInt:16, 0:48>>;
 encode_struct(#ofp_action_group{group_id = Group}) ->
-    Type = ofp_v4_enum:to_int(action_type, group),
+    Type = ofp_v5_enum:to_int(action_type, group),
     Length = ?ACTION_GROUP_SIZE,
     GroupInt = get_id(group, Group),
     <<Type:16, Length:16, GroupInt:32>>;
 encode_struct(#ofp_action_set_queue{queue_id = Queue}) ->
-    Type = ofp_v4_enum:to_int(action_type, set_queue),
+    Type = ofp_v5_enum:to_int(action_type, set_queue),
     QueueInt = get_id(queue, Queue),
     Length = ?ACTION_SET_QUEUE_SIZE,
     <<Type:16, Length:16, QueueInt:32>>;
 encode_struct(#ofp_action_set_mpls_ttl{mpls_ttl = TTL}) ->
-    Type = ofp_v4_enum:to_int(action_type, set_mpls_ttl),
+    Type = ofp_v5_enum:to_int(action_type, set_mpls_ttl),
     Length = ?ACTION_SET_MPLS_TTL_SIZE,
     <<Type:16, Length:16, TTL:8, 0:24>>;
 encode_struct(#ofp_action_dec_mpls_ttl{}) ->
-    Type = ofp_v4_enum:to_int(action_type, dec_mpls_ttl),
+    Type = ofp_v5_enum:to_int(action_type, dec_mpls_ttl),
     Length = ?ACTION_DEC_MPLS_TTL_SIZE,
     <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_action_set_nw_ttl{nw_ttl = TTL}) ->
-    Type = ofp_v4_enum:to_int(action_type, set_nw_ttl),
+    Type = ofp_v5_enum:to_int(action_type, set_nw_ttl),
     Length = ?ACTION_SET_NW_TTL_SIZE,
     <<Type:16, Length:16, TTL:8, 0:24>>;
 encode_struct(#ofp_action_dec_nw_ttl{}) ->
-    Type = ofp_v4_enum:to_int(action_type, dec_nw_ttl),
+    Type = ofp_v5_enum:to_int(action_type, dec_nw_ttl),
     Length = ?ACTION_DEC_NW_TTL_SIZE,
     <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_action_copy_ttl_out{}) ->
-    Type = ofp_v4_enum:to_int(action_type, copy_ttl_out),
+    Type = ofp_v5_enum:to_int(action_type, copy_ttl_out),
     Length = ?ACTION_COPY_TTL_OUT_SIZE,
     <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_action_copy_ttl_in{}) ->
-    Type = ofp_v4_enum:to_int(action_type, copy_ttl_in),
+    Type = ofp_v5_enum:to_int(action_type, copy_ttl_in),
     Length = ?ACTION_COPY_TTL_IN_SIZE,
     <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_action_push_vlan{ethertype = EtherType}) ->
-    Type = ofp_v4_enum:to_int(action_type, push_vlan),
+    Type = ofp_v5_enum:to_int(action_type, push_vlan),
     Length = ?ACTION_PUSH_VLAN_SIZE,
     <<Type:16, Length:16, EtherType:16, 0:16>>;
 encode_struct(#ofp_action_pop_vlan{}) ->
-    Type = ofp_v4_enum:to_int(action_type, pop_vlan),
+    Type = ofp_v5_enum:to_int(action_type, pop_vlan),
     Length = ?ACTION_POP_VLAN_SIZE,
     <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_action_push_mpls{ethertype = EtherType}) ->
-    Type = ofp_v4_enum:to_int(action_type, push_mpls),
+    Type = ofp_v5_enum:to_int(action_type, push_mpls),
     Length = ?ACTION_PUSH_MPLS_SIZE,
     <<Type:16, Length:16, EtherType:16, 0:16>>;
 encode_struct(#ofp_action_pop_mpls{ethertype = EtherType}) ->
-    Type = ofp_v4_enum:to_int(action_type, pop_mpls),
+    Type = ofp_v5_enum:to_int(action_type, pop_mpls),
     Length = ?ACTION_POP_MPLS_SIZE,
     <<Type:16, Length:16, EtherType:16, 0:16>>;
 encode_struct(#ofp_action_push_pbb{ethertype = EtherType}) ->
-    Type = ofp_v4_enum:to_int(action_type, push_pbb),
+    Type = ofp_v5_enum:to_int(action_type, push_pbb),
     Length = ?ACTION_PUSH_PBB_SIZE,
     <<Type:16, Length:16, EtherType:16, 0:16>>;
 encode_struct(#ofp_action_pop_pbb{}) ->
-    Type = ofp_v4_enum:to_int(action_type, pop_pbb),
+    Type = ofp_v5_enum:to_int(action_type, pop_pbb),
     Length = ?ACTION_POP_PBB_SIZE,
     <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_action_set_field{field = Field}) ->
-    Type = ofp_v4_enum:to_int(action_type, set_field),
+    Type = ofp_v5_enum:to_int(action_type, set_field),
     FieldBin = encode_struct(Field),
     FieldSize = size(FieldBin),
     PartialLength = ?ACTION_SET_FIELD_SIZE - 4 + FieldSize,
@@ -206,41 +236,41 @@ encode_struct(#ofp_action_set_field{field = Field}) ->
     <<Type:16, Length:16, FieldBin/bytes, 0:(Padding*8)>>;
 encode_struct(#ofp_action_experimenter{experimenter = Experimenter,
                                        data = Data}) ->
-    Type = ofp_v4_enum:to_int(action_type, experimenter),
+    Type = ofp_v5_enum:to_int(action_type, experimenter),
     Length = ?ACTION_EXPERIMENTER_SIZE + byte_size(Data),
     <<Type:16, Length:16, Experimenter:32, Data/bytes>>;
 
 encode_struct(#ofp_instruction_goto_table{table_id = Table}) ->
-    Type = ofp_v4_enum:to_int(instruction_type, goto_table),
+    Type = ofp_v5_enum:to_int(instruction_type, goto_table),
     Length = ?INSTRUCTION_GOTO_TABLE_SIZE,
     <<Type:16, Length:16, Table:8, 0:24>>;
 encode_struct(#ofp_instruction_write_metadata{metadata = Metadata,
                                               metadata_mask = MetaMask}) ->
-    Type = ofp_v4_enum:to_int(instruction_type, write_metadata),
+    Type = ofp_v5_enum:to_int(instruction_type, write_metadata),
     Length = ?INSTRUCTION_WRITE_METADATA_SIZE,
     <<Type:16, Length:16, 0:32, Metadata:8/bytes, MetaMask:8/bytes>>;
 encode_struct(#ofp_instruction_write_actions{actions = Actions}) ->
-    Type = ofp_v4_enum:to_int(instruction_type, write_actions),
+    Type = ofp_v5_enum:to_int(instruction_type, write_actions),
     ActionsBin = encode_list(Actions),
     Length = ?INSTRUCTION_WRITE_ACTIONS_SIZE + size(ActionsBin),
     <<Type:16, Length:16, 0:32, ActionsBin/bytes>>;
 encode_struct(#ofp_instruction_apply_actions{actions = Actions}) ->
-    Type = ofp_v4_enum:to_int(instruction_type, apply_actions),
+    Type = ofp_v5_enum:to_int(instruction_type, apply_actions),
     ActionsBin = encode_list(Actions),
     Length = ?INSTRUCTION_APPLY_ACTIONS_SIZE + size(ActionsBin),
     <<Type:16, Length:16, 0:32, ActionsBin/bytes>>;
 encode_struct(#ofp_instruction_clear_actions{}) ->
-    Type = ofp_v4_enum:to_int(instruction_type, clear_actions),
+    Type = ofp_v5_enum:to_int(instruction_type, clear_actions),
     Length = ?INSTRUCTION_CLEAR_ACTIONS_SIZE,
     <<Type:16, Length:16, 0:32>>;
 encode_struct(#ofp_instruction_meter{meter_id = MeterId}) ->
-    Type = ofp_v4_enum:to_int(instruction_type, meter),
+    Type = ofp_v5_enum:to_int(instruction_type, meter),
     MeterIdInt = get_id(meter_id, MeterId),
     Length = ?INSTRUCTION_METER_SIZE,
     <<Type:16, Length:16, MeterIdInt:32>>;
 encode_struct(#ofp_instruction_experimenter{experimenter = Experimenter,
                                             data = Data}) ->
-    Type = ofp_v4_enum:to_int(instruction_type, experimenter),
+    Type = ofp_v5_enum:to_int(instruction_type, experimenter),
     Length = ?INSTRUCTION_EXPERIMENTER_SIZE + byte_size(Data),
     <<Type:16, Length:16, Experimenter:32, Data/bytes>>;
 encode_struct(#ofp_bucket{weight = Weight, watch_port = Port,
@@ -266,23 +296,71 @@ encode_struct(#ofp_table_stats{table_id = Table, active_count = ACount,
                                matched_count = MCount}) ->
     <<Table:8, 0:24, ACount:32, LCount:64, MCount:64>>;
 encode_struct(#ofp_port_stats{port_no = Port,
+                              duration_sec = DSec, duration_nsec = DNSec,
                               rx_packets = RXPackets, tx_packets = TXPackets,
                               rx_bytes = RXBytes, tx_bytes = TXBytes,
                               rx_dropped = RXDropped, tx_dropped = TXDropped,
                               rx_errors = RXErrors, tx_errors = TXErrors,
-                              rx_frame_err = FrameErr, rx_over_err = OverErr,
-                              rx_crc_err = CRCErr, collisions = Collisions,
-                              duration_sec = DSec, duration_nsec = DNSec}) ->
+                              properties = Properties}) ->
     PortInt = get_id(port_no, Port),
-    <<PortInt:32, 0:32, RXPackets:64,
-      TXPackets:64, RXBytes:64, TXBytes:64, RXDropped:64, TXDropped:64,
-      RXErrors:64, TXErrors:64, FrameErr:64, OverErr:64, CRCErr:64,
-      Collisions:64, DSec:32, DNSec:32>>;
+    PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties)),
+    Length = 80 + byte_size(PropertiesBin),
+    <<Length:16, 0:16, PortInt:32, DSec:32, DNSec:32,
+      RXPackets:64, TXPackets:64, RXBytes:64, TXBytes:64,
+      RXDropped:64, TXDropped:64, RXErrors:64, TXErrors:64,
+      PropertiesBin/binary>>;
+encode_struct(#ofp_port_stats_prop_ethernet{
+                 rx_frame_err = FrameErr, rx_over_err = OverErr,
+                 rx_crc_err = CRCErr, collisions = Collisions}) ->
+    Bin = <<0:32, FrameErr:64, OverErr:64, CRCErr:64, Collisions:64>>,
+    encode_property(ofp_v5_enum:to_int(port_stats_prop_type, ethernet), Bin);
+encode_struct(#ofp_port_stats_prop_optical{
+                 flags = Flags,
+                 tx_freq_lmda = TxFreqLmda,
+                 tx_offset = TxOffset,
+                 tx_grid_span = TxGridSpan,
+                 rx_freq_lmda = RxFreqLmda,
+                 rx_offset = RxOffset,
+                 rx_grid_span = RxGridSpan,
+                 tx_pwr = TxPwr,
+                 rx_pwr = RxPwr,
+                 bias_current = BiasCurrent,
+                 temperature = Temperature}) ->
+    FlagsBin = flags_to_binary(port_stats_optical_flag, Flags, 4),
+    Bin = <<0:32,
+            FlagsBin:4/bytes,
+            TxFreqLmda:32,
+            TxOffset:32,
+            TxGridSpan:32,
+            RxFreqLmda:32,
+            RxOffset:32,
+            RxGridSpan:32,
+            TxPwr:16,
+            RxPwr:16,
+            BiasCurrent:16,
+            Temperature:16>>,
+    encode_property(ofp_v5_enum:to_int(port_stats_prop_type, optical), Bin);
+encode_struct(#ofp_port_stats_prop_experimenter{
+                 experimenter = Experimenter,
+                 exp_type = ExpType,
+                 data = Data}) ->
+    Bin = <<Experimenter:32, ExpType:32, Data/binary>>,
+    encode_property(ofp_v5_enum:to_int(port_stats_prop_type, experimenter), Bin);
 encode_struct(#ofp_queue_stats{port_no = Port, queue_id = Queue,
                                tx_bytes = Bytes, tx_packets = Packets,
                                tx_errors = Errors, duration_sec = DSec,
-                               duration_nsec = DNSec}) ->
-    <<Port:32, Queue:32, Bytes:64, Packets:64, Errors:64, DSec:32, DNSec:32>>;
+                               duration_nsec = DNSec, properties = Properties}) ->
+    PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties)),
+    Length = 48 + byte_size(PropertiesBin),
+    <<Length:16, 0:48, Port:32, Queue:32,
+      Bytes:64, Packets:64, Errors:64, DSec:32, DNSec:32,
+      PropertiesBin/binary>>;
+encode_struct(#ofp_queue_stats_prop_experimenter{
+                 experimenter = Experimenter,
+                 exp_type = ExpType,
+                 data = Data}) ->
+    Bin = <<Experimenter:32, ExpType:32, Data/binary>>,
+    encode_property(ofp_v5_enum:to_int(queue_stats_prop_type, experimenter), Bin);
 encode_struct(#ofp_group_stats{group_id = Group, ref_count = RefCount,
                                packet_count = PCount, byte_count = BCount,
                                duration_sec = DSec, duration_nsec = DNSec,
@@ -298,7 +376,7 @@ encode_struct(#ofp_bucket_counter{packet_count = PCount,
     <<PCount:64, BCount:64>>;
 encode_struct(#ofp_group_desc_stats{type = Type, group_id = Group,
                                     buckets = Buckets}) ->
-    TypeInt = ofp_v4_enum:to_int(group_type, Type),
+    TypeInt = ofp_v5_enum:to_int(group_type, Type),
     GroupInt = get_id(group, Group),
     BucketsBin = encode_list(Buckets),
     Length = ?GROUP_DESC_STATS_SIZE + size(BucketsBin),
@@ -321,7 +399,102 @@ encode_struct(#ofp_meter_config{flags = Flags, meter_id = MeterId,
     FlagsBin = flags_to_binary(meter_flag, Flags, 2),
     BandsBin = encode_list(Bands),
     Length = ?METER_CONFIG_SIZE + byte_size(BandsBin),
-    <<Length:16, FlagsBin:16/bits, MeterIdInt:32, BandsBin/bytes>>.
+    <<Length:16, FlagsBin:16/bits, MeterIdInt:32, BandsBin/bytes>>;
+encode_struct(#ofp_table_mod_prop_eviction{flags = Flags}) ->
+    FlagsBin = flags_to_binary(table_mod_prop_eviction_flag, Flags, 4),
+    encode_property(ofp_v5_enum:to_int(table_mod_prop_type, eviction),
+                    <<FlagsBin:4/bytes>>);
+encode_struct(#ofp_table_mod_prop_vacancy{
+                 vacancy_down = VacancyDown,
+                 vacancy_up = VacancyUp,
+                 vacancy = Vacancy}) ->
+    Data = <<VacancyDown:8, VacancyUp:8, Vacancy:8, 0:8>>,
+    encode_property(ofp_v5_enum:to_int(table_mod_prop_type, vacancy), Data);
+encode_struct(#ofp_table_mod_prop_experimenter{
+                 experimenter = Experimenter,
+                 exp_type = ExpType,
+                 data = Data}) ->
+    Bin = <<Experimenter:32, ExpType:32, Data/binary>>,
+    encode_property(ofp_v5_enum:to_int(table_mod_prop_type, experimenter), Bin);
+encode_struct(#ofp_port_mod_prop_ethernet{advertise = Advertise}) ->
+    AdvertiseBin = flags_to_binary(port_features, Advertise, 4),
+    encode_property(ofp_v5_enum:to_int(port_mod_prop_type, ethernet), AdvertiseBin);
+encode_struct(#ofp_port_mod_prop_optical{
+                 configure = Configure, freq_lmda = FreqLmda,
+                 fl_offset = FlOffset, grid_span = GridSpan,
+                 tx_pwr = TxPwr}) ->
+    ConfigureBin = flags_to_binary(optical_port_features, Configure, 4),
+    Bin = <<ConfigureBin:4/bytes, FreqLmda:32, FlOffset:32/signed,
+            GridSpan:32, TxPwr:32>>,
+    encode_property(ofp_v5_enum:to_int(port_mod_prop_type, optical), Bin);
+encode_struct(#ofp_port_mod_prop_experimenter{
+                 experimenter = Experimenter,
+                 exp_type = ExpType,
+                 data = Data}) ->
+    Bin = <<Experimenter:32, ExpType:32, Data/binary>>,
+    encode_property(ofp_v5_enum:to_int(port_mod_prop_type, experimenter), Bin);
+encode_struct(#ofp_table_desc{
+                 table_id = Table,
+                 config = Config,
+                 properties = Properties}) ->
+    TableInt = get_id(table, Table),
+    ConfigBin = flags_to_binary(table_config, Config, 4),
+    PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties)),
+    Length = 8 + byte_size(PropertiesBin),
+    <<Length:16, TableInt:8, 0:8, ConfigBin:4/bytes, PropertiesBin/binary>>;
+encode_struct(#ofp_queue_desc{port_no = Port, queue_id = Queue, properties = Properties}) ->
+    PortInt = get_id(port_no, Port),
+    QueueInt = get_id(queue, Queue),
+    PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties)),
+    Length = 16 + byte_size(PropertiesBin),
+    <<PortInt:32, QueueInt:32, Length:16, 0:48, PropertiesBin/binary>>;
+encode_struct(#ofp_queue_desc_prop_min_rate{rate = Rate}) ->
+    TypeInt = ofp_v5_enum:to_int(queue_desc_prop_type, min_rate),
+    encode_property(TypeInt, <<Rate:16, 0:16>>);
+encode_struct(#ofp_queue_desc_prop_max_rate{rate = Rate}) ->
+    TypeInt = ofp_v5_enum:to_int(queue_desc_prop_type, max_rate),
+    encode_property(TypeInt, <<Rate:16, 0:16>>);
+encode_struct(#ofp_queue_desc_prop_experimenter{
+                 experimenter = Experimenter,
+                 exp_type = ExpType,
+                 data = Data}) ->
+    Bin = <<Experimenter:32, ExpType:32, Data/binary>>,
+    encode_property(ofp_v5_enum:to_int(queue_desc_prop_type, experimenter), Bin);
+encode_struct(#ofp_flow_update_full{
+                 event = Event,
+                 table_id = TableId,
+                 reason = Reason,
+                 idle_timeout = ITO,
+                 hard_timeout = HTO,
+                 priority = Priority,
+                 cookie = Cookie,
+                 match = Match,
+                 instructions = Instructions}) ->
+    EventInt = ofp_v5_enum:to_int(flow_update_event, Event),
+    TableInt = get_id(table, TableId),
+    ReasonInt = ofp_v5_enum:to_int(flow_removed_reason, Reason),
+    MatchBin = encode_struct(Match),
+    InstrsBin = encode_list(Instructions),
+    Length = 24 + byte_size(MatchBin) + byte_size(InstrsBin),
+    <<Length:16, EventInt:16, TableInt:8, ReasonInt:8, ITO:16, HTO:16, Priority:16, 
+      0:32, Cookie:8/bytes, MatchBin/bytes, InstrsBin/bytes>>;
+encode_struct(#ofp_flow_update_abbrev{event = Event,
+                                      xid = XId}) ->
+    EventInt = ofp_v5_enum:to_int(flow_update_event, Event),
+    <<8:16, EventInt:16, XId:32>>;
+encode_struct(#ofp_flow_update_paused{event = Event}) ->
+    EventInt = ofp_v5_enum:to_int(flow_update_event, Event),
+    <<8:16, EventInt:16, 0:32>>;
+encode_struct(#ofp_bundle_prop_experimenter{
+                 experimenter = Experimenter,
+                 exp_type = ExpType,
+                 data = Data}) ->
+    PropTypeInt = ofp_v5_enum:to_int(bundle_prop_type, experimenter),
+    encode_property(PropTypeInt,
+                    <<Experimenter:32,
+                      ExpType:32,
+                      Data/binary>>).
+
 
 encode_async_masks({PacketInMask1, PacketInMask2},
                    {PortStatusMask1, PortStatusMask2},
@@ -348,7 +521,7 @@ encode_bitmap(List) ->
 
 encode_hello_element({versionbitmap, Versions}) ->
     BitmapBin = encode_bitmap(Versions),
-    TypeInt = ofp_v4_enum:to_int(hello_elem, versionbitmap),
+    TypeInt = ofp_v5_enum:to_int(hello_elem, versionbitmap),
     SizeInt = 4 + size(BitmapBin),
     <<TypeInt:16, SizeInt:16, BitmapBin/bytes>>;
 encode_hello_element(_) ->
@@ -364,13 +537,13 @@ encode_hello_elements([H|Rest], Acc) ->
 encode_body(#ofp_hello{elements = Elements}) ->
     encode_hello_elements(Elements, []);
 encode_body(#ofp_error_msg{type = Type, code = Code, data = Data}) ->
-    TypeInt = ofp_v4_enum:to_int(error_type, Type),
-    CodeInt = ofp_v4_enum:to_int(Type, Code),
+    TypeInt = ofp_v5_enum:to_int(error_type, Type),
+    CodeInt = ofp_v5_enum:to_int(Type, Code),
     <<TypeInt:16, CodeInt:16, Data/bytes>>;
 encode_body(#ofp_error_msg_experimenter{exp_type = ExpTypeInt,
                                         experimenter = Experimenter,
                                         data = Data}) ->
-    TypeInt = ofp_v4_enum:to_int(error_type, experimenter),
+    TypeInt = ofp_v5_enum:to_int(error_type, experimenter),
     <<TypeInt:16, ExpTypeInt:16, Experimenter:32, Data/bytes>>;
 encode_body(#ofp_echo_request{data = Data}) ->
     Data;
@@ -402,7 +575,7 @@ encode_body(#ofp_packet_in{buffer_id = BufferId, reason = Reason,
                            table_id = TableId, cookie = Cookie,
                            match = Match, data = Data}) ->
     BufferIdInt = get_id(buffer_id, BufferId),
-    ReasonInt = ofp_v4_enum:to_int(packet_in_reason, Reason),
+    ReasonInt = ofp_v5_enum:to_int(packet_in_reason, Reason),
     MatchBin = encode_struct(Match),
     TotalLen = byte_size(Data),
     <<BufferIdInt:32, TotalLen:16, ReasonInt:8, TableId:8, Cookie:64/bits,
@@ -413,12 +586,12 @@ encode_body(#ofp_flow_removed{cookie = Cookie, priority = Priority,
                               idle_timeout = Idle, hard_timeout = Hard,
                               packet_count = PCount, byte_count = BCount,
                               match = Match}) ->
-    ReasonInt = ofp_v4_enum:to_int(flow_removed_reason, Reason),
+    ReasonInt = ofp_v5_enum:to_int(flow_removed_reason, Reason),
     MatchBin = encode_struct(Match),
     <<Cookie:8/bytes, Priority:16, ReasonInt:8, TableId:8, Sec:32, NSec:32,
       Idle:16, Hard:16, PCount:64, BCount:64, MatchBin/bytes>>;
 encode_body(#ofp_port_status{reason = Reason, desc = Port}) ->
-    ReasonInt = ofp_v4_enum:to_int(port_reason, Reason),
+    ReasonInt = ofp_v5_enum:to_int(port_reason, Reason),
     PortBin = encode_struct(Port),
     <<ReasonInt:8, 0:56, PortBin/bytes>>;
 encode_body(#ofp_packet_out{buffer_id = BufferId, in_port = Port,
@@ -438,7 +611,7 @@ encode_body(#ofp_flow_mod{cookie = Cookie, cookie_mask = CookieMask,
                           instructions = Instructions}) ->
     TableInt = get_id(table, Table),
     BufferIdInt = get_id(buffer_id, BufferId),
-    CommandInt = ofp_v4_enum:to_int(flow_mod_command, Command),
+    CommandInt = ofp_v5_enum:to_int(flow_mod_command, Command),
     OutPortInt = get_id(port_no, OutPort),
     OutGroupInt = get_id(group, OutGroup),
     FlagsBin = flags_to_binary(flow_mod_flags, Flags, 2),
@@ -450,32 +623,34 @@ encode_body(#ofp_flow_mod{cookie = Cookie, cookie_mask = CookieMask,
       InstructionsBin/bytes>>;
 encode_body(#ofp_group_mod{command = Command, type = Type,
                            group_id = Group, buckets = Buckets}) ->
-    CommandInt = ofp_v4_enum:to_int(group_mod_command, Command),
-    TypeInt = ofp_v4_enum:to_int(group_type, Type),
+    CommandInt = ofp_v5_enum:to_int(group_mod_command, Command),
+    TypeInt = ofp_v5_enum:to_int(group_type, Type),
     GroupInt = get_id(group, Group),
     BucketsBin = encode_list(Buckets),
     <<CommandInt:16, TypeInt:8, 0:8, GroupInt:32, BucketsBin/bytes>>;
 encode_body(#ofp_port_mod{port_no = Port, hw_addr = Addr,
                           config = Config, mask = Mask,
-                          advertise = Advertise}) ->
+                          properties = Properties}) ->
     PortInt = get_id(port_no, Port),
     ConfigBin = flags_to_binary(port_config, Config, 4),
     MaskBin = flags_to_binary(port_config, Mask, 4),
-    AdvertiseBin = flags_to_binary(port_features, Advertise, 4),
+    PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties)),
     <<PortInt:32, 0:32, Addr:6/bytes, 0:16, ConfigBin:4/bytes,
-      MaskBin:4/bytes, AdvertiseBin:4/bytes, 0:32>>;
-encode_body(#ofp_table_mod{table_id = Table}) ->
+      MaskBin:4/bytes, PropertiesBin/binary>>;
+encode_body(#ofp_table_mod{table_id = Table, config = Config, properties = Properties}) ->
     TableInt = get_id(table, Table),
-    <<TableInt:8, 0:24, 0:32>>;
+    ConfigBin = flags_to_binary(table_config, Config, 4),
+    PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties)),
+    <<TableInt:8, 0:24, ConfigBin:4/bytes, PropertiesBin/binary>>;
 %% Multipart Messages ----------------------------------------------------------
 encode_body(#ofp_desc_request{flags = Flags}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, desc),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, desc),
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32>>;
 encode_body(#ofp_desc_reply{flags = Flags, mfr_desc = MFR,
                             hw_desc = HW, sw_desc = SW,
                             serial_num = Serial, dp_desc = DP}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, desc),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, desc),
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     MFRPad = (?DESC_STR_LEN - size(MFR)) * 8,
     HWPad = (?DESC_STR_LEN - size(HW)) * 8,
@@ -490,7 +665,7 @@ encode_body(#ofp_flow_stats_request{flags = Flags, table_id = Table,
                                     out_port = Port, out_group = Group,
                                     cookie = Cookie, cookie_mask = CookieMask,
                                     match = Match}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, flow_stats),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, flow_stats),
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
     TableInt = get_id(table, Table),
     PortInt = get_id(port_no, Port),
@@ -501,7 +676,7 @@ encode_body(#ofp_flow_stats_request{flags = Flags, table_id = Table,
       GroupInt:32, 0:32, Cookie:8/bytes, CookieMask:8/bytes,
       MatchBin/bytes>>;
 encode_body(#ofp_flow_stats_reply{flags = Flags, body = Stats}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, flow_stats),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, flow_stats),
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32, StatsBin/bytes>>;
@@ -510,7 +685,7 @@ encode_body(#ofp_aggregate_stats_request{flags = Flags,
                                          out_group = Group, cookie = Cookie,
                                          cookie_mask = CookieMask,
                                          match = Match}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, aggregate_stats),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, aggregate_stats),
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
     TableInt = get_id(table, Table),
     PortInt = get_id(port_no, Port),
@@ -524,16 +699,16 @@ encode_body(#ofp_aggregate_stats_reply{flags = Flags,
                                        packet_count = PCount,
                                        byte_count = BCount,
                                        flow_count = FCount}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, aggregate_stats),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, aggregate_stats),
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       PCount:64, BCount:64, FCount:32, 0:32>>;
 encode_body(#ofp_table_stats_request{flags = Flags}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, table_stats),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, table_stats),
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32>>;
 encode_body(#ofp_table_stats_reply{flags = Flags, body = Stats}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, table_stats),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, table_stats),
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
@@ -543,65 +718,65 @@ encode_body(#ofp_table_features_request{} = Request) ->
 encode_body(#ofp_table_features_reply{} = Reply) ->
     table_features_reply(Reply);
 encode_body(#ofp_port_stats_request{flags = Flags, port_no = Port}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, port_stats),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, port_stats),
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
     PortInt = get_id(port_no, Port),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
       PortInt:32, 0:32>>;
 encode_body(#ofp_port_stats_reply{flags = Flags, body = Stats}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, port_stats),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, port_stats),
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       StatsBin/bytes>>;
 encode_body(#ofp_port_desc_request{flags = Flags}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, port_desc),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, port_desc),
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
     <<TypeInt:16, FlagsBin/bytes, 0:32>>;
 encode_body(#ofp_port_desc_reply{flags = Flags, body = Ports}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, port_desc),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, port_desc),
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     PortsBin = encode_list(Ports),
     <<TypeInt:16, FlagsBin/bytes, 0:32, PortsBin/bytes>>;
 encode_body(#ofp_queue_stats_request{flags = Flags,
                                      port_no = Port, queue_id = Queue}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, queue_stats),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, queue_stats),
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
     PortInt = get_id(port_no, Port),
     QueueInt = get_id(queue, Queue),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
       PortInt:32, QueueInt:32>>;
 encode_body(#ofp_queue_stats_reply{flags = Flags, body = Stats}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, queue_stats),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, queue_stats),
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       StatsBin/bytes>>;
 encode_body(#ofp_group_stats_request{flags = Flags,
                                      group_id = Group}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, group_stats),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, group_stats),
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
     GroupInt = get_id(group, Group),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
       GroupInt:32, 0:32>>;
 encode_body(#ofp_group_stats_reply{flags = Flags, body = Stats}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, group_stats),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, group_stats),
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       StatsBin/bytes>>;
 encode_body(#ofp_group_desc_request{flags = Flags}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, group_desc),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, group_desc),
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32>>;
 encode_body(#ofp_group_desc_reply{flags = Flags, body = Stats}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, group_desc),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, group_desc),
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     StatsBin = encode_list(Stats),
     <<TypeInt:16, FlagsBin/bytes, 0:32,
       StatsBin/bytes>>;
 encode_body(#ofp_group_features_request{flags = Flags}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, group_features),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, group_features),
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32>>;
 encode_body(#ofp_group_features_reply{flags = Flags, types = Types,
@@ -609,7 +784,7 @@ encode_body(#ofp_group_features_reply{flags = Flags, types = Types,
                                       max_groups = {Max1, Max2, Max3, Max4},
                                       actions = {Actions1, Actions2,
                                                  Actions3, Actions4}}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, group_features),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, group_features),
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     TypesBin = flags_to_binary(group_type, Types, 4),
     CapabilitiesBin = flags_to_binary(group_capabilities, Capabilities, 4),
@@ -624,27 +799,27 @@ encode_body(#ofp_group_features_reply{flags = Flags, types = Types,
       Actions4Bin/bytes>>;
 
 encode_body(#ofp_meter_stats_request{flags = Flags, meter_id = MeterId}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, meter_stats),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, meter_stats),
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
     MeterIdInt = get_id(meter_id, MeterId),
     <<TypeInt:16, FlagsBin/bytes, 0:32, MeterIdInt:32, 0:32>>;
 encode_body(#ofp_meter_stats_reply{flags = Flags, body = MeterStats}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, meter_stats),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, meter_stats),
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     StatsBin = encode_list(MeterStats),
     <<TypeInt:16, FlagsBin/bytes, 0:32, StatsBin/bytes>>;
 encode_body(#ofp_meter_config_request{flags = Flags, meter_id = MeterId}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, meter_config),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, meter_config),
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
     MeterIdInt = get_id(meter_id, MeterId),
     <<TypeInt:16, FlagsBin/bytes, 0:32, MeterIdInt:32, 0:32>>;
 encode_body(#ofp_meter_config_reply{flags = Flags, body = MeterConfigs}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, meter_config),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, meter_config),
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     MeterConfigsBin = encode_list(MeterConfigs),
     <<TypeInt:16, FlagsBin/bytes, 0:32, MeterConfigsBin/bytes>>;
 encode_body(#ofp_meter_features_request{flags = Flags}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, meter_features),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, meter_features),
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
     <<TypeInt:16, FlagsBin/bytes, 0:32>>;
 encode_body(#ofp_meter_features_reply{flags = Flags, max_meter = MaxMeter,
@@ -652,23 +827,70 @@ encode_body(#ofp_meter_features_reply{flags = Flags, max_meter = MaxMeter,
                                       capabilities = Capabilities,
                                       max_bands = MaxBands,
                                       max_color = MaxColor}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, meter_features),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, meter_features),
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     BandTypesBin = flags_to_binary(meter_band_type, BandTypes, 4),
     CapabilitiesBin = flags_to_binary(meter_flag, Capabilities, 4),
     <<TypeInt:16, FlagsBin/bytes, 0:32, MaxMeter:32, BandTypesBin:32/bits,
       CapabilitiesBin:32/bits, MaxBands:8, MaxColor:8, 0:16>>;
+encode_body(#ofp_table_desc_request{flags = Flags}) ->
+    TypeInt = ofp_v5_enum:to_int(multipart_type, table_desc),
+    FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
+    <<TypeInt:16, FlagsBin/bytes, 0:32>>;
+encode_body(#ofp_table_desc_reply{flags = Flags, tables = Tables}) ->
+    TypeInt = ofp_v5_enum:to_int(multipart_type, table_desc),
+    FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
+    TablesBin = list_to_binary(lists:map(fun encode_struct/1, Tables)),
+    <<TypeInt:16, FlagsBin/bytes, 0:32, TablesBin/binary>>;
+encode_body(#ofp_queue_desc_request{flags = Flags,
+                                    port_no = Port,
+                                    queue_id = Queue}) ->
+    TypeInt = ofp_v5_enum:to_int(multipart_type, queue_desc),
+    FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
+    PortInt = get_id(port_no, Port),
+    QueueInt = get_id(queue, Queue),
+    <<TypeInt:16, FlagsBin/bytes, 0:32,
+      PortInt:32, QueueInt:32>>;
+encode_body(#ofp_queue_desc_reply{flags = Flags, queues = Queues}) ->
+    TypeInt = ofp_v5_enum:to_int(multipart_type, queue_desc),
+    FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
+    QueuesBin = list_to_binary(lists:map(fun encode_struct/1, Queues)),
+    <<TypeInt:16, FlagsBin/bytes, 0:32, QueuesBin/binary>>;
 encode_body(#ofp_experimenter_request{flags = Flags,
                                       experimenter = Experimenter,
                                       exp_type = ExpType, data = Data}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, experimenter),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, experimenter),
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
       Experimenter:32, ExpType:32, Data/bytes>>;
+encode_body(#ofp_flow_monitor_request{flags = Flags,
+                                      monitor_id = MId,
+                                      out_port = Port,
+                                      out_group = Group,
+                                      monitor_flags = MonFlags,
+                                      table_id = TableId,
+                                      command = Cmd,
+                                      match = Match}) ->
+    TypeInt = ofp_v5_enum:to_int(multipart_type, flow_monitor),
+    FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
+    PortInt = get_id(port_no, Port),
+    GroupInt = get_id(group, Group),
+    MonFlagsBin = flags_to_binary(flow_monitor_flags, MonFlags, 2),
+    TableInt = get_id(table, TableId),
+    CmdInt = ofp_v5_enum:to_int(flow_monitor_command, Cmd),
+    MatchBin = encode_struct(Match),
+    <<TypeInt:16, FlagsBin/bytes, 0:32, MId:32, PortInt:32, GroupInt:32, 
+      MonFlagsBin/bytes, TableInt:8, CmdInt:8, MatchBin/bytes>>;
+encode_body(#ofp_flow_monitor_reply{flags = Flags,
+                                    updates = Updates}) ->
+    TypeInt = ofp_v5_enum:to_int(multipart_type, flow_monitor),
+    FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
+    UpdatesBin = encode_list(Updates),
+    <<TypeInt:16, FlagsBin:16/bits, 0:32, UpdatesBin/binary>>;
 encode_body(#ofp_experimenter_reply{flags = Flags,
                                     experimenter = Experimenter,
                                     exp_type = ExpType, data = Data}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, experimenter),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, experimenter),
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
       Experimenter:32, ExpType:32, Data/bytes>>;
@@ -685,11 +907,38 @@ encode_body(#ofp_queue_get_config_reply{port = Port, queues = Queues}) ->
     QueuesBin = encode_list(Queues),
     <<PortInt:32, 0:32, QueuesBin/bytes>>;
 encode_body(#ofp_role_request{role = Role, generation_id = Gen}) ->
-    RoleInt = ofp_v4_enum:to_int(controller_role, Role),
+    RoleInt = ofp_v5_enum:to_int(controller_role, Role),
     <<RoleInt:32, 0:32, Gen:64>>;
 encode_body(#ofp_role_reply{role = Role, generation_id = Gen}) ->
-    RoleInt = ofp_v4_enum:to_int(controller_role, Role),
+    RoleInt = ofp_v5_enum:to_int(controller_role, Role),
     <<RoleInt:32, 0:32, Gen:64>>;
+encode_body(#ofp_role_status{role = Role,
+                             reason = Reason,
+                             generation_id = Gen,
+                             properties = Properties}) ->
+    RoleInt = ofp_v5_enum:to_int(controller_role, Role),
+    ReasonInt = ofp_v5_enum:to_int(controller_role_reason, Reason),
+    EncodedProperties =
+        lists:map(fun(#ofp_role_prop_experimenter{
+                         experimenter = Experimenter,
+                         exp_type = ExpType,
+                         data = Data}) ->
+                          PropTypeInt = ofp_v5_enum:to_int(role_prop_type, experimenter),
+                          UnpaddedLength = byte_size(Data) + 12,
+                          Padding = (UnpaddedLength + 7) div 8 * 8 - UnpaddedLength,
+                          <<PropTypeInt:16, UnpaddedLength:16,
+                            Experimenter:32, ExpType:32,
+                            Data/binary, 0:Padding/unit:8>>
+                  end, Properties),
+    PropertiesBin = list_to_binary(EncodedProperties),
+    <<RoleInt:32, ReasonInt:8, 0:24, Gen:64, PropertiesBin/binary>>;
+encode_body(#ofp_table_status{reason = Reason,
+                              table = Table}) ->
+    ReasonInt = ofp_v5_enum:to_int(table_reason, Reason),
+    TableBin = encode_struct(Table),
+    <<ReasonInt:8, 0:56, TableBin/binary>>;
+encode_body(#ofp_requestforward{request = Request}) ->
+    do(Request);
 encode_body(#ofp_get_async_request{}) ->
     <<>>;
 encode_body(#ofp_get_async_reply{packet_in_mask = PacketInMask,
@@ -709,21 +958,64 @@ encode_body(#ofp_meter_mod{command = Command,
     MeterIdInt = get_id(meter_id, MeterId),
     BandsBin = encode_list(Bands),
     <<CommandInt:16, FlagsBin:2/bytes, MeterIdInt:32, BandsBin/bytes>>;
+encode_body(#ofp_bundle_ctrl_msg{bundle_id = BundleId,
+                                 type = Type,
+                                 flags = Flags,
+                                 properties = Properties}) ->
+    TypeInt = ofp_v5_enum:to_int(bundle_ctrl_type, Type),
+    FlagsBin = flags_to_binary(bundle_flag, Flags, 2),
+    EncodedProperties = lists:map(fun encode_struct/1, Properties),
+    PropertiesBin = list_to_binary(EncodedProperties),
+    <<BundleId:32, TypeInt:16, FlagsBin:2/bytes, PropertiesBin/binary>>;
+encode_body(#ofp_bundle_add_msg{bundle_id = BundleId,
+                                flags = Flags,
+                                message = Message,
+                                properties = Properties}) ->
+    FlagsBin = flags_to_binary(bundle_flag, Flags, 2),
+    MessageBin = do(Message),
+    case Properties of
+        [] ->
+            Padding = <<>>,
+            PropertiesBin = <<>>;
+        [_|_] ->
+            MsgLen = byte_size(MessageBin),
+            PadLen = (MsgLen + 7) div 8 * 8 - MsgLen,
+            Padding = <<0:(PadLen*8)>>,
+            PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties))
+    end,
+    <<BundleId:32, 0:16, FlagsBin:2/bytes, MessageBin/binary,
+      Padding/binary, PropertiesBin/binary>>;
 encode_body(Other) ->
     throw({bad_message, Other}).
+
+%% This function can be used to encode a property.
+%% It assumes that the property begins with:
+%%
+%%    uint16_t type;
+%%    uint16_t length;
+%%
+%% where length does not include the padding necessary to make the
+%% length of each property a multiple of 8.
+%%
+%% The resulting binary includes padding.
+encode_property(TypeInt, Data) ->
+    LengthWithoutPadding = byte_size(Data) + 4,
+    Padding = (LengthWithoutPadding + 7) div 8 * 8 - LengthWithoutPadding,
+    <<TypeInt:16, LengthWithoutPadding:16,
+      Data/binary, 0:Padding/unit:8>>.
 
 %% A.3.5.5 Table Features ------------------------------------------------------
 
 table_features_request(#ofp_table_features_request{flags = Flags,
                                                    body = Features}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, table_features),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, table_features),
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
     BodyBin = list_to_binary([table_features(Feature) || Feature <- Features]),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32, BodyBin/bytes>>.
 
 table_features_reply(#ofp_table_features_reply{flags = Flags,
                                                body = Features}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, table_features),
+    TypeInt = ofp_v5_enum:to_int(multipart_type, table_features),
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     BodyBin = list_to_binary([table_features(Feature) || Feature <- Features]),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32, BodyBin/bytes>>.
@@ -732,15 +1024,18 @@ table_features(#ofp_table_features{table_id = TableId,
                                    name = Name,
                                    metadata_match = MetadataMatch,
                                    metadata_write = MetadataWrite,
+                                   capabilities = Capabilities,
                                    max_entries = MaxEntries,
                                    properties = Properties}) ->
     TableIdInt = get_id(table, TableId),
     NamePadding = (?OFP_MAX_TABLE_NAME_LEN - byte_size(Name)) * 8,
+    CapabilitiesBin = flags_to_binary(table_config, Capabilities, 4),
     PropertiesBin = list_to_binary([table_feature_prop(Property)
                                     || Property <- Properties]),
     Length = 64 + byte_size(PropertiesBin),
     <<Length:16, TableIdInt:8, 0:40, Name/bytes, 0:NamePadding,
-      MetadataMatch:8/bytes, MetadataWrite:8/bytes, 0:32, MaxEntries:32,
+      MetadataMatch:8/bytes, MetadataWrite:8/bytes,
+      CapabilitiesBin:4/bytes, MaxEntries:32,
       PropertiesBin/bytes>>.
 
 table_feature_prop(#ofp_table_feature_prop_instructions{} = Prop) ->
@@ -778,7 +1073,7 @@ table_feature_prop(#ofp_table_feature_prop_experimenter_miss{} = Prop) ->
 
 table_feature_prop_instructions(#ofp_table_feature_prop_instructions{
                                    instruction_ids = Ids}) ->
-    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, instructions),
+    TypeInt = ofp_v5_enum:to_int(table_feature_prop_type, instructions),
     IdsBin = list_to_binary([table_feature_prop_instruction_id(Id)
                              || Id <- Ids]),
     Length = 4 + byte_size(IdsBin),
@@ -787,7 +1082,7 @@ table_feature_prop_instructions(#ofp_table_feature_prop_instructions{
 
 table_feature_prop_instructions_miss(#ofp_table_feature_prop_instructions_miss{
                                         instruction_ids = Ids}) ->
-    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, instructions_miss),
+    TypeInt = ofp_v5_enum:to_int(table_feature_prop_type, instructions_miss),
     IdsBin = list_to_binary([table_feature_prop_instruction_id(Id)
                              || Id <- Ids]),
     Length = 4 + byte_size(IdsBin),
@@ -796,7 +1091,7 @@ table_feature_prop_instructions_miss(#ofp_table_feature_prop_instructions_miss{
 
 table_feature_prop_next_tables(#ofp_table_feature_prop_next_tables{
                                   next_table_ids = Ids}) ->
-    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, next_tables),
+    TypeInt = ofp_v5_enum:to_int(table_feature_prop_type, next_tables),
     IdsBin = list_to_binary([<<Id:8>> || Id <- Ids]),
     Length = 4 + byte_size(IdsBin),
     Padding = ofp_utils:padding(Length, 8) * 8,
@@ -804,7 +1099,7 @@ table_feature_prop_next_tables(#ofp_table_feature_prop_next_tables{
 
 table_feature_prop_next_tables_miss(#ofp_table_feature_prop_next_tables_miss{
                                        next_table_ids = Ids}) ->
-    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, next_tables_miss),
+    TypeInt = ofp_v5_enum:to_int(table_feature_prop_type, next_tables_miss),
     IdsBin = list_to_binary([<<Id:8>> || Id <- Ids]),
     Length = 4 + byte_size(IdsBin),
     Padding = ofp_utils:padding(Length, 8) * 8,
@@ -812,7 +1107,7 @@ table_feature_prop_next_tables_miss(#ofp_table_feature_prop_next_tables_miss{
 
 table_feature_prop_write_actions(#ofp_table_feature_prop_write_actions{
                                     action_ids = Ids}) ->
-    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, write_actions),
+    TypeInt = ofp_v5_enum:to_int(table_feature_prop_type, write_actions),
     IdsBin = list_to_binary([table_feature_prop_action_id(Id) || Id <- Ids]),
     Length = 4 + byte_size(IdsBin),
     Padding = ofp_utils:padding(Length, 8) * 8,
@@ -820,7 +1115,7 @@ table_feature_prop_write_actions(#ofp_table_feature_prop_write_actions{
 
 table_feature_prop_write_actions_miss(
   #ofp_table_feature_prop_write_actions_miss{action_ids = Ids}) ->
-    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, write_actions_miss),
+    TypeInt = ofp_v5_enum:to_int(table_feature_prop_type, write_actions_miss),
     IdsBin = list_to_binary([table_feature_prop_action_id(Id) || Id <- Ids]),
     Length = 4 + byte_size(IdsBin),
     Padding = ofp_utils:padding(Length, 8) * 8,
@@ -828,7 +1123,7 @@ table_feature_prop_write_actions_miss(
 
 table_feature_prop_apply_actions(#ofp_table_feature_prop_apply_actions{
                                     action_ids = Ids}) ->
-    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, apply_actions),
+    TypeInt = ofp_v5_enum:to_int(table_feature_prop_type, apply_actions),
     IdsBin = list_to_binary([table_feature_prop_action_id(Id) || Id <- Ids]),
     Length = 4 + byte_size(IdsBin),
     Padding = ofp_utils:padding(Length, 8) * 8,
@@ -836,7 +1131,7 @@ table_feature_prop_apply_actions(#ofp_table_feature_prop_apply_actions{
 
 table_feature_prop_apply_actions_miss(
   #ofp_table_feature_prop_apply_actions_miss{action_ids = Ids}) ->
-    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, apply_actions_miss),
+    TypeInt = ofp_v5_enum:to_int(table_feature_prop_type, apply_actions_miss),
     IdsBin = list_to_binary([table_feature_prop_action_id(Id) || Id <- Ids]),
     Length = 4 + byte_size(IdsBin),
     Padding = ofp_utils:padding(Length, 8) * 8,
@@ -844,7 +1139,7 @@ table_feature_prop_apply_actions_miss(
 
 table_feature_prop_match(#ofp_table_feature_prop_match{
                             oxm_ids = Ids}) ->
-    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, match),
+    TypeInt = ofp_v5_enum:to_int(table_feature_prop_type, match),
     IdsBin = list_to_binary([table_feature_prop_field_id(Id) || Id <- Ids]),
     Length = 4 + byte_size(IdsBin),
     Padding = ofp_utils:padding(Length, 8) * 8,
@@ -852,7 +1147,7 @@ table_feature_prop_match(#ofp_table_feature_prop_match{
 
 table_feature_prop_wildcards(#ofp_table_feature_prop_wildcards{
                                 oxm_ids = Ids}) ->
-    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, wildcards),
+    TypeInt = ofp_v5_enum:to_int(table_feature_prop_type, wildcards),
     IdsBin = list_to_binary([table_feature_prop_field_id(Id) || Id <- Ids]),
     Length = 4 + byte_size(IdsBin),
     Padding = ofp_utils:padding(Length, 8) * 8,
@@ -860,7 +1155,7 @@ table_feature_prop_wildcards(#ofp_table_feature_prop_wildcards{
 
 table_feature_prop_write_setfield(#ofp_table_feature_prop_write_setfield{
                                      oxm_ids = Ids}) ->
-    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, write_setfield),
+    TypeInt = ofp_v5_enum:to_int(table_feature_prop_type, write_setfield),
     IdsBin = list_to_binary([table_feature_prop_field_id(Id) || Id <- Ids]),
     Length = 4 + byte_size(IdsBin),
     Padding = ofp_utils:padding(Length, 8) * 8,
@@ -868,7 +1163,7 @@ table_feature_prop_write_setfield(#ofp_table_feature_prop_write_setfield{
 
 table_feature_prop_write_setfield_miss(
   #ofp_table_feature_prop_write_setfield_miss{oxm_ids = Ids}) ->
-    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, write_setfield_miss),
+    TypeInt = ofp_v5_enum:to_int(table_feature_prop_type, write_setfield_miss),
     IdsBin = list_to_binary([table_feature_prop_field_id(Id) || Id <- Ids]),
     Length = 4 + byte_size(IdsBin),
     Padding = ofp_utils:padding(Length, 8) * 8,
@@ -876,7 +1171,7 @@ table_feature_prop_write_setfield_miss(
 
 table_feature_prop_apply_setfield(#ofp_table_feature_prop_apply_setfield{
                                      oxm_ids = Ids}) ->
-    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, apply_setfield),
+    TypeInt = ofp_v5_enum:to_int(table_feature_prop_type, apply_setfield),
     IdsBin = list_to_binary([table_feature_prop_field_id(Id) || Id <- Ids]),
     Length = 4 + byte_size(IdsBin),
     Padding = ofp_utils:padding(Length, 8) * 8,
@@ -884,7 +1179,7 @@ table_feature_prop_apply_setfield(#ofp_table_feature_prop_apply_setfield{
 
 table_feature_prop_apply_setfield_miss(
   #ofp_table_feature_prop_apply_setfield_miss{oxm_ids = Ids}) ->
-    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, apply_setfield_miss),
+    TypeInt = ofp_v5_enum:to_int(table_feature_prop_type, apply_setfield_miss),
     IdsBin = list_to_binary([table_feature_prop_field_id(Id) || Id <- Ids]),
     Length = 4 + byte_size(IdsBin),
     Padding = ofp_utils:padding(Length, 8) * 8,
@@ -894,7 +1189,7 @@ table_feature_prop_experimenter(#ofp_table_feature_prop_experimenter{
                                    experimenter = Experimenter,
                                    exp_type = ExpType,
                                    data = Data}) ->
-    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, experimenter),
+    TypeInt = ofp_v5_enum:to_int(table_feature_prop_type, experimenter),
     Length = 12 + byte_size(Data),
     Padding = ofp_utils:padding(Length, 8) * 8,
     <<TypeInt:16, Length:16, Experimenter:32, ExpType:32, Data/bytes,
@@ -904,32 +1199,32 @@ table_feature_prop_experimenter_miss(#ofp_table_feature_prop_experimenter_miss{
                                         experimenter = Experimenter,
                                         exp_type = ExpType,
                                         data = Data}) ->
-    TypeInt = ofp_v4_enum:to_int(table_feature_prop_type, experimenter_miss),
+    TypeInt = ofp_v5_enum:to_int(table_feature_prop_type, experimenter_miss),
     Length = 12 + byte_size(Data),
     Padding = ofp_utils:padding(Length, 8) * 8,
     <<TypeInt:16, Length:16, Experimenter:32, ExpType:32, Data/bytes,
       0:Padding>>.
 
 table_feature_prop_instruction_id({experimenter, Id}) when is_integer(Id) ->
-    ExperimenterInt = ofp_v4_enum:to_int(instruction_type, experimenter),
+    ExperimenterInt = ofp_v5_enum:to_int(instruction_type, experimenter),
     <<ExperimenterInt:16, 8:16, Id:32>>;
 table_feature_prop_instruction_id(Id) when is_atom(Id) ->
-    IdInt = ofp_v4_enum:to_int(instruction_type, Id),
+    IdInt = ofp_v5_enum:to_int(instruction_type, Id),
     <<IdInt:16, 4:16>>.
 
 table_feature_prop_action_id({experimenter, Id}) when is_integer(Id) ->
-    ExperimenterInt = ofp_v4_enum:to_int(action_type, experimenter),
+    ExperimenterInt = ofp_v5_enum:to_int(action_type, experimenter),
     <<ExperimenterInt:16, 8:16, Id:32>>;
 table_feature_prop_action_id(Id) when is_atom(Id) ->
-    IdInt = ofp_v4_enum:to_int(action_type, Id),
+    IdInt = ofp_v5_enum:to_int(action_type, Id),
     <<IdInt:16, 4:16>>.
 
 table_feature_prop_field_id({experimenter, Id}) when is_integer(Id) ->
-    ExperimenterInt = ofp_v4_enum:to_int(oxm_class, experimenter),
+    ExperimenterInt = ofp_v5_enum:to_int(oxm_class, experimenter),
     <<ExperimenterInt:16, 0:7, 0:1, 4:8, Id:32>>;
 table_feature_prop_field_id(Id) when is_atom(Id) ->
-    ClassInt = ofp_v4_enum:to_int(oxm_class, openflow_basic),
-    IdInt = ofp_v4_enum:to_int(oxm_ofb_match_fields, Id),
+    ClassInt = ofp_v5_enum:to_int(oxm_class, openflow_basic),
+    IdInt = ofp_v5_enum:to_int(oxm_ofb_match_fields, Id),
     <<ClassInt:16, IdInt:7, 0:1, 0:8>>.
 
 %%------------------------------------------------------------------------------
@@ -937,10 +1232,10 @@ table_feature_prop_field_id(Id) when is_atom(Id) ->
 %%------------------------------------------------------------------------------
 
 flags_to_binary(Type, Flags, Size) ->
-    ofp_utils:flags_to_binary(ofp_v4_enum, Type, Flags, Size).
+    ofp_utils:flags_to_binary(ofp_v5_enum, Type, Flags, Size).
 
 get_id(Enum, Value) ->
-    ofp_utils:get_enum_value(ofp_v4_enum, Enum, Value).
+    ofp_utils:get_enum_value(ofp_v5_enum, Enum, Value).
 
 -spec encode_list(list()) -> binary().
 encode_list(List) ->
@@ -948,122 +1243,142 @@ encode_list(List) ->
 
 -spec type_int(ofp_message_body()) -> integer().
 type_int(#ofp_hello{}) ->
-    ofp_v4_enum:to_int(type, hello);
+    ofp_v5_enum:to_int(type, hello);
 type_int(#ofp_error_msg{}) ->
-    ofp_v4_enum:to_int(type, error);
+    ofp_v5_enum:to_int(type, error);
 type_int(#ofp_error_msg_experimenter{}) ->
-    ofp_v4_enum:to_int(type, error);
+    ofp_v5_enum:to_int(type, error);
 type_int(#ofp_echo_request{}) ->
-    ofp_v4_enum:to_int(type, echo_request);
+    ofp_v5_enum:to_int(type, echo_request);
 type_int(#ofp_echo_reply{}) ->
-    ofp_v4_enum:to_int(type, echo_reply);
+    ofp_v5_enum:to_int(type, echo_reply);
 type_int(#ofp_experimenter{}) ->
-    ofp_v4_enum:to_int(type, experimenter);
+    ofp_v5_enum:to_int(type, experimenter);
 type_int(#ofp_features_request{}) ->
-    ofp_v4_enum:to_int(type, features_request);
+    ofp_v5_enum:to_int(type, features_request);
 type_int(#ofp_features_reply{}) ->
-    ofp_v4_enum:to_int(type, features_reply);
+    ofp_v5_enum:to_int(type, features_reply);
 type_int(#ofp_get_config_request{}) ->
-    ofp_v4_enum:to_int(type, get_config_request);
+    ofp_v5_enum:to_int(type, get_config_request);
 type_int(#ofp_get_config_reply{}) ->
-    ofp_v4_enum:to_int(type, get_config_reply);
+    ofp_v5_enum:to_int(type, get_config_reply);
 type_int(#ofp_set_config{}) ->
-    ofp_v4_enum:to_int(type, set_config);
+    ofp_v5_enum:to_int(type, set_config);
 type_int(#ofp_packet_in{}) ->
-    ofp_v4_enum:to_int(type, packet_in);
+    ofp_v5_enum:to_int(type, packet_in);
 type_int(#ofp_flow_removed{}) ->
-    ofp_v4_enum:to_int(type, flow_removed);
+    ofp_v5_enum:to_int(type, flow_removed);
 type_int(#ofp_port_status{}) ->
-    ofp_v4_enum:to_int(type, port_status);
+    ofp_v5_enum:to_int(type, port_status);
 type_int(#ofp_packet_out{}) ->
-    ofp_v4_enum:to_int(type, packet_out);
+    ofp_v5_enum:to_int(type, packet_out);
 type_int(#ofp_flow_mod{}) ->
-    ofp_v4_enum:to_int(type, flow_mod);
+    ofp_v5_enum:to_int(type, flow_mod);
 type_int(#ofp_group_mod{}) ->
-    ofp_v4_enum:to_int(type, group_mod);
+    ofp_v5_enum:to_int(type, group_mod);
 type_int(#ofp_port_mod{}) ->
-    ofp_v4_enum:to_int(type, port_mod);
+    ofp_v5_enum:to_int(type, port_mod);
 type_int(#ofp_table_mod{}) ->
-    ofp_v4_enum:to_int(type, table_mod);
+    ofp_v5_enum:to_int(type, table_mod);
 type_int(#ofp_desc_request{}) ->
-    ofp_v4_enum:to_int(type, multipart_request);
+    ofp_v5_enum:to_int(type, multipart_request);
 type_int(#ofp_desc_reply{}) ->
-    ofp_v4_enum:to_int(type, multipart_reply);
+    ofp_v5_enum:to_int(type, multipart_reply);
 type_int(#ofp_flow_stats_request{}) ->
-    ofp_v4_enum:to_int(type, multipart_request);
+    ofp_v5_enum:to_int(type, multipart_request);
 type_int(#ofp_flow_stats_reply{}) ->
-    ofp_v4_enum:to_int(type, multipart_reply);
+    ofp_v5_enum:to_int(type, multipart_reply);
 type_int(#ofp_aggregate_stats_request{}) ->
-    ofp_v4_enum:to_int(type, multipart_request);
+    ofp_v5_enum:to_int(type, multipart_request);
 type_int(#ofp_aggregate_stats_reply{}) ->
-    ofp_v4_enum:to_int(type, multipart_reply);
+    ofp_v5_enum:to_int(type, multipart_reply);
 type_int(#ofp_table_stats_request{}) ->
-    ofp_v4_enum:to_int(type, multipart_request);
+    ofp_v5_enum:to_int(type, multipart_request);
 type_int(#ofp_table_stats_reply{}) ->
-    ofp_v4_enum:to_int(type, multipart_reply);
+    ofp_v5_enum:to_int(type, multipart_reply);
 type_int(#ofp_table_features_request{}) ->
-    ofp_v4_enum:to_int(type, multipart_request);
+    ofp_v5_enum:to_int(type, multipart_request);
 type_int(#ofp_table_features_reply{}) ->
-    ofp_v4_enum:to_int(type, multipart_reply);
+    ofp_v5_enum:to_int(type, multipart_reply);
 type_int(#ofp_port_stats_request{}) ->
-    ofp_v4_enum:to_int(type, multipart_request);
+    ofp_v5_enum:to_int(type, multipart_request);
 type_int(#ofp_port_stats_reply{}) ->
-    ofp_v4_enum:to_int(type, multipart_reply);
+    ofp_v5_enum:to_int(type, multipart_reply);
 type_int(#ofp_port_desc_request{}) ->
-    ofp_v4_enum:to_int(type, multipart_request);
+    ofp_v5_enum:to_int(type, multipart_request);
 type_int(#ofp_port_desc_reply{}) ->
-    ofp_v4_enum:to_int(type, multipart_reply);
+    ofp_v5_enum:to_int(type, multipart_reply);
 type_int(#ofp_queue_stats_request{}) ->
-    ofp_v4_enum:to_int(type, multipart_request);
+    ofp_v5_enum:to_int(type, multipart_request);
 type_int(#ofp_queue_stats_reply{}) ->
-    ofp_v4_enum:to_int(type, multipart_reply);
+    ofp_v5_enum:to_int(type, multipart_reply);
 type_int(#ofp_group_stats_request{}) ->
-    ofp_v4_enum:to_int(type, multipart_request);
+    ofp_v5_enum:to_int(type, multipart_request);
 type_int(#ofp_group_stats_reply{}) ->
-    ofp_v4_enum:to_int(type, multipart_reply);
+    ofp_v5_enum:to_int(type, multipart_reply);
 type_int(#ofp_group_desc_request{}) ->
-    ofp_v4_enum:to_int(type, multipart_request);
+    ofp_v5_enum:to_int(type, multipart_request);
 type_int(#ofp_group_desc_reply{}) ->
-    ofp_v4_enum:to_int(type, multipart_reply);
+    ofp_v5_enum:to_int(type, multipart_reply);
 type_int(#ofp_group_features_request{}) ->
-    ofp_v4_enum:to_int(type, multipart_request);
+    ofp_v5_enum:to_int(type, multipart_request);
 type_int(#ofp_group_features_reply{}) ->
-    ofp_v4_enum:to_int(type, multipart_reply);
+    ofp_v5_enum:to_int(type, multipart_reply);
 type_int(#ofp_meter_stats_request{}) ->
-    ofp_v4_enum:to_int(type, multipart_request);
+    ofp_v5_enum:to_int(type, multipart_request);
 type_int(#ofp_meter_stats_reply{}) ->
-    ofp_v4_enum:to_int(type, multipart_reply);
+    ofp_v5_enum:to_int(type, multipart_reply);
 type_int(#ofp_meter_config_request{}) ->
-    ofp_v4_enum:to_int(type, multipart_request);
+    ofp_v5_enum:to_int(type, multipart_request);
 type_int(#ofp_meter_config_reply{}) ->
-    ofp_v4_enum:to_int(type, multipart_reply);
+    ofp_v5_enum:to_int(type, multipart_reply);
 type_int(#ofp_meter_features_request{}) ->
-    ofp_v4_enum:to_int(type, multipart_request);
+    ofp_v5_enum:to_int(type, multipart_request);
 type_int(#ofp_meter_features_reply{}) ->
-    ofp_v4_enum:to_int(type, multipart_reply);
+    ofp_v5_enum:to_int(type, multipart_reply);
+type_int(#ofp_flow_monitor_request{}) ->
+    ofp_v5_enum:to_int(type, multipart_request);
+type_int(#ofp_flow_monitor_reply{}) ->
+    ofp_v5_enum:to_int(type, multipart_reply);
 type_int(#ofp_experimenter_request{}) ->
-    ofp_v4_enum:to_int(type, multipart_request);
+    ofp_v5_enum:to_int(type, multipart_request);
 type_int(#ofp_experimenter_reply{}) ->
-    ofp_v4_enum:to_int(type, multipart_reply);
+    ofp_v5_enum:to_int(type, multipart_reply);
+type_int(#ofp_table_desc_request{}) ->
+    ofp_v5_enum:to_int(type, multipart_request);
+type_int(#ofp_table_desc_reply{}) ->
+    ofp_v5_enum:to_int(type, multipart_reply);
+type_int(#ofp_queue_desc_request{}) ->
+    ofp_v5_enum:to_int(type, multipart_request);
+type_int(#ofp_queue_desc_reply{}) ->
+    ofp_v5_enum:to_int(type, multipart_reply);
 type_int(#ofp_barrier_request{}) ->
-    ofp_v4_enum:to_int(type, barrier_request);
+    ofp_v5_enum:to_int(type, barrier_request);
 type_int(#ofp_barrier_reply{}) ->
-    ofp_v4_enum:to_int(type, barrier_reply);
+    ofp_v5_enum:to_int(type, barrier_reply);
 type_int(#ofp_queue_get_config_request{}) ->
-    ofp_v4_enum:to_int(type, queue_get_config_request);
+    ofp_v5_enum:to_int(type, queue_get_config_request);
 type_int(#ofp_queue_get_config_reply{}) ->
-    ofp_v4_enum:to_int(type, queue_get_config_reply);
+    ofp_v5_enum:to_int(type, queue_get_config_reply);
 type_int(#ofp_role_request{}) ->
-    ofp_v4_enum:to_int(type, role_request);
+    ofp_v5_enum:to_int(type, role_request);
 type_int(#ofp_role_reply{}) ->
-    ofp_v4_enum:to_int(type, role_reply);
+    ofp_v5_enum:to_int(type, role_reply);
+type_int(#ofp_role_status{}) ->
+    ofp_v5_enum:to_int(type, role_status);
+type_int(#ofp_table_status{}) ->
+    ofp_v5_enum:to_int(type, table_status);
+type_int(#ofp_requestforward{}) ->
+    ofp_v5_enum:to_int(type, requestforward);
 type_int(#ofp_get_async_request{}) ->
-    ofp_v4_enum:to_int(type, get_async_request);
+    ofp_v5_enum:to_int(type, get_async_request);
 type_int(#ofp_get_async_reply{}) ->
-    ofp_v4_enum:to_int(type, get_async_reply);
+    ofp_v5_enum:to_int(type, get_async_reply);
 type_int(#ofp_set_async{}) ->
-    ofp_v4_enum:to_int(type, set_async);
+    ofp_v5_enum:to_int(type, set_async);
 type_int(#ofp_meter_mod{}) ->
-    ofp_v4_enum:to_int(type, meter_mod).
-
-
+    ofp_v5_enum:to_int(type, meter_mod);
+type_int(#ofp_bundle_ctrl_msg{}) ->
+    ofp_v5_enum:to_int(type, bundle_control);
+type_int(#ofp_bundle_add_msg{}) ->
+    ofp_v5_enum:to_int(type, bundle_add_message).

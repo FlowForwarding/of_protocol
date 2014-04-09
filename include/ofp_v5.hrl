@@ -18,7 +18,7 @@
 %% @author Krzysztof Rutka <krzysztof.rutka@erlang-solutions.com>
 %% @copyright 2012 FlowForwarding.org
 
--define(VERSION, 4).
+-define(VERSION, 5).
 
 %% Maximum values --------------------------------------------------------------
 
@@ -81,7 +81,6 @@
 
 %% Structure sizes (in bytes) --------------------------------------------------
 
--define(PORT_SIZE, 64).
 -define(PACKET_QUEUE_SIZE, 16).
 -define(QUEUE_PROP_MIN_RATE_SIZE, 16).
 -define(QUEUE_PROP_MAX_RATE_SIZE, 16).
@@ -117,8 +116,6 @@
 -define(FLOW_STATS_SIZE, 56).
 -define(TABLE_STATS_SIZE, 24).
 -define(OFP_TABLE_FEATURES_SIZE, 64).
--define(PORT_STATS_SIZE, 112).
--define(QUEUE_STATS_SIZE, 40).
 -define(GROUP_STATS_SIZE, 40).
 -define(GROUP_DESC_STATS_SIZE, 8).
 -define(METER_BAND_SIZE, 16).
@@ -180,8 +177,11 @@
       | ofp_get_async_request()
       | ofp_get_async_reply()
       | ofp_set_async()
+        %% Request forwarding by the switch
+      | ofp_requestforward()
         %% Meters and rate limiters configuration messages
-      | ofp_meter_mod().
+      | ofp_meter_mod()
+      | ofp_table_status().
 
 %%%-----------------------------------------------------------------------------
 %%% Common Structures (A 2)
@@ -235,6 +235,11 @@
           name :: binary(),
           config = [] :: [ofp_port_config()],
           state = [] :: [ofp_port_state()],
+          properties = [] :: [ofp_port_desc_property()]
+         }).
+-type ofp_port() :: #ofp_port{}.
+
+-record(ofp_port_desc_prop_ethernet, {
           curr = [] :: [ofp_port_feature()],
           advertised = [] :: [ofp_port_feature()],
           supported = [] :: [ofp_port_feature()],
@@ -242,7 +247,33 @@
           curr_speed = 0 :: integer(),
           max_speed = 0 :: integer()
          }).
--type ofp_port() :: #ofp_port{}.
+
+-type ofp_optical_port_feature() :: rx_tune
+                                  | tx_tune
+                                  | tx_pwr
+                                  | use_freq.
+
+-record(ofp_port_desc_prop_optical, {
+          supported = [] :: [ofp_optical_port_feature()],
+          tx_min_freq_lmda :: non_neg_integer(),
+          tx_max_freq_lmda :: non_neg_integer(),
+          tx_grid_freq_lmda :: non_neg_integer(),
+          rx_min_freq_lmda :: non_neg_integer(),
+          rx_max_freq_lmda :: non_neg_integer(),
+          rx_grid_freq_lmda :: non_neg_integer(),
+          tx_pwr_min :: non_neg_integer(),
+          tx_pwr_max :: non_neg_integer()
+         }).
+
+-record(ofp_port_desc_prop_experimenter, {
+          experimenter :: non_neg_integer(),
+          exp_type :: non_neg_integer(),
+          data = <<>> :: binary()
+         }).
+
+-type ofp_port_desc_property() :: #ofp_port_desc_prop_ethernet{}
+                                | #ofp_port_desc_prop_optical{}
+                                | #ofp_port_desc_prop_experimenter{}.
 
 %%%-----------------------------------------------------------------------------
 %%% Queue Structures (A 2.2)
@@ -336,7 +367,8 @@
                              | mpls_bos
                              | pbb_isid
                              | tunnel_id
-                             | ipv6_exthdr.
+                             | ipv6_exthdr
+                             | pbb_uca.
 
 -type ofp_field_type() :: openflow_basic_type().
 
@@ -593,10 +625,39 @@
 -type ofp_table_id() :: all
                       | integer().
 
+-type ofp_table_config() :: eviction
+                          | vacancy_events.
+
 -record(ofp_table_mod, {
-          table_id = all :: ofp_table_id()
+          table_id = all :: ofp_table_id(),
+          config = [] :: [ofp_table_config()],
+          properties = [] :: [ofp_table_mod_property()]
          }).
 -type ofp_table_mod() :: #ofp_table_mod{}.
+
+-type ofp_table_mod_prop_eviction_flag() :: other
+                                          | importance
+                                          | lifetime.
+
+-record(ofp_table_mod_prop_eviction, {
+          flags = [] :: [ofp_table_mod_prop_eviction_flag()]
+         }).
+
+-record(ofp_table_mod_prop_vacancy, {
+          vacancy_down :: byte(),
+          vacancy_up :: byte(),
+          vacancy :: byte()
+         }).
+
+-record(ofp_table_mod_prop_experimenter, {
+          experimenter :: integer(),
+          exp_type :: integer(),
+          data = <<>> :: binary()
+         }).
+
+-type ofp_table_mod_property() :: #ofp_table_mod_prop_eviction{}
+                                | #ofp_table_mod_prop_vacancy{}
+                                | #ofp_table_mod_prop_experimenter{}.
 
 %%%-----------------------------------------------------------------------------
 %%% Nodify State Messages (A 3.4)
@@ -671,9 +732,31 @@
           hw_addr :: binary(),
           config = [] :: [ofp_port_config()],
           mask = [] :: [ofp_port_config()],
-          advertise = [] :: [ofp_port_feature()]
+          properties = [] :: [ofp_port_mod_property()]
          }).
 -type ofp_port_mod() :: #ofp_port_mod{}.
+
+-record(ofp_port_mod_prop_ethernet, {
+          advertise = [] :: [ofp_port_feature()]
+         }).
+
+-record(ofp_port_mod_prop_optical, {
+          configure = [] :: [ofp_optical_port_feature()],
+          freq_lmda :: non_neg_integer(),
+          fl_offset :: integer(),
+          grid_span :: non_neg_integer(),
+          tx_pwr :: non_neg_integer()
+         }).
+
+-record(ofp_port_mod_prop_experimenter, {
+          experimenter :: integer(),
+          exp_type :: integer(),
+          data = <<>> :: binary()
+         }).
+
+-type ofp_port_mod_property() :: #ofp_port_mod_prop_ethernet{}
+                               | #ofp_port_mod_prop_optical{}
+                               | #ofp_port_mod_prop_experimenter{}.
 
 %%% Meter Modification Message (A 3.4.4) ---------------------------------------
 
@@ -924,6 +1007,7 @@
           name :: bitstring(),
           metadata_match :: binary(),
           metadata_write :: binary(),
+          capabilities = [] :: [ofp_table_config()],
           max_entries :: integer(),
           properties = [] :: [ofp_table_feature_property()]
          }).
@@ -942,6 +1026,8 @@
 
 -record(ofp_port_stats, {
           port_no          :: ofp_port_no(),
+          duration_sec  = 0 :: integer(),
+          duration_nsec = 0 :: integer(),
           rx_packets    = 0 :: integer(),
           tx_packets    = 0 :: integer(),
           rx_bytes      = 0 :: integer(),
@@ -950,12 +1036,7 @@
           tx_dropped    = 0 :: integer(),
           rx_errors     = 0 :: integer(),
           tx_errors     = 0 :: integer(),
-          rx_frame_err  = 0 :: integer(),
-          rx_over_err   = 0 :: integer(),
-          rx_crc_err    = 0 :: integer(),
-          collisions    = 0 :: integer(),
-          duration_sec  = 0 :: integer(),
-          duration_nsec = 0 :: integer()
+          properties    = [] :: [ofp_port_stats_property()]
          }).
 -type ofp_port_stats() :: #ofp_port_stats{}.
 
@@ -970,6 +1051,44 @@
           body = [] :: [ofp_port_stats()]
          }).
 -type ofp_port_stats_reply() :: #ofp_port_stats_reply{}.
+
+-record(ofp_port_stats_prop_ethernet, {
+          rx_frame_err  = 0 :: non_neg_integer(),
+          rx_over_err   = 0 :: non_neg_integer(),
+          rx_crc_err    = 0 :: non_neg_integer(),
+          collisions    = 0 :: non_neg_integer()
+         }).
+
+-record(ofp_port_stats_prop_optical, {
+          flags = [] :: [ofp_port_stats_optical_flag()],
+          tx_freq_lmda = 0 :: non_neg_integer(),
+          tx_offset    = 0 :: non_neg_integer(),
+          tx_grid_span = 0 :: non_neg_integer(),
+          rx_freq_lmda = 0 :: non_neg_integer(),
+          rx_offset    = 0 :: non_neg_integer(),
+          rx_grid_span = 0 :: non_neg_integer(),
+          tx_pwr       = 0 :: non_neg_integer(),
+          rx_pwr       = 0 :: non_neg_integer(),
+          bias_current = 0 :: non_neg_integer(),
+          temperature  = 0 :: non_neg_integer()
+         }).
+
+-type ofp_port_stats_optical_flag() :: rx_tune
+                                     | tx_tune
+                                     | tx_pwr
+                                     | rx_pwr
+                                     | tx_bias
+                                     | tx_temp.
+
+-record(ofp_port_stats_prop_experimenter, {
+          experimenter :: integer(),
+          exp_type :: integer(),
+          data = <<>> :: binary()
+         }).
+
+-type ofp_port_stats_property() :: #ofp_port_stats_prop_ethernet{}
+                                 | #ofp_port_stats_prop_optical{}
+                                 | #ofp_port_stats_prop_experimenter{}.
 
 %%% Port Description (A 3.5.7) -------------------------------------------------
 
@@ -993,7 +1112,8 @@
           tx_packets = 0 :: integer(),
           tx_errors  = 0 :: integer(),
           duration_sec  = 0 :: integer(),
-          duration_nsec = 0 :: integer()
+          duration_nsec = 0 :: integer(),
+          properties = [] :: [ofp_queue_stats_property()]
          }).
 -type ofp_queue_stats() :: #ofp_queue_stats{}.
 
@@ -1009,6 +1129,13 @@
           body = [] :: [ofp_queue_stats()]
          }).
 -type ofp_queue_stats_reply() :: #ofp_queue_stats_reply{}.
+
+-record(ofp_queue_stats_prop_experimenter, {
+          experimenter :: integer(),
+          exp_type :: integer(),
+          data = <<>> :: binary()
+         }).
+-type ofp_queue_stats_property() :: #ofp_queue_stats_prop_experimenter{}.
 
 %%% Group Statistics (A 3.5.9) -------------------------------------------------
 
@@ -1155,6 +1282,124 @@
          }).
 -type ofp_meter_features_reply() :: #ofp_meter_features_reply{}.
 
+%%% Table Description ----------------------------------------------------------
+
+-record(ofp_table_desc_request, {
+          flags = [] :: [ofp_multipart_request_flag()]
+         }).
+-type ofp_table_desc_request() :: #ofp_table_desc_request{}.
+
+-record(ofp_table_desc, {
+          table_id :: ofp_table_id(),
+          config = [] :: [ofp_table_config()],
+          properties = [] :: [ofp_table_mod_property()]
+         }).
+-type ofp_table_desc() :: #ofp_table_desc{}.
+
+-record(ofp_table_desc_reply, {
+          flags = [] :: [ofp_multipart_reply_flag()],
+          tables = [] :: [#ofp_table_desc{}]
+         }).
+-type ofp_table_desc_reply() :: #ofp_table_desc_reply{}.
+
+%%% Queue Description ----------------------------------------------------------
+
+-record(ofp_queue_desc_request, {
+          flags = [] :: [ofp_multipart_request_flag()],
+          port_no :: ofp_port_no(),
+          queue_id :: ofp_queue_id()}).
+
+-record(ofp_queue_desc, {
+          port_no :: ofp_port_no(),
+          queue_id :: ofp_queue_id(),
+          properties = [] :: [ofp_queue_desc_property()]
+         }).
+
+-record(ofp_queue_desc_prop_min_rate, {
+          rate :: non_neg_integer()
+         }).
+
+-record(ofp_queue_desc_prop_max_rate, {
+          rate :: non_neg_integer()
+         }).
+
+-record(ofp_queue_desc_prop_experimenter, {
+          experimenter :: integer(),
+          exp_type :: integer(),
+          data = <<>> :: binary()
+         }).
+-type ofp_queue_desc_property() :: #ofp_queue_desc_prop_min_rate{}
+                                 | #ofp_queue_desc_prop_max_rate{}
+                                 | #ofp_queue_desc_prop_experimenter{}.
+
+-record(ofp_queue_desc_reply, {
+          flags = [] :: [ofp_multipart_reply_flag()],
+          queues = [] :: [#ofp_queue_desc{}]
+         }).
+
+%%% Flow monitoring (7.3.5.17 of spec 1.4)
+
+-type ofp_flow_monitor_command() :: add
+                                  | modify
+                                  | delete.
+
+-type ofp_flow_monitor_flag() :: initial
+                               | add
+                               | removed
+                               | modify
+                               | instructions
+                               | no_abbrev.
+
+-record(ofp_flow_monitor_request, {
+          flags = []       :: [ofp_multipart_request_flag()],
+          monitor_id       :: integer(),
+          out_port         :: ofp_port_no(),
+          out_group        :: ofp_group_id(),
+          monitor_flags    :: [ofp_flow_monitor_flag()],
+          table_id         :: ofp_table_id(),
+          command          :: ofp_flow_monitor_command(),
+          match            :: ofp_match()
+                   }).
+
+-type ofp_flow_monitor_request() :: #ofp_flow_monitor_request{}.
+
+-type ofp_flow_update_event() :: initial
+                               | added
+                               | removed
+                               | modified
+                               | abbrev
+                               | paused
+                               | resumed.
+
+-record(ofp_flow_update_full, {
+          event             :: ofp_flow_update_event(),
+          table_id          :: ofp_table_id(),
+          reason            :: ofp_flow_removed_reason(),
+          idle_timeout      :: integer(),
+          hard_timeout      :: integer(),
+          priority          :: integer(),
+          cookie = <<0:64>> :: binary(),
+          match             :: ofp_match(),
+          instructions = [] :: [ofp_instruction()]
+         }).
+
+-record(ofp_flow_update_abbrev, {
+          event      :: ofp_flow_update_event(),
+          xid        :: integer()
+         }).
+
+-record(ofp_flow_update_paused, {
+          event      :: ofp_flow_update_event()
+         }).
+
+-record(ofp_flow_monitor_reply, {
+          flags = [] :: [ofp_multipart_reply_flag()],
+          updates = [] :: [#ofp_flow_update_full{}
+                           | #ofp_flow_update_abbrev{}
+                           | #ofp_flow_update_paused{}]
+         }).
+-type ofp_flow_monitor_reply() :: #ofp_flow_monitor_reply{}.
+
 %%% Experimenter Multipart (A 3.5.15) ------------------------------------------
 
 -record(ofp_experimenter_request, {
@@ -1187,6 +1432,7 @@
                                | ofp_meter_stats_request()
                                | ofp_meter_config_request()
                                | ofp_meter_features_request()
+                               | ofp_table_desc_request()
                                | ofp_experimenter_request().
 
 -type ofp_multipart_reply() :: ofp_desc_reply()
@@ -1203,6 +1449,7 @@
                              | ofp_meter_stats_reply()
                              | ofp_meter_config_reply()
                              | ofp_meter_features_reply()
+                             | ofp_table_desc_reply()
                              | ofp_experimenter_reply().
 
 %%%-----------------------------------------------------------------------------
@@ -1264,6 +1511,52 @@
 -type ofp_role_reply() :: #ofp_role_reply{}.
 
 %%%-----------------------------------------------------------------------------
+%%% Role Status Message (version 1.4.0, section 7.4.4)
+%%%-----------------------------------------------------------------------------
+
+-type ofp_controller_role_reason() :: master_request
+                                    | config
+                                    | experimenter.
+
+-record(ofp_role_status, {
+          role :: ofp_controller_role(),
+          reason :: ofp_controller_role_reason(),
+          generation_id :: non_neg_integer(),
+          properties = [] :: [ofp_role_prop()]
+         }).
+-type ofp_role_status() :: #ofp_role_status{}.
+
+-record(ofp_role_prop_experimenter, {
+          experimenter :: non_neg_integer(),
+          exp_type :: non_neg_integer(),
+          data = <<>> :: binary()
+         }).
+
+-type ofp_role_prop() :: #ofp_role_prop_experimenter{}.
+
+%%%-----------------------------------------------------------------------------
+%%% Table Status Message (version 1.4.0, section 7.4.5)
+%%%-----------------------------------------------------------------------------
+
+-type ofp_table_reason() :: vacancy_down
+                          | vacancy_up.
+
+-record(ofp_table_status, {
+          reason :: ofp_table_reason(),
+          table :: ofp_table_desc()
+         }).
+-type ofp_table_status() :: #ofp_table_status{}.
+
+%%%-----------------------------------------------------------------------------
+%%% Request Forward Message (version 1.4.0, section 7.4.6)
+%%%-----------------------------------------------------------------------------
+
+-record(ofp_requestforward, {
+          request :: ofp_message()
+         }).
+-type ofp_requestforward() :: #ofp_requestforward{}.
+
+%%%-----------------------------------------------------------------------------
 %%% Set Asynchronous Configuration Message (A 3.10)
 %%%-----------------------------------------------------------------------------
 
@@ -1291,6 +1584,43 @@
 -type ofp_set_async() :: #ofp_set_async{}.
 
 %%%-----------------------------------------------------------------------------
+%%% Bundle Messages (version 1.4.0, section 7.3.9)
+%%%-----------------------------------------------------------------------------
+-type ofp_bundle_ctrl_type() :: open_request
+                              | open_reply
+                              | close_request
+                              | close_reply
+                              | commit_request
+                              | commit_reply
+                              | discard_request
+                              | discard_reply.
+
+-type ofp_bundle_flag() :: atomic
+                         | ordered.
+
+-record(ofp_bundle_prop_experimenter, {
+          experimenter :: non_neg_integer(),
+          exp_type :: non_neg_integer(),
+          data = <<>> :: binary()
+         }).
+
+-type ofp_bundle_prop() :: #ofp_bundle_prop_experimenter{}.
+
+-record(ofp_bundle_ctrl_msg, {
+          bundle_id :: non_neg_integer(),
+          type :: ofp_bundle_ctrl_type(),
+          flags = [] :: [ofp_bundle_flag()],
+          properties = [] :: [ofp_bundle_prop()]
+         }).
+
+-record(ofp_bundle_add_msg, {
+          bundle_id :: non_neg_integer(),
+          flags = [] :: [ofp_bundle_flag()],
+          message :: ofp_message(),
+          properties = [] :: [ofp_bundle_prop()]
+         }).
+
+%%%-----------------------------------------------------------------------------
 %%% Asynchronous Messages (A 4)
 %%%-----------------------------------------------------------------------------
 
@@ -1298,9 +1628,12 @@
 %%% Packet-In Message (A 4.1)
 %%%-----------------------------------------------------------------------------
 
--type ofp_packet_in_reason() :: no_match
-                              | action
-                              | invalid_ttl.
+-type ofp_packet_in_reason() :: table_miss
+                              | apply_action
+                              | invalid_ttl
+                              | action_set
+                              | group
+                              | packet_out.
 
 -type ofp_packet_in_bytes() :: integer()
                              | no_buffer.
@@ -1322,7 +1655,8 @@
 -type ofp_flow_removed_reason() :: idle_timeout
                                  | hard_timeout
                                  | delete
-                                 | group_delete.
+                                 | group_delete
+                                 | meter_delete.
 
 -record(ofp_flow_removed, {
           cookie :: binary(),
@@ -1400,7 +1734,8 @@
                              | bad_experimenter
                              | bad_exp_type
                              | bad_len
-                             | eperm.
+                             | eperm
+                             | dup_inst.
 
 -type ofp_bad_match() :: bad_type
                        | bad_len
@@ -1422,7 +1757,9 @@
                              | eperm
                              | bad_timeout
                              | bad_command
-                             | bad_flags.
+                             | bad_flags
+                             | cant_sync
+                             | bad_priority.
 
 -type ofp_group_mod_failed() :: group_exists
                               | invalid_group
@@ -1482,6 +1819,46 @@
                                    | bad_argument
                                    | eperm.
 
+-type ofp_bad_property() :: bad_type
+                          | bad_len
+                          | bad_value
+                          | too_many
+                          | dup_type
+                          | bad_experimenter
+                          | bad_exp_type
+                          | bad_exp_value
+                          | eperm.
+
+-type ofp_async_config_failed() :: invalid
+                                 | unsupported
+                                 | eperm.
+
+-type ofp_flow_monitor_failed() :: unknown
+                                 | monitor_exists
+                                 | invalid_monitor
+                                 | unknown_monitor
+                                 | bad_command
+                                 | bad_flags
+                                 | bad_table_id
+                                 | bad_out.
+
+-type ofp_bundle_failed() :: unknown
+                           | eperm
+                           | bad_id
+                           | bundle_exist
+                           | bundle_closed
+                           | out_of_bundles
+                           | bad_type
+                           | bad_flags
+                           | msg_bad_len
+                           | msg_bad_xid
+                           | msg_unsup
+                           | msg_conflict
+                           | msg_too_many
+                           | msg_failed
+                           | timeout
+                           | bundle_in_progress.
+
 -type ofp_error_code() :: ofp_hello_failed()
                         | ofp_bad_request()
                         | ofp_bad_action()
@@ -1511,6 +1888,10 @@
                         | role_request_failed
                         | meter_mod_failed
                         | table_features_failed
+                        | bad_property
+                        | async_config_failed
+                        | flow_monitor_failed
+                        | bundle_failed
                         | experimenter.
 
 -record(ofp_error_msg, {

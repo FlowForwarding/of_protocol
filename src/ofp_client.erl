@@ -185,7 +185,8 @@ handle_call({send, Message}, _From, #state{version = Version} = State) ->
                   Type == barrier_reply;
                   Type == queue_get_config_reply;
                   Type == role_reply;
-                  Type == get_async_reply ->
+                  Type == get_async_reply;
+                  Type == bundle_ctrl_msg ->
             {reply, handle_send(Message2, State), State};
         _Else ->
             {reply, {error, {bad_message, Message2}}, State}
@@ -193,7 +194,21 @@ handle_call({send, Message}, _From, #state{version = Version} = State) ->
 handle_call({controlling_process, Pid}, _From, State) ->
     {reply, ok, State#state{parent = Pid}};
 handle_call(make_slave, _From, #state{role = master,
-                                      ets = Tid} = State) ->
+                                      ets = Tid,
+                                      version = Version,
+                                      generation_id = CurrentGenId} = State) ->
+    if Version >= 5 ->
+            RoleStatus =
+                case CurrentGenId of
+                    undefined ->
+                        role_status(Version, slave, master_request, max_generation_id());
+                    _ ->
+                        role_status(Version, slave, master_request, CurrentGenId)
+                end,
+            do_send(#ofp_message{body = RoleStatus}, State);
+       true ->
+            do_nothing
+    end,
     %% Make auxiliary connections slave as well
     [make_slave(Pid) || {_, Pid} <- ets:lookup(Tid, self())],
     {reply, ok, State#state{role = slave}};
@@ -367,10 +382,12 @@ handle_send(#ofp_message{type = packet_in} = Message,
         _Else ->
             do_filter_send(Message, State)
     end;
-handle_send(#ofp_message{type = multipart_reply} = Message, State) ->
-    Replies = ofp_client_v4:split_multipart(Message),
-    Results = [do_send(Reply, State) || Reply <- Replies],
-    case lists:all(fun(X) -> X == ok end, Results) of
+handle_send(#ofp_message{type = Type} = Message, 
+            #state{version = Version} = State) when Type =:= multipart_reply ->
+    Module = client_module(Version),
+    Replies = Module:split_multipart(Message),
+    Result = [do_send(Reply, State) || Reply <- Replies],
+    case lists:all(fun(X) -> X == ok end,lists:flatten(Result)) of
         true ->
             ok;
         false ->
@@ -379,6 +396,27 @@ handle_send(#ofp_message{type = multipart_reply} = Message, State) ->
 handle_send(Message, State) ->
     do_filter_send(Message, State).
 
+do_send(#ofp_message{ type = Type } = Message, #state{controller = {_, _, Proto},
+                      socket = Socket,
+                      parser = Parser,
+                      version = Version} = State) when Type =:= multipart_reply ->
+    case ofp_parser:encode(Parser, Message#ofp_message{version = Version}) of
+        {ok, Binary} ->
+            case byte_size(Binary) < (1 bsl 16) of
+                true ->
+                    send(Proto, Socket, Binary);
+                false ->
+                    Module = client_module(Version),
+                    case Module:split_big_multipart(Message) of
+                        false ->
+                            {error, message_too_big};
+                        SplitList ->
+                            lists:map(fun(Msg) -> do_send(Msg,State) end, SplitList)
+                    end
+            end;
+        {error, Reason} ->
+            {error, Reason}
+    end;
 do_send(Message, #state{controller = {_, _, Proto},
                         socket = Socket,
                         parser = Parser,
@@ -396,9 +434,11 @@ do_send(Message, #state{controller = {_, _, Proto},
             {error, Reason}
     end.
 
-do_filter_send(#ofp_message{version = 4} = Message,
-               #state{role = Role, filter = Filter} = State) ->
-    case ofp_client_v4:filter_out_message(Message, Role, Filter) of
+do_filter_send(#ofp_message{version = Version} = Message,
+               #state{role = Role, filter = Filter} = State)
+  when Version >= 4 ->
+    Module = client_module(Version),
+    case Module:filter_out_message(Message, Role, Filter) of
         false ->
             do_send(Message, State);
         true ->
@@ -430,7 +470,9 @@ handle_message(#ofp_message{version = Version, type = Type} = Message,
        Type == group_mod;
        Type == port_mod;
        Type == table_mod;
-       Type == meter_mod ->
+       Type == meter_mod;
+       Type == bundle_control;
+       Type == bundle_add_message ->
     %% Don't allow slave controllers to modify things.
     Error = create_error(Version, bad_request, is_slave),
     IsSlaveError = Message#ofp_message{body = Error},
@@ -451,7 +493,9 @@ handle_message(#ofp_message{type = Type} = Message,
        Type == multipart_request;
        Type == barrier_request;
        Type == queue_get_config_request;
-       Type == meter_mod ->
+       Type == meter_mod;
+       Type == bundle_control;
+       Type == bundle_add_message ->
     Parent ! {ofp_message, self(), Message},
     State;
 handle_message(_OtherMessage, State) ->
@@ -634,8 +678,13 @@ greatest_common_version([], _) ->
 greatest_common_version(_, []) ->
     no_common_version;
 greatest_common_version(ControllerVersions, SwitchVersions) ->
-    lists:max([CtrlVersion || CtrlVersion <- ControllerVersions,
-                              lists:member(CtrlVersion, SwitchVersions)]).
+    case [CtrlVersion || CtrlVersion <- ControllerVersions,
+                         lists:member(CtrlVersion, SwitchVersions)] of
+        [] ->
+            no_common_version;
+        [_|_] = CommonVersions ->
+            lists:max(CommonVersions)
+    end.
 
 terminate_connection(#state{id = Id,
                             controller = {Host, Port, Proto},
@@ -666,41 +715,39 @@ terminate_auxiliary_connections(_Id, Sup, Tid) ->
     [supervisor:terminate_child(Sup, Pid)
      || {_, Pid} <- ets:lookup(Tid, self())].
 
-create_error(3, Type, Code) ->
-    ofp_client_v3:create_error(Type, Code);
-create_error(4, Type, Code) ->
-    ofp_client_v4:create_error(Type, Code).
+client_module(3) -> ofp_client_v3;
+client_module(4) -> ofp_client_v4;
+client_module(5) -> ofp_client_v5.
 
-create_role(3, Role, GenId) ->
-    ofp_client_v3:create_role(Role, GenId);
-create_role(4, Role, GenId) ->
-    ofp_client_v4:create_role(Role, GenId).
+create_error(Version, Type, Code) ->
+    (client_module(Version)):create_error(Type, Code).
 
-extract_role(3, RoleRequest) ->
-    ofp_client_v3:extract_role(RoleRequest);
-extract_role(4, RoleRequest) ->
-    ofp_client_v4:extract_role(RoleRequest).
+create_role(Version, Role, GenId) ->
+    (client_module(Version)):create_role(Role, GenId).
 
-create_async(4, Masks) ->
-    ofp_client_v4:create_async(Masks).
+extract_role(Version, RoleRequest) ->
+    (client_module(Version)):extract_role(RoleRequest).
 
-extract_async(4, Async) ->
-    ofp_client_v4:extract_async(Async).
+role_status(Version, Role, Reason, GenId) when Version >= 5 ->
+    (client_module(Version)):role_status(Role, Reason, GenId).
+
+create_async(Version, Masks) when Version >= 4 ->
+    (client_module(Version)):create_async(Masks).
+
+extract_async(Version, Async) when Version >= 4 ->
+    (client_module(Version)):extract_async(Async).
 
 add_type(#ofp_message{version = Version, body = Body} = Message) ->
-    case Version of
-        3 ->
-            Message#ofp_message{type = ofp_client_v3:type_atom(Body)};
-        4 ->
-            Message#ofp_message{type = ofp_client_v4:type_atom(Body)}
-    end.
+    Module = client_module(Version),
+    Message#ofp_message{type = Module:type_atom(Body)}.
 
 add_aux_id(#ofp_message{version = Version, body = Body} = Message, Id) ->
     case Version of
         3 ->
             Message;
-        4 ->
-            Message#ofp_message{body = ofp_client_v4:add_aux_id(Body, Id)}
+        _ ->
+            Module = client_module(Version),
+            Message#ofp_message{body = Module:add_aux_id(Body, Id)}
     end.
 
 %% TLS
