@@ -51,7 +51,16 @@ open(Pid, Id, ControllerHandle, Opts) ->
 
 send(SwitchId, Message) when is_integer(SwitchId) ->
     Tid = get_ets(SwitchId),
-    [send(Pid, Message) || {main, Pid} <- ets:lookup(Tid, main)];
+%% Beware that the contents of the table can change mid flight, Pid may be gone,
+%% send() may fail.
+    lists:foreach(fun({main,Pid}) ->
+         try
+                  send(Pid, Message)
+         catch _:Error ->
+                  io:format("Cannot send message to controller ~p: ~p\n", [Pid,Error]),
+                  ignore
+         end
+    end, ets:lookup(Tid, main));
 send(Pid, Message) when is_pid(Pid) ->
     ofp_client:send(Pid, Message).
 
