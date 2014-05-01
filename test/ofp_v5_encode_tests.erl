@@ -34,7 +34,7 @@ flow_monitor_req_test() ->
                       },
     {ok, EMsg} = of_protocol:encode(Msg),
     {ok, DMsg, <<>>} = of_protocol:decode(EMsg),
-    ?debugFmt("1 orig: ~p, dec: ~p~n", [Msg, DMsg]),
+%   ?debugFmt("1 orig: ~p, dec: ~p~n", [Msg, DMsg]),
     ?assertEqual(Msg, DMsg).
      
 flow_updates_test() ->
@@ -67,7 +67,7 @@ flow_updates_test() ->
                                  ]}},
     {ok, EMsg} = of_protocol:encode(Msg),
     {ok, DMsg, _Rest} = of_protocol:decode(EMsg),
-    ?debugFmt("2 orig: ~p, dec: ~p~n", [Msg, DMsg]),
+%   ?debugFmt("2 orig: ~p, dec: ~p~n", [Msg, DMsg]),
     ?assertEqual(Msg, DMsg).
 
 flow_update_paused_test() ->
