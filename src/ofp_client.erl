@@ -153,6 +153,12 @@ make_slave(Pid) ->
 %% message. For more information on `ControllerHandle' see
 %% {@link ofp_channel:open/4}.
 init({Tid, ResourceId, ControllerHandle, Parent, Opts, Type, Sup}) ->
+
+	%% The current implementation of TCP sockets in LING throws exceptions on
+	%% errors that occur outside the context of a gen_tcp call. We have to 
+	%% catch these exceptions not to confuse the supervisor.
+	process_flag(trap_exit, true),
+
     Version = get_opt(version, Opts, ?DEFAULT_VERSION),
     Versions = lists:umerge(get_opt(versions, Opts, []), [Version]),
     Timeout = get_opt(timeout, Opts, ?DEFAULT_TIMEOUT),
@@ -343,6 +349,12 @@ handle_info({Type, Socket}, #state{socket = Socket} = State)
 handle_info({Type, Socket, Reason}, #state{socket = Socket} = State)
   when Type == tcp_error orelse Type == ssl_error ->
     terminate_connection(State, {Type, Reason});
+
+handle_info({'EXIT', Socket, Reason}, #state{socket = Socket} = State) ->
+	%% LING-specific. We have caught an asynchronous error from the socket.
+	%% It is time to terminate gracefully.
+    terminate_connection(State, Reason);
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
