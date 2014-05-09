@@ -6,6 +6,7 @@
 
 -define(CONTROLLER_LISTEN_ADDRESS, {127, 0, 0, 1}).
 -define(DEFAULT_CONTROLLER_ROLE, equal).
+-define(DEFAULT_TCP_LISTEN_SOCKET_OPTS, [{ip, ?CONTROLLER_LISTEN_ADDRESS}]).
 
 %% Generators ------------------------------------------------------------------
 
@@ -57,8 +58,10 @@ change_roles(State) ->
 change_roles(_, _, 0, _) ->
     ok;
 change_roles(CurrentGenId, LastGenId, N, State) ->
+    Roles = [nochange, equal, master, slave],
     {RoleReply, NewState} =
-        ofp_client:change_role(?VERSION, Role = role(), CurrentGenId, State),
+        ofp_client:change_role(?VERSION, Role = random_list_element(Roles),
+                               CurrentGenId, State),
     case Role of
         R when R == nochange orelse R == equal ->
             ?assertEqual(LastGenId,
@@ -195,17 +198,9 @@ generation_id_teardown(_) ->
     unmock_ofp_channel().
 
 version_negotiation_setup() ->
-    {ok, ListenSocket} = gen_tcp:listen(Port = random_port(),
-                                        [binary,
-                                         {ip, ?CONTROLLER_LISTEN_ADDRESS},
-                                         {active, false}]),
-    {ok, OFClientPid} = ofp_client:start_link(ets:new(dummy, [public]),
-                                              undefined,
-                                              {remote_peer,
-                                               ?CONTROLLER_LISTEN_ADDRESS,
-                                               Port,
-                                               tcp},
-                                              [{versions, [3,4]}]),
+    ListenSocket = create_tcp_listen_socket(Port = random_port(),
+                                            [binary,{active, false}]),
+    OFClientPid = start_ofp_clent(Port),
     {ok, ControllerSocket} = gen_tcp:accept(ListenSocket),
     {OFClientPid, ListenSocket, ControllerSocket}.
 
@@ -216,8 +211,7 @@ version_negotiation_teardown({OFClientPid, ListenSocket, ControllerSocket})->
 
 active_controller_setup() ->
     random:seed(erlang:now()),
-    {ok, ListenSocket} = gen_tcp:listen(Port = random_port(),
-                                        [{ip, ?CONTROLLER_LISTEN_ADDRESS}]),
+    ListenSocket = create_tcp_listen_socket(Port = random_port(), []),
     {ok, ControllerSocket} = gen_tcp:connect(?CONTROLLER_LISTEN_ADDRESS, Port,
                                              [{active, false}, binary]),
     {ets:new(dummy, [public]), ListenSocket, ControllerSocket}.
@@ -227,17 +221,9 @@ active_controller_teardown({_Tid, ListenSocket, ControllerSocket}) ->
     ok = gen_tcp:close(ControllerSocket).
 
 external_role_change_setup() ->
-    {ok, ListenSocket} = gen_tcp:listen(Port = random_port(),
-                                        [binary,
-                                         {ip, ?CONTROLLER_LISTEN_ADDRESS},
-                                         {active, false}]),
-    {ok, OFClientPid} = ofp_client:start_link(ets:new(dummy, [public]),
-                                              undefined,
-                                              {remote_peer,
-                                               ?CONTROLLER_LISTEN_ADDRESS,
-                                               Port,
-                                               tcp},
-                                              [{versions, [3,4,5]}]),
+    ListenSocket = create_tcp_listen_socket(Port = random_port(),
+                                            [binary,{active, false}]),
+    OFClientPid = start_ofp_clent(Port),
     {OFClientPid, ListenSocket}.
 
 external_role_change_teardown({OFClientPid, ListenSocket}) ->
@@ -246,15 +232,24 @@ external_role_change_teardown({OFClientPid, ListenSocket}) ->
 
 %% Helper functions ------------------------------------------------------------
 
+create_tcp_listen_socket(Port, Opts) ->
+    {ok, ListenSocket} = gen_tcp:listen(Port,
+                                        ?DEFAULT_TCP_LISTEN_SOCKET_OPTS ++ Opts),
+    ListenSocket.
+
+start_ofp_clent(Port) ->
+    RemotePeer = {remote_peer, ?CONTROLLER_LISTEN_ADDRESS, Port, tcp},
+    {ok, OFClientPid} = ofp_client:start_link(ets:new(dummy, [public]),
+                                              undefined,
+                                              RemotePeer,
+                                              [{versions, [3,4,5]}]),
+    OFClientPid.
+
 generation_id() ->
     random:uniform(16#FFFFFFFFFFFFFFFF).
 
 max_generation_id() ->
     16#FFFFFFFFFFFFFFFF.
-
-role() ->
-    Roles = [nochange, equal, master, slave],
-    lists:nth(random:uniform(length(Roles)), Roles).
 
 random_list_element(List) ->
     lists:nth(random:uniform(length(List)), List).
@@ -279,7 +274,6 @@ mock_ofp_client_state() ->
 
 unmock_ofp_channel() ->
     ok = meck:unload(ofp_channel).
-
 
 random_port() ->
     random:uniform(49152) + 16383.
