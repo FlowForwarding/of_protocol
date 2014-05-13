@@ -44,8 +44,12 @@ new(Version) ->
 %% @doc Parse binary to OpenFlow Protocol messages.
 -spec parse(ofp_parser(), binary()) -> {ok, ofp_parser(), [ofp_message()]}.
 parse(Parser, Binary) ->
-    {ok, NewParser, Messages} = parse(Binary, Parser, []),
-    {ok, NewParser, lists:reverse(Messages)}.
+    case parse(Binary, Parser, []) of
+        {ok, NewParser, Messages} ->
+            {ok, NewParser, lists:reverse(Messages)};
+        {error,Exception} ->
+            {error,Exception}
+    end.
 
 %% @doc Encode a message using a parser.
 -spec encode(ofp_parser(), ofp_message()) -> {ok, Binary :: binary()} |
@@ -58,12 +62,14 @@ encode(#ofp_parser{module = Module}, Message) ->
 %%%-----------------------------------------------------------------------------
 
 -spec parse(binary(), ofp_parser(), [ofp_message()]) ->
-                   {ok, ofp_parser(), [ofp_message()]}.
+                   {ok, ofp_parser(), [ofp_message()]} | {error,term()}.
 parse(Binary, #ofp_parser{module = Module, stack = Stack} = Parser, Messages) ->
     NewBinary = <<Stack/binary, Binary/binary>>,
     case Module:decode(NewBinary) of
         {error, binary_too_small} ->
             {ok, Parser#ofp_parser{stack = NewBinary}, Messages};
+        {error,Exception} ->
+            {error,Exception};
         {ok, Message, Leftovers} ->
             parse(Leftovers, Parser#ofp_parser{stack = <<>>},
                   [Message | Messages])
