@@ -31,7 +31,7 @@
          controlling_process/2,
          send/2,
          stop/1,
-         replace_connection/4,
+         replace_connection/5,
          get_controllers_state/1,
          get_resource_ids/1]).
 
@@ -111,8 +111,8 @@ controlling_process(Pid, ControllingPid) ->
 send(Pid, Message) ->
     gen_server:call(Pid, {send, Message}).
 
-replace_connection(Pid, Host, Port, Proto) ->
-    gen_server:cast(Pid, {replace_connection, Host, Port, Proto}).
+replace_connection(Pid, Host, Port, Proto, Role) ->
+    gen_server:cast(Pid, {replace_connection, Host, Port, Proto, Role}).
 
 %% @doc Stop the client.
 -spec stop(pid()) -> ok.
@@ -153,6 +153,12 @@ make_slave(Pid) ->
 %% message. For more information on `ControllerHandle' see
 %% {@link ofp_channel:open/4}.
 init({Tid, ResourceId, ControllerHandle, Parent, Opts, Type, Sup}) ->
+
+	%% The current implementation of TCP sockets in LING throws exceptions on
+	%% errors that occur outside the context of a gen_tcp call. We have to 
+	%% catch these exceptions not to confuse the supervisor.
+	process_flag(trap_exit, true),
+
     Version = get_opt(version, Opts, ?DEFAULT_VERSION),
     Versions = lists:umerge(get_opt(versions, Opts, []), [Version]),
     Timeout = get_opt(timeout, Opts, ?DEFAULT_TIMEOUT),
@@ -232,8 +238,22 @@ handle_call(get_controller_state, _From, #state{controller = {ControllerIP,
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast({replace_connection, Host, Port, Proto}, State) ->
-    {noreply, State#state{controller = {Host, Port, Proto}}};
+handle_cast({replace_connection, Host, Port, Proto, Role},
+            #state{controller = {Host, Port, Proto}, role = Role} = State) ->
+    {noreply, State};
+handle_cast({replace_connection, Host, Port, Proto, NewRole} = Request,
+            #state{controller = {Host, Port, Proto}, ets = Tid, id = Id} = State) ->
+    case Id of
+        0 ->
+            handle_replace_connection_in_main(Request, Tid);
+        _ ->
+            ok
+    end,
+    send_role_status(NewRole, config, State),
+    {noreply, State#state{role = NewRole}};
+handle_cast({replace_connection, _Host, _Port, _Proto, _Role}, State) ->
+    %% TODO: Stop current connection and initiate a new one.
+    {noreply, State};
 handle_cast(_Message, State) ->
     {noreply, State}.
 
@@ -343,6 +363,12 @@ handle_info({Type, Socket}, #state{socket = Socket} = State)
 handle_info({Type, Socket, Reason}, #state{socket = Socket} = State)
   when Type == tcp_error orelse Type == ssl_error ->
     terminate_connection(State, {Type, Reason});
+
+handle_info({'EXIT', Socket, Reason}, #state{socket = Socket} = State) ->
+	%% LING-specific. We have caught an asynchronous error from the socket.
+	%% It is time to terminate gracefully.
+    terminate_connection(State, Reason);
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -796,3 +822,28 @@ generate_aux_resource_id(MainResourceId, AuxId) ->
 
 max_generation_id() ->
     16#FFFFFFFFFFFFFFFF.
+
+send_role_status(NewRole, Reason, #state{version = Version,
+                                         generation_id = CurrentGenId} = State)
+  when is_integer(Version) andalso Version >= 5 ->
+    RoleStatus =
+        role_status(Version, NewRole, Reason, case CurrentGenId of
+                                                  undefined ->
+                                                      max_generation_id();
+                                                  _ ->
+                                                      CurrentGenId
+                                              end),
+    do_send(#ofp_message{body = RoleStatus}, State);
+send_role_status(_NewRole, _Reason, #state{version = _LowerThan5}) ->
+    ok.
+
+handle_replace_connection_in_main({replace_connection, Host, Port, Proto, Role},
+                                  Tid) ->
+    case Role of
+        master ->
+            ofp_channel:make_slaves(Tid, self());
+        _ ->
+            ok
+    end,
+    [replace_connection(AuxPid, Host, Port, Proto, Role)
+     ||  {_, AuxPid} <- ets:lookup(Tid, self())].
