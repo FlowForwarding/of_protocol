@@ -291,12 +291,8 @@ expect_client_change_role_for_version(ClientPid, ListenSocket, Version) ->
     timer:sleep(2000),
     assert_ofp_client_agreed_on_version(ClientPid, Version),
     assert_ofp_client_has_role(ClientPid, ?DEFAULT_CONTROLLER_ROLE),
-    #controller_status{controller_ip = IP,
-                       controller_port = Port,
-                       protocol = Protocol
-                      } = gen_server:call(ClientPid, get_controller_state),
-    ok = ofp_client:replace_connection(ClientPid, IP, Port, Protocol,
-                                       NewRole = slave),
+    ok = ofp_client:update_connection_config(ClientPid,
+                                             [{role, NewRole = slave}]),
     assert_ofp_client_has_role(ClientPid, NewRole),
     gen_tcp:close(ControllerSocket).
 
@@ -347,11 +343,9 @@ assert_message_contains_role_status(_DecodedMsg, RestBinMsg, ExpectedRole) ->
 assert_ofp_client_sent_role_status_when_role_changes(ClientPid,
                                                      ControllerSocket) ->
     NewRole = random_list_element([slave, master, equal]),
-    #controller_status{role = CurrentRole, controller_ip = IP,
-                       controller_port = Port, protocol = Protocol}
-        = gen_server:call(ClientPid, get_controller_state),
-    ok = ofp_client:replace_connection(
-           ClientPid, IP, Port, Protocol, NewRole),
+    #controller_status{role = CurrentRole} = gen_server:call(
+                                               ClientPid, get_controller_state),
+    ok = ofp_client:update_connection_config(ClientPid, [{role, NewRole}]),
     case NewRole /= CurrentRole of
         true ->
             assert_ofp_client_sent_role_status(ControllerSocket,

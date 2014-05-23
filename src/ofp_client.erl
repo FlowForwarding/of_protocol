@@ -31,7 +31,7 @@
          controlling_process/2,
          send/2,
          stop/1,
-         replace_connection/5,
+         update_connection_config/2,
          get_controllers_state/1,
          get_resource_ids/1]).
 
@@ -111,8 +111,20 @@ controlling_process(Pid, ControllingPid) ->
 send(Pid, Message) ->
     gen_server:call(Pid, {send, Message}).
 
-replace_connection(Pid, Host, Port, Proto, Role) ->
-    gen_server:cast(Pid, {replace_connection, Host, Port, Proto, Role}).
+%% @doc Update the connection to the controller.
+%%
+%% If the list of configuration tuples doesn't contain some value, the value will
+%% be taken from the current configuration. For example, to change only the port
+%% of a controller the client is expected to connect to (without changing the IP
+%% address etc.), one needs to create the following configuration:
+%% [{port, 6634}].
+-spec update_connection_config(pid(), list(ConfigTuple)) -> ok when
+      ConfigTuple :: {'ip-address', inet:ip_address()} |
+                     {protocol, tcp | tls} |
+                     {prort, inet:port_number()} |
+                     {role, master | slave | equal}.
+update_connection_config(Pid, Config) ->
+    gen_server:cast(Pid, {update_connection_config, Config}).
 
 %% @doc Stop the client.
 -spec stop(pid()) -> ok.
@@ -153,12 +165,10 @@ make_slave(Pid) ->
 %% message. For more information on `ControllerHandle' see
 %% {@link ofp_channel:open/4}.
 init({Tid, ResourceId, ControllerHandle, Parent, Opts, Type, Sup}) ->
-
-	%% The current implementation of TCP sockets in LING throws exceptions on
-	%% errors that occur outside the context of a gen_tcp call. We have to 
-	%% catch these exceptions not to confuse the supervisor.
-	process_flag(trap_exit, true),
-
+    %% The current implementation of TCP sockets in LING throws exceptions on
+    %% errors that occur outside the context of a gen_tcp call. We have to
+    %% catch these exceptions not to confuse the supervisor.
+    process_flag(trap_exit, true),
     Version = get_opt(version, Opts, ?DEFAULT_VERSION),
     Versions = lists:umerge(get_opt(versions, Opts, []), [Version]),
     Timeout = get_opt(timeout, Opts, ?DEFAULT_TIMEOUT),
@@ -238,22 +248,20 @@ handle_call(get_controller_state, _From, #state{controller = {ControllerIP,
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast({replace_connection, Host, Port, Proto, Role},
-            #state{controller = {Host, Port, Proto}, role = Role} = State) ->
-    {noreply, State};
-handle_cast({replace_connection, Host, Port, Proto, NewRole} = Request,
-            #state{controller = {Host, Port, Proto}, ets = Tid, id = Id} = State) ->
-    case Id of
-        0 ->
-            handle_replace_connection_in_main(Request, Tid);
-        _ ->
-            ok
-    end,
-    send_role_status(NewRole, config, State),
-    {noreply, State#state{role = NewRole}};
-handle_cast({replace_connection, _Host, _Port, _Proto, _Role}, State) ->
-    %% TODO: Stop current connection and initiate a new one.
-    {noreply, State};
+handle_cast({update_connection_config, Config},
+            #state{controller = Controller, role = Role} = State) ->
+    NewState = case is_connection_reestablishment_required(Config, Controller) of
+                   true ->
+                       reestablish_connection(Config, State);
+                   false ->
+                       State
+               end,
+    case is_role_change_required(Config, Role) of
+        true ->
+            {noreply, change_role_internally(Config, NewState)};
+        false ->
+            {noreply, NewState}
+    end;
 handle_cast(_Message, State) ->
     {noreply, State}.
 
@@ -837,13 +845,45 @@ send_role_status(NewRole, Reason, #state{version = Version,
 send_role_status(_NewRole, _Reason, #state{version = _LowerThan5}) ->
     ok.
 
-handle_replace_connection_in_main({replace_connection, Host, Port, Proto, Role},
-                                  Tid) ->
-    case Role of
+is_connection_reestablishment_required(Config, {IP, Port, Proto}) ->
+    lists:any(fun({'ip-address', NewIP}) when NewIP /= IP -> true;
+                 ({port, NewPort}) when NewPort /= Port -> true;
+                 ({protocol, NewProto}) when NewProto /= Proto -> true;
+                 (_) -> false
+              end, Config).
+
+reestablish_connection(Config, #state{controller = {IP, Port, Proto}} = State) ->
+    NewController = {proplists:get_value('ip-address', Config, IP ),
+                     proplists:get_value(port, Config, Port),
+                     proplists:get_value(protocol, Config, Proto)},
+    terminate_connection(State),
+    initiate_connection(State#state{controller = NewController}).
+
+terminate_connection(State) ->
+    %% TODO
+    State.
+
+initiate_connection(State) ->
+    %% TODO
+    State.
+
+is_role_change_required(Config, CurrentRole) ->
+    proplists:get_value(role, Config) /= CurrentRole.
+
+change_role_internally(Config, #state{id = Id, ets = Tid} = State) ->
+    NewRole = proplists:get_value(role, Config),
+    case NewRole of
         master ->
             ofp_channel:make_slaves(Tid, self());
         _ ->
             ok
     end,
-    [replace_connection(AuxPid, Host, Port, Proto, Role)
-     ||  {_, AuxPid} <- ets:lookup(Tid, self())].
+    case Id of
+        0 ->
+            [update_connection_config(AuxPid, [{role, NewRole}])
+             ||  {_, AuxPid} <- ets:lookup(Tid, self())];
+        _ ->
+            ok
+    end,
+    send_role_status(NewRole, config, State),
+    State#state{role = NewRole}.
