@@ -62,7 +62,7 @@
           parent :: pid(),
           version :: integer(),
           versions :: [integer()],
-          role = equal :: master | equal | slave,
+          role = equal :: controller_role(),
           generation_id :: integer(),
           filter = #async_config{},
           socket :: inet:socket(),
@@ -122,7 +122,7 @@ send(Pid, Message) ->
       ConfigTuple :: {ip, inet:ip_address()} |
                      {protocol, tcp | tls} |
                      {prort, inet:port_number()} |
-                     {role, master | slave | equal}.
+                     {role, controller_role()}.
 update_connection_config(Pid, Config) ->
     gen_server:cast(Pid, {update_connection_config, Config}).
 

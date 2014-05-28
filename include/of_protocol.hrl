@@ -57,9 +57,11 @@
 
 %% Client ----------------------------------------------------------------------
 
+-type controller_role() :: master | equal | slave.
+
 -record(controller_status, {
           resource_id        :: string(),
-          role               :: master | equal | slave,
+          role               :: controller_role(),
           controller_ip      :: string(),
           controller_port    :: integer(),
           local_ip           :: string(),
