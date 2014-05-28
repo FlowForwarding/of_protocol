@@ -5,8 +5,8 @@
 -include("ofp_v4.hrl").
 
 -define(CONTROLLER_LISTEN_ADDRESS, {127, 0, 0, 1}).
+-define(ANOTHER_CONTROLLER_LISTEN_ADDRESS, {127, 0, 0, 2}).
 -define(DEFAULT_CONTROLLER_ROLE, equal).
--define(DEFAULT_TCP_LISTEN_SOCKET_OPTS, [{ip, ?CONTROLLER_LISTEN_ADDRESS}]).
 
 %% Generators ------------------------------------------------------------------
 
@@ -35,13 +35,17 @@ active_controller_test_() ->
      [fun expect_hello/1,
       fun expect_client_terminate/1]}.
 
-external_role_change_test_() ->
+update_connection_config_test_() ->
     {foreach,
-     fun external_role_change_setup/0,
-     fun external_role_change_teardown/1,
+     fun update_connection_config_setup/0,
+     fun update_connection_config_teardown/1,
      [fun expect_client_change_role_for_1_3_version/1,
       fun expect_client_change_role_for_1_4_version/1,
-      fun expect_client_will_send_role_status_to_controller/1]}.
+      fun expect_client_will_send_role_status_to_controller/1,
+      fun expect_client_will_reconnect_with_new_ip/1,
+      fun expect_client_will_reconnect_with_new_port/1,
+      fun expect_client_will_reconnect_with_new_ip_and_port/1,
+      fun expect_client_will_reconnect_with_new_ip_port_and_role/1]}.
 
 %% Tests ----------------------------------------------------------------------
 
@@ -187,6 +191,51 @@ expect_client_will_send_role_status_to_controller({ClientPid, ListenSocket}) ->
              gen_tcp:close(ControllerSocket)
      end}.
 
+expect_client_will_reconnect_with_new_ip({ClientPid, ListenSocket}) ->
+    {"Test if the ofp_client will reconnect when controller's IP is changed",
+     {timeout, 10,
+      fun() ->
+              seed_random(),
+              NewConfig = [{ip, ?ANOTHER_CONTROLLER_LISTEN_ADDRESS}],
+              expect_client_will_reconnect_with_new_connection_config(
+                ClientPid, ListenSocket, NewConfig)
+      end}}.
+
+expect_client_will_reconnect_with_new_port({ClientPid, ListenSocket}) ->
+    {"Test if the ofp_client will reconnect when controller's Port is changed",
+     {timeout, 10,
+      fun() -> seed_random(),
+               NewConfig = [{port, random_port()}],
+               expect_client_will_reconnect_with_new_connection_config(
+                 ClientPid, ListenSocket, NewConfig)
+      end}}.
+
+expect_client_will_reconnect_with_new_ip_and_port({ClientPid, ListenSocket}) ->
+    {"Test if the ofp_client will reconnect when controller's IP and port "
+     "are changed",
+     {timeout, 10,
+      fun() -> seed_random(),
+               NewConfig = [{ip, ?ANOTHER_CONTROLLER_LISTEN_ADDRESS},
+                            {port, random_port()}],
+               expect_client_will_reconnect_with_new_connection_config(
+                 ClientPid, ListenSocket, NewConfig)
+      end}}.
+
+expect_client_will_reconnect_with_new_ip_port_and_role({ClientPid,
+                                                        ListenSocket}) ->
+    {"Test if the ofp_client will reconnect when controller's IP, Port and role"
+     "are changed",
+     {timeout, 10,
+      fun() ->
+              seed_random(),
+              NewConfig = [{ip, ?ANOTHER_CONTROLLER_LISTEN_ADDRESS},
+                           {port, random_port()},
+                           {role, random_list_element(
+                                    [master, equal, slave])}],
+              expect_client_will_reconnect_with_new_connection_config(
+                ClientPid, ListenSocket, NewConfig)
+      end}}.
+
 %% Fixtures -------------------------------------------------------------------
 
 generation_id_setup() ->
@@ -204,7 +253,7 @@ version_negotiation_setup() ->
     {ok, ControllerSocket} = gen_tcp:accept(ListenSocket),
     {OFClientPid, ListenSocket, ControllerSocket}.
 
-version_negotiation_teardown({OFClientPid, ListenSocket, ControllerSocket})->
+version_negotiation_teardown({OFClientPid, ListenSocket, ControllerSocket}) ->
     ofp_client:stop(OFClientPid),
     gen_tcp:close(ControllerSocket),
     gen_tcp:close(ListenSocket).
@@ -220,21 +269,28 @@ active_controller_teardown({_Tid, ListenSocket, ControllerSocket}) ->
     ok = gen_tcp:close(ListenSocket),
     ok = gen_tcp:close(ControllerSocket).
 
-external_role_change_setup() ->
-    ListenSocket = create_tcp_listen_socket(Port = random_port(),
-                                            [binary,{active, false}]),
+update_connection_config_setup() ->
+    seed_random(),
+    ListenSocket = create_tcp_listen_socket(Port = random_port(), []),
     OFClientPid = start_ofp_clent(Port),
     {OFClientPid, ListenSocket}.
 
-external_role_change_teardown({OFClientPid, ListenSocket}) ->
+update_connection_config_teardown({OFClientPid, ListenSocket}) ->
     ofp_client:stop(OFClientPid),
     gen_tcp:close(ListenSocket).
 
 %% Helper functions ------------------------------------------------------------
 
 create_tcp_listen_socket(Port, Opts) ->
-    {ok, ListenSocket} = gen_tcp:listen(Port,
-                                        ?DEFAULT_TCP_LISTEN_SOCKET_OPTS ++ Opts),
+    DefaultOpts = [binary, {active, false}],
+    UpdatedOpts = case proplists:is_defined(ip, Opts) of
+                      true ->
+                          Opts ++ DefaultOpts;
+                      false ->
+                          [{ip, ?CONTROLLER_LISTEN_ADDRESS} | Opts]
+                              ++ DefaultOpts
+                  end,
+    {ok, ListenSocket} = gen_tcp:listen(Port, UpdatedOpts),
     ListenSocket.
 
 start_ofp_clent(Port) ->
@@ -357,3 +413,58 @@ assert_ofp_client_sent_role_status_when_role_changes(ClientPid,
 fail(Msg) ->
     ?debugMsg(Msg),
     ?assert(false).
+
+seed_random() ->
+    <<A:32, B:32, C:32>> = crypto:rand_bytes(12),
+    random:seed({A,B,C}).
+
+expect_client_will_reconnect_with_new_connection_config(
+  ClientPid, ListenSocket, NewConfig) ->
+    %% GIVEN
+    CtrlSock = connect_to_ofp_client_and_request_version(
+                 ListenSocket, random_list_element([4,5])),
+    %% Wait a while so that ofp_client can initialize
+    timer:sleep(2000),
+    %% NewConfig = create_ofp_client_updated_config(NewConfig, CtrlSock),
+
+    %% WHEN
+    ok = ofp_client:update_connection_config(ClientPid, NewConfig),
+
+    %% THEN
+    AnotherListenSock = create_another_listen_controller_socket(NewConfig,
+                                                                CtrlSock),
+    AnotherCtrlSock = connect_to_ofp_client_and_request_version(
+                        AnotherListenSock,
+                        AnotherVersion = random_list_element([4,5])),
+    %% %% Wait a while so that ofp_client can initialize
+    timer:sleep(2000),
+    assert_client_reconnected_with_new_connection_config(
+      ClientPid, AnotherVersion, NewConfig),
+
+    [gen_tcp:close(S) || S <- [CtrlSock, AnotherCtrlSock, ListenSocket]].
+
+assert_client_reconnected_with_new_connection_config(
+  ClientPid, AnotherVersion, NewConfig) ->
+    assert_ofp_client_agreed_on_version(ClientPid, AnotherVersion),
+    case proplists:get_value(role, NewConfig) of
+        undefined ->
+            ok;
+        NewRole ->
+            assert_ofp_client_has_role(ClientPid, NewRole)
+    end.
+
+create_another_listen_controller_socket(NewConfig, CtrlSock) ->
+    {ok, Port} = inet:port(CtrlSock),
+    AnotherPort = case proplists:get_value(port, NewConfig) of
+                      undefined ->
+                          Port;
+                      NewPort ->
+                          NewPort
+                  end,
+    SocketOpts = case proplists:get_value(ip, NewConfig) of
+                     undefined ->
+                         [];
+                     NewIP ->
+                         [{ip, NewIP}]
+                 end,
+    create_tcp_listen_socket(AnotherPort, SocketOpts).
