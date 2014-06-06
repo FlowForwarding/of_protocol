@@ -31,7 +31,7 @@
          controlling_process/2,
          send/2,
          stop/1,
-         replace_connection/5,
+         update_connection_config/2,
          get_controllers_state/1,
          get_resource_ids/1]).
 
@@ -62,7 +62,7 @@
           parent :: pid(),
           version :: integer(),
           versions :: [integer()],
-          role = equal :: master | equal | slave,
+          role = equal :: controller_role(),
           generation_id :: integer(),
           filter = #async_config{},
           socket :: inet:socket(),
@@ -111,8 +111,20 @@ controlling_process(Pid, ControllingPid) ->
 send(Pid, Message) ->
     gen_server:call(Pid, {send, Message}).
 
-replace_connection(Pid, Host, Port, Proto, Role) ->
-    gen_server:cast(Pid, {replace_connection, Host, Port, Proto, Role}).
+%% @doc Update the connection to the controller.
+%%
+%% If the list of configuration tuples doesn't contain some value, the value will
+%% be taken from the current configuration. For example, to change only the port
+%% of a controller the client is expected to connect to (without changing the IP
+%% address etc.), one needs to create the following configuration:
+%% [{port, 6634}].
+-spec update_connection_config(pid(), list(ConfigTuple)) -> ok when
+      ConfigTuple :: {ip, inet:ip_address()} |
+                     {protocol, tcp | tls} |
+                     {prort, inet:port_number()} |
+                     {role, controller_role()}.
+update_connection_config(Pid, Config) ->
+    gen_server:cast(Pid, {update_connection_config, Config}).
 
 %% @doc Stop the client.
 -spec stop(pid()) -> ok.
@@ -153,12 +165,10 @@ make_slave(Pid) ->
 %% message. For more information on `ControllerHandle' see
 %% {@link ofp_channel:open/4}.
 init({Tid, ResourceId, ControllerHandle, Parent, Opts, Type, Sup}) ->
-
-	%% The current implementation of TCP sockets in LING throws exceptions on
-	%% errors that occur outside the context of a gen_tcp call. We have to 
-	%% catch these exceptions not to confuse the supervisor.
-	process_flag(trap_exit, true),
-
+    %% The current implementation of TCP sockets in LING throws exceptions on
+    %% errors that occur outside the context of a gen_tcp call. We have to
+    %% catch these exceptions not to confuse the supervisor.
+    process_flag(trap_exit, true),
     Version = get_opt(version, Opts, ?DEFAULT_VERSION),
     Versions = lists:umerge(get_opt(versions, Opts, []), [Version]),
     Timeout = get_opt(timeout, Opts, ?DEFAULT_TIMEOUT),
@@ -238,22 +248,15 @@ handle_call(get_controller_state, _From, #state{controller = {ControllerIP,
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast({replace_connection, Host, Port, Proto, Role},
-            #state{controller = {Host, Port, Proto}, role = Role} = State) ->
-    {noreply, State};
-handle_cast({replace_connection, Host, Port, Proto, NewRole} = Request,
-            #state{controller = {Host, Port, Proto}, ets = Tid, id = Id} = State) ->
-    case Id of
-        0 ->
-            handle_replace_connection_in_main(Request, Tid);
-        _ ->
-            ok
-    end,
-    send_role_status(NewRole, config, State),
-    {noreply, State#state{role = NewRole}};
-handle_cast({replace_connection, _Host, _Port, _Proto, _Role}, State) ->
-    %% TODO: Stop current connection and initiate a new one.
-    {noreply, State};
+handle_cast({update_connection_config, Config},
+            #state{controller = {IP, Port, Protocol}} = State) ->
+    NewController = {proplists:get_value(ip, Config, IP),
+                     proplists:get_value(port, Config, Port),
+                     proplists:get_value(protocol, Config, Protocol)},
+    NewRole = proplists:get_value(role, Config),
+    NewState1 = reestablish_connection_if_required(NewController, State),
+    NewState2 = change_role_if_required(NewRole, NewState1),
+    {noreply, NewState2};
 handle_cast(_Message, State) ->
     {noreply, State}.
 
@@ -355,20 +358,18 @@ handle_info({Type, Socket, Data}, #state{controller = {_, _, Proto},
             NewState = lists:foldl(Handle, State, Messages),
             {noreply, NewState#state{parser = NewParser}};
         _Else ->
-            terminate_connection(State, {bad_data, Data})
+            terminate_connection_then_reconnect_or_stop(State, {bad_data, Data})
     end;
 handle_info({Type, Socket}, #state{socket = Socket} = State)
   when Type == tcp_closed orelse Type == ssl_closed ->
-    terminate_connection(State, Type);
+    terminate_connection_then_reconnect_or_stop(State, Type);
 handle_info({Type, Socket, Reason}, #state{socket = Socket} = State)
   when Type == tcp_error orelse Type == ssl_error ->
-    terminate_connection(State, {Type, Reason});
-
+    terminate_connection_then_reconnect_or_stop(State, {Type, Reason});
 handle_info({'EXIT', Socket, Reason}, #state{socket = Socket} = State) ->
-	%% LING-specific. We have caught an asynchronous error from the socket.
-	%% It is time to terminate gracefully.
-    terminate_connection(State, Reason);
-
+    %% LING-specific. We have caught an asynchronous error from the socket.
+    %% It is time to terminate gracefully.
+    terminate_connection_then_reconnect_or_stop(State, Reason);
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -662,7 +663,7 @@ handle_failed_negotiation(Xid, Reason, #state{socket = Socket,
                                               versions = Versions} = State) ->
     send_incompatible_version_error(Xid, Socket, Proto,
                                     lists:max(Versions)),
-    terminate_connection(State, Reason).
+    terminate_connection_then_reconnect_or_stop(State, Reason).
 
 init_controller_handle({remote_peer, Host, Port, Proto}, #state{} = State) ->
     State#state{
@@ -712,28 +713,31 @@ greatest_common_version(ControllerVersions, SwitchVersions) ->
             lists:max(CommonVersions)
     end.
 
+terminate_connection_then_reconnect_or_stop(State, Reason) ->
+    NewState = terminate_connection(State, Reason),
+    case State#state.reconnect of
+        true ->
+            reconnect(State#state.timeout),
+            {noreply, NewState};
+        false ->
+            {stop, normal, NewState}
+    end.
+
 terminate_connection(#state{id = Id,
                             controller = {Host, Port, Proto},
                             socket = Socket,
                             parent = Parent,
-                            timeout = Timeout,
                             supervisor = Sup,
-                            ets = Tid,
-                            reconnect = Reconnect} = State, Reason) ->
+                            ets = Tid} = State, Reason) ->
     close(Proto, Socket),
     terminate_auxiliary_connections(Id, Sup, Tid),
     ets:delete(Tid, self()),
     Parent ! {ofp_closed, self(), {Host, Port, Id, Reason}},
-    case Reconnect of
-        true ->
-            erlang:send_after(Timeout, self(), timeout),
-            {noreply, State#state{socket = undefined,
-                                  parser = undefined,
-                                  version = undefined,
-                                  hello_buffer = <<>>}};
-        false ->
-            {stop, normal, State}
-    end.
+    State#state{socket = undefined, parser = undefined, version = undefined,
+                hello_buffer = <<>>}.
+
+reconnect(Timeout) ->
+    erlang:send_after(Timeout, self(), timeout).
 
 terminate_auxiliary_connections(0, _, _) ->
     ok;
@@ -837,13 +841,42 @@ send_role_status(NewRole, Reason, #state{version = Version,
 send_role_status(_NewRole, _Reason, #state{version = _LowerThan5}) ->
     ok.
 
-handle_replace_connection_in_main({replace_connection, Host, Port, Proto, Role},
-                                  Tid) ->
-    case Role of
+reestablish_connection_if_required(NewController, State) ->
+    case NewController /= State#state.controller of
+        true when is_port(State#state.socket) ->
+            %% The client is connected to the controller
+            NewState = terminate_connection(State,
+                                            external_connection_config_update),
+            reconnect(NewState#state.timeout),
+            NewState#state{controller = NewController};
+        true ->
+            State#state{controller = NewController};
+        false ->
+            State
+    end.
+
+%% @doc This function changes the controller's role as a result of internal
+%% configuration change.
+%%
+%% NOTE: This is different from changing role through OpenFlow Protocol. It is
+%% implemented in change_role/4. The function below should be invoked when
+%% the role is changed through OF-Config.
+change_role_if_required(NewRole, #state{role = OldRole} = State)
+  when NewRole == OldRole ->
+    State;
+change_role_if_required(NewRole, #state{id = Id, ets = Tid} = State) ->
+    case NewRole of
         master ->
             ofp_channel:make_slaves(Tid, self());
         _ ->
             ok
     end,
-    [replace_connection(AuxPid, Host, Port, Proto, Role)
-     ||  {_, AuxPid} <- ets:lookup(Tid, self())].
+    case Id of
+        0 ->
+            [update_connection_config(AuxPid, [{role, NewRole}])
+             ||  {_, AuxPid} <- ets:lookup(Tid, self())];
+        _ ->
+            ok
+    end,
+    send_role_status(NewRole, config, State),
+    State#state{role = NewRole}.
