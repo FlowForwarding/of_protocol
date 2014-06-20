@@ -85,12 +85,12 @@
 
 -enum({port_no, [{in_port, 16#fffffff8},
                  {table, 16#fffffff9},
-                 normal,
-                 flood,
-                 all,
-                 controller,
-                 local,
-                 any]}).
+                 {normal, 16#fffffffa},
+                 {flood, 16#fffffffb},
+                 {all, 16#fffffffc},
+                 {controller, 16#fffffffd},
+                 {local, 16#fffffffe},
+                 {any, 16#ffffffff}]}).
 
 -enum({port_features, ['10mb_hd',
                        '10mb_fd',
