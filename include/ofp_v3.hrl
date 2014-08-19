@@ -163,6 +163,11 @@
 -define(DESC_STR_LEN, 256).          %% switch description string
 -define(SERIAL_NUM_LEN, 32).         %% serial number string
 
+%% OXM Vlan Id values -----------------------------------------------------------
+
+-define(OFPVID_PRESENT, 16#1000).
+-define(OFPVID_NONE, 16#0000).
+
 %%% Port Structures ------------------------------------------------------------
 
 -type ofp_port_config() :: port_down
