@@ -112,6 +112,7 @@
 -define(ACTION_GROUP_SIZE, 8).
 -define(ACTION_OUTPUT_SIZE, 16).
 -define(ACTION_EXPERIMENTER_SIZE, 8).
+-define(ACTION_EXPERIMENTER_HEADER_SIZE, 8).
 -define(BUCKET_SIZE, 16).
 -define(BUCKET_COUNTER_SIZE, 16).
 -define(FLOW_STATS_SIZE, 56).
@@ -474,6 +475,8 @@
           field :: ofp_field()
          }).
 
+-type ofp_action_set_field() :: #ofp_action_set_field{}.
+
 -record(ofp_action_set_queue, {
           seq = 14,
           queue_id :: integer()
@@ -495,6 +498,15 @@
           experimenter :: integer(),
           data = <<>> :: binary()
          }).
+
+-record(ofp_action_experimenter_header, {
+            type :: integer(),
+            len :: integer(),
+            experimenter :: integer(),
+            set_field :: ofp_action_set_field()
+        }).
+
+-type ofp_action_experimenter_header() :: #ofp_action_experimenter_header{}.
 
 -type ofp_action_type() :: copy_ttl_in
                          | pop_mpls
@@ -984,6 +996,51 @@
          }).
 -type ofp_port_desc_reply() :: #ofp_port_desc_reply{}.
 
+-record(ofp_port_optical_transport_feature_header, {
+            feature_type :: integer(),
+            length :: integer()
+        }).
+
+-type ofp_port_optical_transport_feature_header() :: #ofp_port_optical_transport_feature_header{}.
+
+-record(ofp_port_desc_prop_optical_transport, {
+            type :: integer(),
+            length :: integer(),
+            port_signal_type :: integer(),
+            reserved :: integer(),
+            %% 0:16 in encode/decode
+            features = [] :: [ofp_port_optical_transport_feature_header()]
+        }).
+
+-type ofp_port_desc_prop_optical_transport() :: #ofp_port_desc_prop_optical_transport{}.
+
+-record(ofp_port_optical_transport_application_code, {
+            feature_type :: integer(),
+            length :: integer(),
+            oic_type :: integer(),
+            app_code :: bitstring() %% XXX Not sure if binary() OR bitstring()
+        }).
+
+-type ofp_port_optical_transport_application_code() :: #ofp_port_optical_transport_application_code{}.
+
+-record(ofp_port_optical_transport_layer_entry, {
+            layer_class :: integer(),
+            signal_type :: integer(),
+            adaptation :: integer()
+            %% 0:40 in encode/decode
+        }).
+
+-type ofp_port_optical_transport_layer_entry() :: #ofp_port_optical_transport_layer_entry{}.
+
+-record(ofp_port_optical_transport_layer_stack, {
+            feature_type :: integer(),
+            length :: integer(),
+            %% 0:32 in encode/decode
+            value = [] :: [ofp_port_optical_transport_layer_entry()]
+        }).
+
+-type ofp_port_optical_transport_layer_stack() :: #ofp_port_optical_transport_layer_stack{}.
+
 %%% Queue Statistics (A 3.5.8) -------------------------------------------------
 
 -record(ofp_queue_stats, {
@@ -1204,6 +1261,30 @@
                              | ofp_meter_config_reply()
                              | ofp_meter_features_reply()
                              | ofp_experimenter_reply().
+
+-record(ofp_experimenter_multipart_header,{
+            experimenter :: integer(),
+            exp_type :: integer()
+        }).
+
+-type ofp_experimenter_multipart_header() :: #ofp_experimenter_multipart_header{}.
+
+-record(ofp_header,{
+            version :: integer(),
+            type :: integer(),
+            length :: integer(),
+            xid :: integer()
+        }).
+
+-type ofp_header() :: #ofp_header{}.
+
+-record(ofp_multipart_request, {
+           header :: ofp_header(),
+           type :: integer(),
+           flags :: integer(),
+           %% 0:40 in encode/decode
+           body = <<>> :: binary()
+        }).
 
 %%%-----------------------------------------------------------------------------
 %%% Queue Configuration Messages (A 3.6)

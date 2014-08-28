@@ -109,6 +109,104 @@
                        pause,
                        pause_asym]}).
 
+-enum({port_desc_prop_type, [ {ethernet, 0},
+                              {optical, 1},
+                              {optical_transport, 2},
+                              {experimenter, 16#ffff}
+                            ]}).
+
+-enum({port_optical_transport_feature_type,[ {opt_interface_class,1},
+                                             {layer_stack,2}
+                                            ]}).
+%% XXX ATOM_CASE Not sure to use 'ITUT_G698_1' VS itut_g698_1
+-enum({ofp_optical_interface_class,[ proprietary,
+                                     {itut_g698_1,1},
+                                     {itut_g698_2,2},
+                                     {itut_g959_1,3},
+                                     {itut_g695,4}
+                                    ]}).
+%% XXX ATOM_CASE
+-enum({port_optical_transport_layer_class,[{port,1},
+                                           {och,2},
+                                           {odu,3},
+                                           {oduclt,4}
+                                          ]}).
+%% XXX ATOM_CASE
+-enum({otport_signal_type,[ {otsn,1},
+                            {omsn,2},
+                            {opsn,3},
+                            {opsm,4},
+                            {och ,5},
+                            {otu1,11},
+                            {otu2,12},
+                            {otu3,13},
+                            {otu4,14}
+                          ]}).
+%% XXX ATOM_CASE
+-enum({och_signal_type,[{fix_grid,1},
+                        {flex_grid,2}
+                       ]}).
+%% XXX ATOM_CASE
+-enum({odu_signal_type,[ {odu1,1},
+                         {odu2,2},
+                         {odu3,3},
+                         {odu4,4},
+                         {odu0,10},
+                         {odu2e,11},
+                         {odufcbr,20},
+                         {odufgfpfhao,21},
+                         {odufgfpf,22}
+                        ]}).
+
+-enum({oduclt_signal_type,[ {stm16       ,1},
+                            {stm64       ,2},
+                            {stm256      ,3},
+                            {stm1        ,4},
+                            {stm4        ,5},
+                            {'1gbe'      ,6},
+                            {'10gbe'     ,7},
+                            {'40gbe'     ,8},
+                            {'100gbe'    ,9},
+                            {fc100       ,10},
+                            {fc200       ,11},
+                            {fc400       ,12},
+                            {fc800       ,13},
+                            {fc1200      ,14},
+                            {gpon        ,15},
+                            {xgpon       ,16},
+                            {ib_sdr      ,17},
+                            {ib_ddr      ,18},
+                            {ib_qdr      ,19},
+                            {sbcon_escon ,20},
+                            {dvbasi      ,21},
+                            {sdi         ,22},
+                            {sdi1g5      ,23},
+                            {sdi3g       ,24},
+                            {atm         ,25},
+                            {eth         ,26},
+                            {mpLs        ,27},
+                            {ip          ,28}
+                             ]}).
+
+-enum({adaptations_type,[ {ots_oms     ,1},
+                          {oms_och     ,2},
+                          {ops_ochr    ,3},
+                          {opsm_otuk   ,4},
+                          {och_otuk    ,5},
+                          {oduk_oduij  ,6},
+                          {oduk_oduj21 ,7},
+                          {odukh_oduj21,8},
+                          {odu0_cbrx   ,9},
+                          {oduk_cbrx   ,10},
+                          {oduk_cbrxg  ,11},
+                          {oduk_rsn    ,12},
+                          {oduk_atm    ,13},
+                          {oduk_eth    ,14},
+                          {odukh_eth   ,15},
+                          {oduk_ethppos,16}
+                            ]}).
+
+
 %% Queue Structures ------------------------------------------------------------
 
 %% Note: Not in the specification
@@ -167,7 +265,12 @@
                               mpls_bos,
                               pbb_isid,
                               tunnel_id,
-                              ipv6_exthdr]}).
+                              ipv6_exthdr,
+                              odu_sigtype,
+                              odu_sigid,
+                              och_sigtype,
+                              och_sigid
+                              ]}).
 
 -enum({vlan_id, [none,
                  {present, 16#1000}]}).
@@ -520,3 +623,13 @@
 %% Echo Reply ------------------------------------------------------------------
 
 %% Experimenter ----------------------------------------------------------------
+
+%% Circuit Match Fields --------------------------------------------------------
+
+-enum({channel_spacing,[ {res      ,0},
+                         {'100ghz' ,1},
+                         {'50ghz'  ,2},
+                         {'25ghz'  ,3},
+                         {'12p5ghz',4},
+                         {'6p25ghz',5}
+                        ]}).
