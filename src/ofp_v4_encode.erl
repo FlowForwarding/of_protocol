@@ -99,11 +99,43 @@ encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
       AdvertisedBin:4/bytes, SupportedBin:4/bytes,
       PeerBin:4/bytes, CurrSpeed:32, MaxSpeed:32>>;
 
+encode_struct(#ofp_port_v6{ port_no = PortNo, hw_addr = HWAddr, name = Name,
+                            config = Config, state = State,
+                            properties = Properties }) ->
+    PortNoInt = get_id(port_no, PortNo),
+    NameBin = ofp_utils:encode_string(Name, ?OFP_MAX_PORT_NAME_LEN),
+    ConfigBin = flags_to_binary(port_config, Config, 4),
+    StateBin = flags_to_binary(port_state, State, 4),
+    PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties)),
+    io:format("PropertiesBin : ~p\n",[PropertiesBin]),
+    Length = 40 + byte_size(PropertiesBin),
+    <<PortNoInt:32, Length:16, 0:16, HWAddr:?OFP_ETH_ALEN/bytes, 0:16,
+      NameBin:?OFP_MAX_PORT_NAME_LEN/bytes,
+      ConfigBin:4/bytes, StateBin:4/bytes,
+      PropertiesBin/binary>>;
+
+encode_struct(#ofp_port_desc_prop_optical_transport{type = Type,
+                                                    port_signal_type = PortSigType,
+                                                    reserved = Reserved,
+                                                    features = Features}) ->
+    TypeInt = ofp_v4_enum:to_int(port_desc_properties, Type),
+    BinFeatures = list_to_binary(lists:map(fun encode_struct/1, Features)),
+    io:format("BinFeatures : ~p\n\n",[BinFeatures]),
+    Length = byte_size(BinFeatures) + 12,
+    % Padding = (Length + 7) div 8 * 8 - Length,
+    % <<TypeInt:16, Length:16, PortSigType:8, Reserved:8, 0:16, BinFeatures/bytes, 0:Padding/unit:8>>;
+    <<TypeInt:16, Length:16, PortSigType:8, Reserved:8, 0:16, BinFeatures/bytes>>;
+
+encode_struct(#ofp_port_optical_transport_feature_header{feature_type = FeatureType}) ->
+    Length = 4,
+    <<FeatureType:16, Length:16>>;
+
 encode_struct(#ofp_packet_queue{queue_id = Queue, port_no = Port,
                                 properties = Props}) ->
     PropsBin = encode_list(Props),
     Length = ?PACKET_QUEUE_SIZE + size(PropsBin),
     <<Queue:32, Port:32, Length:16, 0:48, PropsBin/bytes>>;
+
 encode_struct(#ofp_queue_prop_min_rate{rate = Rate}) ->
     PropertyInt = ofp_v4_enum:to_int(queue_properties, min_rate),
     <<PropertyInt:16, ?QUEUE_PROP_MIN_RATE_SIZE:16, 0:32, Rate:16, 0:48>>;
@@ -209,7 +241,6 @@ encode_struct(#ofp_action_experimenter{experimenter = Experimenter,
     Type = ofp_v4_enum:to_int(action_type, experimenter),
     Length = ?ACTION_EXPERIMENTER_SIZE + byte_size(Data),
     <<Type:16, Length:16, Experimenter:32, Data/bytes>>;
-
 encode_struct(#ofp_instruction_goto_table{table_id = Table}) ->
     Type = ofp_v4_enum:to_int(instruction_type, goto_table),
     Length = ?INSTRUCTION_GOTO_TABLE_SIZE,
@@ -315,9 +346,9 @@ encode_struct(#ofp_meter_stats{meter_id = MeterId, flow_count = FlowCount,
 encode_struct(#ofp_meter_band_stats{packet_band_count = PBC,
                                     byte_band_count = BBC}) ->
     <<PBC:64, BBC:64>>;
-encode_struct(#ofp_meter_config{flags = Flags, meter_id = MeterId,
+encode_struct(#ofp_meter_config{flags = Flags, meter_id = _MeterId,
                                 bands = Bands}) ->
-    MeterIdInt = get_id(meter_id, MeterId),
+    MeterIdInt = get_id(meter_id, meterid),
     FlagsBin = flags_to_binary(meter_flag, Flags, 2),
     BandsBin = encode_list(Bands),
     Length = ?METER_CONFIG_SIZE + byte_size(BandsBin),
@@ -563,6 +594,11 @@ encode_body(#ofp_port_desc_reply{flags = Flags, body = Ports}) ->
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     PortsBin = encode_list(Ports),
     <<TypeInt:16, FlagsBin/bytes, 0:32, PortsBin/bytes>>;
+encode_body(#ofp_port_desc_reply_v6{flags = Flags, body = Ports}) ->
+    TypeInt = ofp_v4_enum:to_int(multipart_type, port_desc_v6),
+    FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
+    PortsBin = encode_list(Ports),
+    <<TypeInt:16, FlagsBin/bytes, 0:32, PortsBin/bytes>>;
 encode_body(#ofp_queue_stats_request{flags = Flags,
                                      port_no = Port, queue_id = Queue}) ->
     TypeInt = ofp_v4_enum:to_int(multipart_type, queue_stats),
@@ -709,6 +745,18 @@ encode_body(#ofp_meter_mod{command = Command,
     MeterIdInt = get_id(meter_id, MeterId),
     BandsBin = encode_list(Bands),
     <<CommandInt:16, FlagsBin:2/bytes, MeterIdInt:32, BandsBin/bytes>>;
+encode_body(#ofp_multipart_request{ %%header = Header,
+                                    type = Type,
+                                    flags = Flags,
+                                    body = Body }) ->
+    %%BinHeader = encode_struct(Header),
+    TypeInt = ofp_v4_enum:to_int(multipart_type, Type),
+    FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
+    %%, i get a entirly diff message, when i add header
+    %% <<BinHeader/bytes, TypeInt:16, FlagsBin:2/bytes, 0:40, Body/bytes>>;
+    EncBody = encode_body(Body),
+    <<TypeInt:16, FlagsBin:2/bytes, 0:40, EncBody/bytes>>; 
+
 encode_body(Other) ->
     throw({bad_message, Other}).
 
@@ -1061,9 +1109,11 @@ type_int(#ofp_get_async_request{}) ->
     ofp_v4_enum:to_int(type, get_async_request);
 type_int(#ofp_get_async_reply{}) ->
     ofp_v4_enum:to_int(type, get_async_reply);
-type_int(#ofp_set_async{}) ->
+type_int(#ofp_set_async{}) ->   
     ofp_v4_enum:to_int(type, set_async);
 type_int(#ofp_meter_mod{}) ->
-    ofp_v4_enum:to_int(type, meter_mod).
+    ofp_v4_enum:to_int(type, meter_mod);
+type_int(#ofp_multipart_request{}) ->
+    ofp_v4_enum:to_int(type, multipart_request).
 
 

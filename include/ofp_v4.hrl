@@ -1281,9 +1281,17 @@
 -record(ofp_multipart_request, {
            header :: ofp_header(),
            type :: integer(),
-           flags :: integer(),
+           flags = [] :: [ofp_multipart_request_flag()],
            %% 0:40 in encode/decode
            body = <<>> :: binary()
+        }).
+
+-record(ofp_multipart_reply, {
+            header :: ofp_header(),
+            type :: integer(),
+            flags  = [] :: [ofp_multipart_reply_flag()],
+            %% 0:40 in encode/decode
+            body = <<>> :: binary()
         }).
 
 %%%-----------------------------------------------------------------------------
@@ -1645,3 +1653,21 @@
           data = <<>> :: binary()
          }).
 -type ofp_experimenter() :: #ofp_experimenter{}.
+
+%% -----------------------------------------------------------------------------
+%% Optical Extensions:
+%% -----------------------------------------------------------------------------
+
+-record(ofp_port_v6, {
+    port_no :: ofp_port_no(),
+    hw_addr :: binary(),
+    name :: binary(),
+    config = [] :: [ofp_port_config()],
+    state = [] :: [ofp_port_state()],
+    properties = [] :: [ofp_port_desc_property()]
+}).
+-record(ofp_port_desc_reply_v6, {
+          flags = [] :: [ofp_multipart_reply_flag()],
+          body = [] :: [ofp_port()]
+         }).
+-type ofp_port_desc_property() :: #ofp_port_desc_prop_optical_transport{}.

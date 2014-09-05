@@ -202,7 +202,8 @@ handle_call({send, Message}, _From, #state{version = Version} = State) ->
                   Type == queue_get_config_reply;
                   Type == role_reply;
                   Type == get_async_reply;
-                  Type == bundle_ctrl_msg ->
+                  Type == bundle_ctrl_msg,
+                  Type == port_desc_reply_v5 ->
             {reply, handle_send(Message2, State), State};
         _Else ->
             {reply, {error, {bad_message, Message2}}, State}

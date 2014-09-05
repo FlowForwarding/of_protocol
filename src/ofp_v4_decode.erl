@@ -22,7 +22,9 @@
 %% @private
 -module(ofp_v4_decode).
 
--export([do/1]).
+-export([do/1,
+         decode_body/2
+]).
 
 -include("of_protocol.hrl").
 -include("ofp_v4.hrl").
@@ -132,6 +134,63 @@ decode_port_list(Binary, Ports) ->
     <<PortBin:?PORT_SIZE/bytes, Rest/bytes>> = Binary,
     Port = decode_port(PortBin),
     decode_port_list(Rest, [Port | Ports]).
+
+decode_port_list_v6(Binary) ->
+    decode_port_list_v6(Binary, []).
+
+decode_port_list_v6(<<>>, Ports) ->
+    lists:reverse(Ports);
+decode_port_list_v6(Binary, Ports) ->
+    <<_PortNo:32, Length:16, _/binary>> = Binary,
+    <<PortBin:Length/bytes, Rest/bytes>> = Binary,
+    Port = decode_port_v6(PortBin),
+    decode_port_list_v6(Rest, [Port | Ports]).
+
+decode_port_v6(Binary) ->
+    <<PortNoInt:32, _Length:16, _:16, HWAddr:?OFP_ETH_ALEN/bytes, _:16,
+        NameBin:?OFP_MAX_PORT_NAME_LEN/bytes,
+        ConfigBin:4/bytes, StateBin:4/bytes, 
+        PropertiesBin/binary>> = Binary,
+    PortNo = get_id(port_no, PortNoInt),
+    Name = ofp_utils:strip_string(NameBin),
+    Config = binary_to_flags(port_config, ConfigBin),
+    State = binary_to_flags(port_state, StateBin),
+    Properties = decode_port_properties(PropertiesBin),
+    #ofp_port_v6{port_no = PortNo, hw_addr = HWAddr, name = Name,
+              config = Config, state = State, properties = Properties}.
+
+decode_port_properties(<<>>) ->
+    [];
+decode_port_properties(<<TypeInt:16, Length:16, Rest/binary>>) ->
+    io:format("Length : ~p\n\n",[Length]),
+    Type = ofp_v4_enum:to_atom(port_desc_properties, TypeInt),
+
+    %% RemainingLength = Length - 4,
+    RemainingLength = Length,
+
+    %% PaddingLength = (Length + 7) div 8 * 8 - Length,
+    %% <<PropBin:RemainingLength/bytes, _:PaddingLength/bytes, Tail/binary>> = Rest,
+    <<PropBin:RemainingLength/bytes, Tail/binary>> = Rest,
+    [decode_port_property(Type, PropBin) | decode_port_properties(Tail)].
+
+decode_port_property(optical_transport, Binary) ->
+    <<Type:16, Length:16, PortSigType:8, Reserved:8, 0:16, 
+        BinFeatures/bytes>> = Binary,
+    #ofp_port_desc_prop_optical_transport{
+        type=Type,
+        length=Length,
+        port_signal_type=PortSigType,
+        reserved=Reserved,
+        features=list_to_binary(lists:map(
+            fun decode_optical_transport_port_features/1, BinFeatures))
+    }.
+
+decode_optical_transport_port_features(BinFeature) ->
+    <<FeatureType:16, Length:16>> = BinFeature,
+    #ofp_port_optical_transport_feature_header{
+        feature_type = FeatureType,
+        length = Length
+    }.
 
 %% @doc Decode queues
 decode_queues(Binary) ->
@@ -1167,7 +1226,10 @@ decode_body(multipart_reply, Binary) ->
             <<Experimenter:32, ExpType:32,
               ExpData:DataLength/bytes>> = Data,
             #ofp_experimenter_reply{flags = Flags, experimenter = Experimenter,
-                                    exp_type = ExpType, data = ExpData}
+                                    exp_type = ExpType, data = ExpData};
+        port_desc_v6 ->
+            Ports = decode_port_list_v6(Data),
+            #ofp_port_desc_reply_v6{flags = Flags, body = Ports}
     end;
 decode_body(barrier_request, _) ->
     #ofp_barrier_request{};

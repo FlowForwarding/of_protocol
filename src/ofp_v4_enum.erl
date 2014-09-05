@@ -92,6 +92,9 @@
                  local,
                  any]}).
 
+-enum({port_desc_properties, [optical_transport
+                              ]}).
+
 -enum({port_features, ['10mb_hd',
                        '10mb_fd',
                        '100mb_hd',
@@ -109,29 +112,28 @@
                        pause,
                        pause_asym]}).
 
--enum({port_desc_prop_type, [ {ethernet, 0},
-                              {optical, 1},
-                              {optical_transport, 2},
+-enum({port_desc_prop_type, [ ethernet,
+                              optical,
+                              optical_transport,
                               {experimenter, 16#ffff}
                             ]}).
 
 -enum({port_optical_transport_feature_type,[ {opt_interface_class,1},
                                              {layer_stack,2}
                                             ]}).
-%% XXX ATOM_CASE Not sure to use 'ITUT_G698_1' VS itut_g698_1
+
 -enum({ofp_optical_interface_class,[ proprietary,
-                                     {itut_g698_1,1},
-                                     {itut_g698_2,2},
-                                     {itut_g959_1,3},
-                                     {itut_g695,4}
+                                     itut_g698_1,
+                                     itut_g698_2,
+                                     itut_g959_1,
+                                     itut_g695
                                     ]}).
-%% XXX ATOM_CASE
+
 -enum({port_optical_transport_layer_class,[{port,1},
                                            {och,2},
                                            {odu,3},
                                            {oduclt,4}
                                           ]}).
-%% XXX ATOM_CASE
 -enum({otport_signal_type,[ {otsn,1},
                             {omsn,2},
                             {opsn,3},
@@ -142,11 +144,11 @@
                             {otu3,13},
                             {otu4,14}
                           ]}).
-%% XXX ATOM_CASE
+
 -enum({och_signal_type,[{fix_grid,1},
                         {flex_grid,2}
                        ]}).
-%% XXX ATOM_CASE
+
 -enum({odu_signal_type,[ {odu1,1},
                          {odu2,2},
                          {odu3,3},
@@ -408,7 +410,9 @@
                         meter_features,
                         table_features,
                         port_desc,
-                        {experimenter, 16#ffff}]}).
+                        port_desc_v6,
+                        {experimenter, 16#ffff}
+                        ]}).
 
 %% A.3.5.5 Table Features ------------------------------------------------------
 
@@ -626,10 +630,10 @@
 
 %% Circuit Match Fields --------------------------------------------------------
 
--enum({channel_spacing,[ {res      ,0},
-                         {'100ghz' ,1},
-                         {'50ghz'  ,2},
-                         {'25ghz'  ,3},
-                         {'12p5ghz',4},
-                         {'6p25ghz',5}
+-enum({channel_spacing,[res,
+                        '100ghz',
+                        '50ghz',
+                        '25ghz',
+                        '12p5ghz',
+                        '6p25ghz'
                         ]}).
