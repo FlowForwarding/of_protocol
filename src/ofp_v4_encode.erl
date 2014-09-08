@@ -107,7 +107,6 @@ encode_struct(#ofp_port_v6{ port_no = PortNo, hw_addr = HWAddr, name = Name,
     ConfigBin = flags_to_binary(port_config, Config, 4),
     StateBin = flags_to_binary(port_state, State, 4),
     PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties)),
-    io:format("PropertiesBin : ~p\n",[PropertiesBin]),
     Length = 40 + byte_size(PropertiesBin),
     <<PortNoInt:32, Length:16, 0:16, HWAddr:?OFP_ETH_ALEN/bytes, 0:16,
       NameBin:?OFP_MAX_PORT_NAME_LEN/bytes,
@@ -120,11 +119,8 @@ encode_struct(#ofp_port_desc_prop_optical_transport{type = Type,
                                                     features = Features}) ->
     TypeInt = ofp_v4_enum:to_int(port_desc_properties, Type),
     BinFeatures = list_to_binary(lists:map(fun encode_struct/1, Features)),
-    io:format("BinFeatures : ~p\n\n",[BinFeatures]),
-    Length = byte_size(BinFeatures) + 12,
-    % Padding = (Length + 7) div 8 * 8 - Length,
-    % <<TypeInt:16, Length:16, PortSigType:8, Reserved:8, 0:16, BinFeatures/bytes, 0:Padding/unit:8>>;
-    <<TypeInt:16, Length:16, PortSigType:8, Reserved:8, 0:16, BinFeatures/bytes>>;
+    Length = 8 + byte_size(BinFeatures),
+    <<TypeInt:16, Length:16, PortSigType:8, Reserved:8, 0:16, BinFeatures/binary>>;
 
 encode_struct(#ofp_port_optical_transport_feature_header{feature_type = FeatureType}) ->
     Length = 4,

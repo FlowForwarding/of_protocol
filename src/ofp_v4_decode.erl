@@ -23,7 +23,8 @@
 -module(ofp_v4_decode).
 
 -export([do/1,
-         decode_body/2
+         decode_body/2,
+         decode_port_v6/1
 ]).
 
 -include("of_protocol.hrl").
@@ -162,34 +163,31 @@ decode_port_v6(Binary) ->
 decode_port_properties(<<>>) ->
     [];
 decode_port_properties(<<TypeInt:16, Length:16, Rest/binary>>) ->
-    io:format("Length : ~p\n\n",[Length]),
     Type = ofp_v4_enum:to_atom(port_desc_properties, TypeInt),
-
-    %% RemainingLength = Length - 4,
-    RemainingLength = Length,
-
-    %% PaddingLength = (Length + 7) div 8 * 8 - Length,
-    %% <<PropBin:RemainingLength/bytes, _:PaddingLength/bytes, Tail/binary>> = Rest,
-    <<PropBin:RemainingLength/bytes, Tail/binary>> = Rest,
+    L = Length-4,
+    <<PropBin:L/bytes, Tail/binary>> = Rest,
     [decode_port_property(Type, PropBin) | decode_port_properties(Tail)].
 
 decode_port_property(optical_transport, Binary) ->
-    <<Type:16, Length:16, PortSigType:8, Reserved:8, 0:16, 
-        BinFeatures/bytes>> = Binary,
+    <<PortSigType:8, Reserved:8, 0:16, BinFeatures/binary>> = Binary,
+    F = decode_optical_transport_port_features(BinFeatures),
     #ofp_port_desc_prop_optical_transport{
-        type=Type,
-        length=Length,
+        type=optical_transport,
         port_signal_type=PortSigType,
         reserved=Reserved,
-        features=list_to_binary(lists:map(
-            fun decode_optical_transport_port_features/1, BinFeatures))
+        features = F
     }.
 
-decode_optical_transport_port_features(BinFeature) ->
-    <<FeatureType:16, Length:16>> = BinFeature,
+decode_optical_transport_port_features(<<>>) ->
+    [];
+decode_optical_transport_port_features(BF) ->
+    <<BFE:4/bytes, Tail/binary>> = BF,
+    [decode_optical_transport_port_features_entry(BFE) |
+         decode_optical_transport_port_features(Tail) ].
+
+decode_optical_transport_port_features_entry(<<FeatureType:16, Length:16>>) ->
     #ofp_port_optical_transport_feature_header{
-        feature_type = FeatureType,
-        length = Length
+        feature_type = FeatureType
     }.
 
 %% @doc Decode queues
@@ -979,6 +977,11 @@ decode_body(port_status, Binary) ->
     <<ReasonInt:8, _Pad:56, PortBin:?PORT_SIZE/bytes>> = Binary,
     Reason = ofp_v4_enum:to_atom(port_reason, ReasonInt),
     Port = decode_port(PortBin),
+    #ofp_port_status{reason = Reason, desc = Port};
+decode_body(port_status_v6, Binary) ->
+    <<ReasonInt:8, _Pad:56, PortBin/bytes>> = Binary,
+    Reason = ofp_v4_enum:to_atom(port_reason, ReasonInt),
+    Port = decode_port_v6(PortBin),
     #ofp_port_status{reason = Reason, desc = Port};
 decode_body(packet_out, Binary) ->
     <<BufferIdInt:32, PortInt:32, ActionsLength:16,
