@@ -106,7 +106,4 @@ optical_transport_port_status_test() ->
     {ok,Enc}      = of_protocol:encode(Msg),
     {ok,Dec,<<>>} = of_protocol:decode(Enc),
 
-    io:format("Msg : ~p\n\n",[Msg]),
-    io:format("Dec : ~p\n\n",[Dec]),
-
     ?assertEqual(Dec,Msg).
