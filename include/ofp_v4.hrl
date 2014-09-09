@@ -996,19 +996,11 @@
          }).
 -type ofp_port_desc_reply() :: #ofp_port_desc_reply{}.
 
--record(ofp_port_optical_transport_feature_header, {
-            feature_type :: integer(),
-            length :: integer()
-        }).
-
--type ofp_port_optical_transport_feature_header() :: #ofp_port_optical_transport_feature_header{}.
-
 -record(ofp_port_desc_prop_optical_transport, {
             type :: integer(),
             length :: integer(),
             port_signal_type :: integer(),
             reserved :: integer(),
-            %% 0:16 in encode/decode
             features = [] :: [ofp_port_optical_transport_feature_header()]
         }).
 
@@ -1018,7 +1010,7 @@
             feature_type :: integer(),
             length :: integer(),
             oic_type :: integer(),
-            app_code :: bitstring() %% XXX Not sure if binary() OR bitstring()
+            app_code :: binary()
         }).
 
 -type ofp_port_optical_transport_application_code() :: #ofp_port_optical_transport_application_code{}.
@@ -1027,7 +1019,6 @@
             layer_class :: integer(),
             signal_type :: integer(),
             adaptation :: integer()
-            %% 0:40 in encode/decode
         }).
 
 -type ofp_port_optical_transport_layer_entry() :: #ofp_port_optical_transport_layer_entry{}.
@@ -1035,11 +1026,13 @@
 -record(ofp_port_optical_transport_layer_stack, {
             feature_type :: integer(),
             length :: integer(),
-            %% 0:32 in encode/decode
             value = [] :: [ofp_port_optical_transport_layer_entry()]
         }).
 
 -type ofp_port_optical_transport_layer_stack() :: #ofp_port_optical_transport_layer_stack{}.
+
+-type ofp_port_optical_transport_feature_header() :: #ofp_port_optical_transport_application_code{} |
+                                                     #ofp_port_optical_transport_layer_stack{}.
 
 %%% Queue Statistics (A 3.5.8) -------------------------------------------------
 

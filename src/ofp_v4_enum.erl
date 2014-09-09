@@ -122,18 +122,19 @@
                                              {layer_stack,2}
                                             ]}).
 
--enum({ofp_optical_interface_class,[ proprietary,
-                                     itut_g698_1,
-                                     itut_g698_2,
-                                     itut_g959_1,
-                                     itut_g695
-                                    ]}).
+-enum({optical_interface_class,[ proprietary,
+                                 itut_g698_1,
+                                 itut_g698_2,
+                                 itut_g959_1,
+                                 itut_g695
+                               ]}).
 
 -enum({port_optical_transport_layer_class,[{port,1},
                                            {och,2},
                                            {odu,3},
                                            {oduclt,4}
                                           ]}).
+
 -enum({otport_signal_type,[ {otsn,1},
                             {omsn,2},
                             {opsn,3},

@@ -113,18 +113,43 @@ encode_struct(#ofp_port_v6{ port_no = PortNo, hw_addr = HWAddr, name = Name,
       ConfigBin:4/bytes, StateBin:4/bytes,
       PropertiesBin/binary>>;
 
-encode_struct(#ofp_port_desc_prop_optical_transport{type = Type,
+encode_struct(#ofp_port_desc_prop_optical_transport{type             = Type,
                                                     port_signal_type = PortSigType,
-                                                    reserved = Reserved,
-                                                    features = Features}) ->
+                                                    reserved         = Reserved,
+                                                    features         = Features}) ->
     TypeInt = ofp_v4_enum:to_int(port_desc_properties, Type),
     BinFeatures = list_to_binary(lists:map(fun encode_struct/1, Features)),
     Length = 8 + byte_size(BinFeatures),
-    <<TypeInt:16, Length:16, PortSigType:8, Reserved:8, 0:16, BinFeatures/binary>>;
+    PortSigTypeId = ofp_v4_enum:to_int(otport_signal_type,PortSigType),
+    <<TypeInt:16, Length:16, PortSigTypeId:8, Reserved:8, 0:16, BinFeatures/binary>>;
 
-encode_struct(#ofp_port_optical_transport_feature_header{feature_type = FeatureType}) ->
-    Length = 4,
-    <<FeatureType:16, Length:16>>;
+encode_struct(#ofp_port_optical_transport_application_code{ oic_type = OICType,
+                                                            app_code = AppCode }) ->
+    FeatureTypeInt = ofp_v4_enum:to_int(port_optical_transport_feature_type,opt_interface_class),
+    OICTypeInt     = ofp_v4_enum:to_int(optical_interface_class,OICType),
+    AppCodeBin     = ofp_utils:encode_string(AppCode, 15),
+    Length         = 16 + (15 * 8),
+    <<FeatureTypeInt:16, Length:16, OICTypeInt:8, AppCodeBin:15/bytes>>;
+
+encode_struct(#ofp_port_optical_transport_layer_stack{ value = Values }) ->
+    FeatureTypeInt = ofp_v4_enum:to_int(port_optical_transport_feature_type,layer_stack),
+    ValuesBin      = list_to_binary(lists:map(fun encode_struct/1, Values)),
+    Length         = 8 + byte_size(ValuesBin),
+    <<FeatureTypeInt:16, Length:16, 0:32, ValuesBin/binary>>;
+    
+encode_struct(#ofp_port_optical_transport_layer_entry{  layer_class = LayerClass,
+                                                        signal_type = SignalType,
+                                                        adaptation  = Adaptation }) ->
+    LayerClassInt = ofp_v4_enum:to_int(port_optical_transport_layer_class,LayerClass),
+    SignalTypeID = 
+        case LayerClass of 
+            port    -> ofp_v4_enum:to_int(otport_signal_type, SignalType);
+            och     -> ofp_v4_enum:to_int(och_signal_type,    SignalType);
+            odu     -> ofp_v4_enum:to_int(odu_signal_type,    SignalType);
+            oduclt  -> ofp_v4_enum:to_int(oduclt_signal_type, SignalType)
+        end,
+    AdaptationInt = ofp_v4_enum:to_int(adaptations_type,Adaptation),
+    <<LayerClassInt:8, SignalTypeID:8, AdaptationInt:8, 0:40>>;
 
 encode_struct(#ofp_packet_queue{queue_id = Queue, port_no = Port,
                                 properties = Props}) ->

@@ -168,26 +168,65 @@ decode_port_properties(<<TypeInt:16, Length:16, Rest/binary>>) ->
     <<PropBin:L/bytes, Tail/binary>> = Rest,
     [decode_port_property(Type, PropBin) | decode_port_properties(Tail)].
 
-decode_port_property(optical_transport, Binary) ->
+decode_port_property(Type=optical_transport, Binary) ->
     <<PortSigType:8, Reserved:8, 0:16, BinFeatures/binary>> = Binary,
     F = decode_optical_transport_port_features(BinFeatures),
     #ofp_port_desc_prop_optical_transport{
-        type=optical_transport,
-        port_signal_type=PortSigType,
-        reserved=Reserved,
-        features = F
+        type                = Type,
+        port_signal_type    = ofp_v4_enum:to_atom(otport_signal_type, PortSigType),
+        reserved            = Reserved,
+        features            = F
     }.
 
 decode_optical_transport_port_features(<<>>) ->
     [];
-decode_optical_transport_port_features(BF) ->
-    <<BFE:4/bytes, Tail/binary>> = BF,
-    [decode_optical_transport_port_features_entry(BFE) |
-         decode_optical_transport_port_features(Tail) ].
+decode_optical_transport_port_features(BF) ->   
+<<FeatureTypeInt:16, Length:16, T1/binary>> = BF,
+    
+    FeatureType = ofp_v4_enum:to_atom(port_optical_transport_feature_type,FeatureTypeInt),
+    B=case FeatureType of 
+        opt_interface_class ->
+            (Length - 8) div 8;
+        layer_stack ->
+            Length - 4
+    end,
+    <<Rest:B/bytes, Tail/binary>> = T1,
+    [decode_optical_transport_port_fearures_entry(FeatureType,Rest) | decode_optical_transport_port_features(Tail) ].
 
-decode_optical_transport_port_features_entry(<<FeatureType:16, Length:16>>) ->
-    #ofp_port_optical_transport_feature_header{
-        feature_type = FeatureType
+decode_optical_transport_port_fearures_entry(opt_interface_class, Bin) ->
+    <<OicTypeInt:8, AppCode:15/bytes>> = Bin,
+    #ofp_port_optical_transport_application_code{
+        feature_type    = opt_interface_class,
+        oic_type        = ofp_v4_enum:to_atom(optical_interface_class,OicTypeInt),
+        app_code        = ofp_utils:strip_string(AppCode)
+    };
+decode_optical_transport_port_fearures_entry(layer_stack, Bin) ->
+    <<0:32, LayerEntriesBin/binary>> = Bin,
+    #ofp_port_optical_transport_layer_stack{
+        feature_type    = layer_stack,
+        value           = decode_optical_transport_layer_entries(LayerEntriesBin)
+    }.
+
+decode_optical_transport_layer_entries(<<>>) ->
+    [];
+decode_optical_transport_layer_entries(LayerEntriesBin) ->
+    <<LayerClassInt:8, SignalTypeID:8, AdaptationInt:8, _:40, Tail/binary>> = LayerEntriesBin,
+    [ do_decode_optical_transport_layer_entries(LayerClassInt, SignalTypeID, AdaptationInt) 
+        | decode_optical_transport_layer_entries(Tail) ].
+
+do_decode_optical_transport_layer_entries(LayerClassInt, SignalTypeID, AdaptationInt) ->
+    LayerClass = ofp_v4_enum:to_atom(port_optical_transport_layer_class,LayerClassInt),
+    SignalType = 
+    case LayerClass of 
+        port    -> ofp_v4_enum:to_atom(otport_signal_type,  SignalTypeID);
+        och     -> ofp_v4_enum:to_atom(och_signal_type,     SignalTypeID);
+        odu     -> ofp_v4_enum:to_atom(odu_signal_type,     SignalTypeID);
+        oduclt  -> ofp_v4_enum:to_atom(oduclt_signal_type,  SignalTypeID)
+    end,
+    #ofp_port_optical_transport_layer_entry{
+        layer_class = LayerClass,
+        signal_type = SignalType,
+        adaptation  = ofp_v4_enum:to_atom(adaptations_type,AdaptationInt)
     }.
 
 %% @doc Decode queues
