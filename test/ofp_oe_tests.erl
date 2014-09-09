@@ -32,8 +32,9 @@ optical_transport_port_desc_reply_test() ->
          }
     ],
     F = [#ofp_port_optical_transport_application_code{
+            feature_type    = opt_interface_class,
             oic_type        = proprietary,
-            app_code        = "arbitrary"
+            app_code        = <<"arbitrary">>
          },
          #ofp_port_optical_transport_layer_stack{
             feature_type    = layer_stack,
@@ -67,13 +68,12 @@ optical_transport_port_desc_reply_test() ->
     },
     {ok,EM}      = of_protocol:encode(Msg),
     {ok,DE,<<>>} = of_protocol:decode(EM),
-    ?assertEqual(DE,Msg).
+    ?assertEqual(DE,Msg),
 
-    % TODO: decode and test inside bodies....
+    BinData = (DE#ofp_message.body)#ofp_experimenter_reply.data,
+    DecData2 = ofp_v4_decode:decode_body(multipart_reply,BinData),
 
-    % BinData = (DE#ofp_message.body)#ofp_experimenter_reply.data,
-    % DecData2 = ofp_v4_decode:decode_body(multipart_reply,BinData),
-    %% ?assertEqual(DecData,DecData2).
+    ?assertEqual(Data,DecData2).
 
 optical_transport_port_status_test() ->
     %% Async to controller
