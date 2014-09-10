@@ -383,10 +383,17 @@ decode_actions(Binary, Actions) ->
         experimenter ->
             DataLength = Length - ?ACTION_EXPERIMENTER_SIZE,
             <<Experimenter:32, ExpData:DataLength/bytes, Rest/bytes>> = Data,
-            Action = #ofp_action_experimenter{experimenter = Experimenter,
-                                              data = ExpData}
+            Action = decode_experimenter_action(Experimenter, ExpData)
     end,
     decode_actions(Rest, [Action | Actions]).
+
+decode_experimenter_action(ExpType, ExpData)
+  when ExpType == ?INFOBLOX_EXPERIMENTER ->
+    #ofp_action_experimenter{experimenter = ExpType,
+                             data = decode_actions(ExpData)};
+decode_experimenter_action(ExpType, ExpData) ->
+    #ofp_action_experimenter{experimenter = ExpType,
+                             data = ExpData}.
 
 %% @doc Decode instructions
 -spec decode_instructions(binary()) -> [ofp_instruction()].
