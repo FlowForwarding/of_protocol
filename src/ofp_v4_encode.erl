@@ -257,6 +257,13 @@ encode_struct(#ofp_action_set_field{field = Field}) ->
     Padding = ofp_utils:padding(PartialLength, 8),
     Length = PartialLength + Padding,
     <<Type:16, Length:16, FieldBin/bytes, 0:(Padding*8)>>;
+encode_struct(#ofp_action_experimenter{
+                 experimenter = ?INFOBLOX_EXPERIMENTER = Experimenter,
+                 data = #ofp_action_set_field{} = Data}) ->
+    Type = ofp_v4_enum:to_int(action_type, experimenter),
+    DataBin = encode_struct(Data),
+    Length = ?ACTION_EXPERIMENTER_SIZE + byte_size(DataBin),
+    <<Type:16, Length:16, Experimenter:32, DataBin/bytes>>;
 encode_struct(#ofp_action_experimenter{experimenter = Experimenter,
                                        data = Data}) ->
     Type = ofp_v4_enum:to_int(action_type, experimenter),
