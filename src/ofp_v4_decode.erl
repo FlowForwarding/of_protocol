@@ -389,8 +389,9 @@ decode_actions(Binary, Actions) ->
 
 decode_experimenter_action(ExpType, ExpData)
   when ExpType == ?INFOBLOX_EXPERIMENTER ->
+    [#ofp_action_set_field{} = Action] = decode_actions(ExpData),
     #ofp_action_experimenter{experimenter = ExpType,
-                             data = decode_actions(ExpData)};
+                             data = Action};
 decode_experimenter_action(ExpType, ExpData) ->
     #ofp_action_experimenter{experimenter = ExpType,
                              data = ExpData}.
