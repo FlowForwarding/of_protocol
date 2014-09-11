@@ -1159,11 +1159,15 @@ decode_body(multipart_request, Binary) ->
             #ofp_meter_features_request{flags = Flags};
         experimenter ->
             DataLength = size(Binary) - ?EXPERIMENTER_STATS_REQUEST_SIZE + ?OFP_HEADER_SIZE,
-            <<Experimenter:32, ExpType:32,
-              ExpData:DataLength/bytes>> = Data,
+            <<Experimenter:32, ExpType:32, ExpData:DataLength/bytes>> = Data,
+            ExpType2 = 
+                case Experimenter of 
+                    ?INFOBLOX_EXPERIMENTER -> ofp_v4_enum:to_atom(multipart_type,ExpType);
+                    _                      -> ExpType
+                end,
             #ofp_experimenter_request{flags = Flags,
                                       experimenter = Experimenter,
-                                      exp_type = ExpType, data = ExpData}
+                                      exp_type = ExpType2, data = ExpData}
     end;
 decode_body(multipart_reply, Binary) ->
     <<TypeInt:16, FlagsBin:16/bits, _Pad:32, Data/bytes>> = Binary,

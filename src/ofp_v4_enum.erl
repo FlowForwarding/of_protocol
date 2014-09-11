@@ -269,10 +269,10 @@
                               pbb_isid,
                               tunnel_id,
                               ipv6_exthdr,
-                              odu_sigtype,
-                              odu_sigid,
-                              och_sigtype,
-                              och_sigid
+                              {odu_sigtype, 42},
+                              {odu_sigid,   43},
+                              {och_sigtype, 44},
+                              {och_sigid,   45}
                               ]}).
 
 -enum({vlan_id, [none,

@@ -380,7 +380,14 @@ encode_struct(#ofp_meter_config{flags = Flags, meter_id = _MeterId,
     FlagsBin = flags_to_binary(meter_flag, Flags, 2),
     BandsBin = encode_list(Bands),
     Length = ?METER_CONFIG_SIZE + byte_size(BandsBin),
-    <<Length:16, FlagsBin:16/bits, MeterIdInt:32, BandsBin/bytes>>.
+    <<Length:16, FlagsBin:16/bits, MeterIdInt:32, BandsBin/bytes>>;
+encode_struct(#ofp_oxm_experimenter_header{ oxm_header = OxmHeader,
+                                            experimenter = Experimenter }) ->
+    <<OxmHeader:32, Experimenter:32>>;
+encode_struct(#ofp_action_experimenter_header{ type = Type,
+                                               experimenter = Experimenter }) ->
+    TypeInt = ofp_v4_enum:to_int(action_type, Type),
+    <<TypeInt:16,?ACTION_EXPERIMENTER_SIZE:16,Experimenter:32>>.
 
 encode_async_masks({PacketInMask1, PacketInMask2},
                    {PortStatusMask1, PortStatusMask2},
@@ -722,6 +729,16 @@ encode_body(#ofp_meter_features_reply{flags = Flags, max_meter = MaxMeter,
     CapabilitiesBin = flags_to_binary(meter_flag, Capabilities, 4),
     <<TypeInt:16, FlagsBin/bytes, 0:32, MaxMeter:32, BandTypesBin:32/bits,
       CapabilitiesBin:32/bits, MaxBands:8, MaxColor:8, 0:16>>;
+
+encode_body(#ofp_experimenter_request{flags = Flags,
+                                      experimenter = ?INFOBLOX_EXPERIMENTER,
+                                      exp_type = ExpType, data = Data}) ->
+    TypeInt = ofp_v4_enum:to_int(multipart_type, experimenter),
+    FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
+    ExpTypeInt = ofp_v4_enum:to_int(multipart_type,ExpType),
+    <<TypeInt:16, FlagsBin:2/bytes, 0:32,
+      ?INFOBLOX_EXPERIMENTER:32, ExpTypeInt:32, Data/bytes>>;
+
 encode_body(#ofp_experimenter_request{flags = Flags,
                                       experimenter = Experimenter,
                                       exp_type = ExpType, data = Data}) ->
