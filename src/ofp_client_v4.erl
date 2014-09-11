@@ -229,7 +229,7 @@ type_atom(#ofp_set_async{}) ->
 type_atom(#ofp_meter_mod{}) ->
     meter_mod;
 type_atom(#ofp_port_desc_reply_v6{}) ->
-    port_desc_reply_v5.
+    port_desc_reply_v6.
 
 add_aux_id(#ofp_features_reply{} = Reply, Id) ->
     Reply#ofp_features_reply{auxiliary_id = Id}.

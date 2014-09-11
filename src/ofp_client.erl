@@ -203,7 +203,7 @@ handle_call({send, Message}, _From, #state{version = Version} = State) ->
                   Type == role_reply;
                   Type == get_async_reply;
                   Type == bundle_ctrl_msg,
-                  Type == port_desc_reply_v5 ->
+                  Type == port_desc_reply_v6 ->
             {reply, handle_send(Message2, State), State};
         _Else ->
             {reply, {error, {bad_message, Message2}}, State}
@@ -410,6 +410,7 @@ handle_send(#ofp_message{type = packet_in} = Message,
         _Else ->
             do_filter_send(Message, State)
     end;
+% This was changed for the ONOS demo.
 handle_send(#ofp_message{type = Type} = Message, 
             #state{version = Version} = State) when Type =:= multipart_reply ->
     Module = client_module(Version),
@@ -430,18 +431,19 @@ do_send(#ofp_message{ type = Type } = Message, #state{controller = {_, _, Proto}
                       version = Version} = State) when Type =:= multipart_reply ->
     case ofp_parser:encode(Parser, Message#ofp_message{version = Version}) of
         {ok, Binary} ->
-            case byte_size(Binary) < (1 bsl 16) of
-                true ->
+            %% This was changed for the ONOS demo.
+            %%case byte_size(Binary) < (1 bsl 16) of
+            %%    true ->
                     send(Proto, Socket, Binary);
-                false ->
-                    Module = client_module(Version),
-                    case Module:split_big_multipart(Message) of
-                        false ->
-                            {error, message_too_big};
-                        SplitList ->
-                            lists:map(fun(Msg) -> do_send(Msg,State) end, SplitList)
-                    end
-            end;
+            %%    false ->
+            %%        Module = client_module(Version),
+            %%        case Module:split_big_multipart(Message) of
+            %%            false ->
+            %%                {error, message_too_big};
+            %%            SplitList ->
+            %%                lists:map(fun(Msg) -> do_send(Msg,State) end, SplitList)
+            %%        end
+            %%end;
         {error, Reason} ->
             {error, Reason}
     end;
