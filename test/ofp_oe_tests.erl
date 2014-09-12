@@ -55,25 +55,19 @@ optical_transport_port_desc_reply_test() ->
             properties  = Pr
     }],
     Data = #ofp_port_desc_reply_v6 { body = P },
-    EncData = ofp_v4_encode:encode_body(Data),
     Msg = #ofp_message{ 
         version = 4,
         type = multipart_reply,
         xid = 1,
         body = #ofp_experimenter_reply{
-            experimenter    = 1,
-            exp_type        = 1,
-            data            = EncData
+            experimenter    = ?INFOBLOX_EXPERIMENTER,
+            exp_type        = port_desc,
+            data            = Data
         }
     },
     {ok,EM}      = of_protocol:encode(Msg),
     {ok,DE,<<>>} = of_protocol:decode(EM),
-    ?assertEqual(DE,Msg),
-
-    BinData = (DE#ofp_message.body)#ofp_experimenter_reply.data,
-    DecData2 = ofp_v4_decode:decode_body(multipart_reply,BinData),
-
-    ?assertEqual(Data,DecData2).
+    ?assertEqual(DE,Msg).
 
 optical_transport_port_status_test() ->
     %% Async to controller
@@ -111,21 +105,17 @@ optical_transport_port_status_test() ->
             state       = [live],
             properties  = Pr
     },
-    EncStruct = ofp_v4_encode:encode_struct(P),
-    DecStruct = ofp_v4_decode:decode_port_v6(EncStruct),
-
-    ?assertEqual(P,DecStruct),
-
+    % EncStruct = ofp_v4_encode:encode_struct(P),
+    % DecStruct = ofp_v4_decode:decode_port_v6(EncStruct),
+    % ?assertEqual(P,DecStruct),
     Body = 
         #ofp_port_status{
             reason = add,
             desc = P
         },
-    EncData = ofp_v4_encode:encode_body(Body),
-    DecData = ofp_v4_decode:decode_body(port_status_v6,EncData),
-
-    ?assertEqual(Body,DecData),
-
+    % EncData = ofp_v4_encode:encode_body(Body),
+    % DecData = ofp_v4_decode:decode_body(port_status_v6,EncData),
+    % ?assertEqual(Body,DecData),
     Msg = 
     #ofp_message{
         version = 4,
@@ -134,12 +124,12 @@ optical_transport_port_status_test() ->
         body = #ofp_experimenter{
                 experimenter = 1,
                 exp_type = 1,
-                data = EncData
+                %%data = EncData
+                data = Body
             }
     },
     {ok,Enc}      = of_protocol:encode(Msg),
     {ok,Dec,<<>>} = of_protocol:decode(Enc),
-
     ?assertEqual(Dec,Msg).
 
 odu_sigtype() ->
@@ -217,3 +207,38 @@ och_sigid_test() ->
         },
     {ok,EncMsg} = of_protocol:encode(Msg),
     {ok,DecMsg,<<>>} = of_protocol:decode(EncMsg).
+
+% ofp_oxm_experimenter_header_test() ->
+%     MatchField = #ofp_field{class = experimenter,
+%                     has_mask = false,
+%                     name = in_port,
+%                     value= },
+%     Field = #ofp_field{class = openflow_basic,
+%                        has_mask = false,
+%                        name = och_sigid,
+%                        value = <<0:16, (_ChannelNumber = 10):16, 0:16>>},
+%     SetField = #ofp_action_set_field{field = Field},
+%     Action1 = #ofp_action_experimenter{experimenter = ?INFOBLOX_EXPERIMENTER, data = SetField},
+%     Action2 = #ofp_action_output{port = 2, max_len = no_buffer},
+%     Instruction = #ofp_instruction_apply_actions{actions = [Action1,Action2]},
+%     Flow = #ofp_flow_mod{ cookie = <<0:64>>,
+%                          cookie_mask = <<0:64>>,
+%                          table_id = 0,
+%                          command = add,
+%                          idle_timeout = 0,
+%                          hard_timeout = 0,
+%                          priority = 1,
+%                          buffer_id = no_buffer,
+%                          out_port = any,
+%                          out_group = any,
+%                          flags = [],
+%                          match = #ofp_match{fields = [MatchField]},
+%                          instructions = [Instruction]
+%     },
+%     Msg = 
+%         #ofp_message{
+%             version = 4,
+%             body = Flow
+%         },
+%     {ok,EncMsg} = of_protocol:encode(Msg),
+%     {ok,DecMsg,<<>>} = of_protocol:decode(EncMsg).  

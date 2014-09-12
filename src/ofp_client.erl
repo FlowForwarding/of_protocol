@@ -428,7 +428,7 @@ handle_send(Message, State) ->
 do_send(#ofp_message{ type = Type } = Message, #state{controller = {_, _, Proto},
                       socket = Socket,
                       parser = Parser,
-                      version = Version} = State) when Type =:= multipart_reply ->
+                      version = Version} = _State) when Type =:= multipart_reply ->
     case ofp_parser:encode(Parser, Message#ofp_message{version = Version}) of
         {ok, Binary} ->
             %% This was changed for the ONOS demo.

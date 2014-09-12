@@ -747,6 +747,15 @@ encode_body(#ofp_experimenter_request{flags = Flags,
     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
       Experimenter:32, ExpType:32, Data/bytes>>;
 encode_body(#ofp_experimenter_reply{flags = Flags,
+                                    experimenter = ?INFOBLOX_EXPERIMENTER,
+                                    exp_type = ExpType, data = UnEncData}) ->
+    TypeInt = ofp_v4_enum:to_int(multipart_type, experimenter),
+    ExpTypeInt = ofp_v4_enum:to_int(multipart_type, ExpType),
+    FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
+    Data = encode_body(UnEncData),
+    <<TypeInt:16, FlagsBin:2/bytes, 0:32,
+      ?INFOBLOX_EXPERIMENTER:32, ExpTypeInt:32, Data/bytes>>;
+encode_body(#ofp_experimenter_reply{flags = Flags,
                                     experimenter = Experimenter,
                                     exp_type = ExpType, data = Data}) ->
     TypeInt = ofp_v4_enum:to_int(multipart_type, experimenter),

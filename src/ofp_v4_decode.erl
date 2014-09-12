@@ -1279,8 +1279,14 @@ decode_body(multipart_reply, Binary) ->
                 ?OFP_HEADER_SIZE,
             <<Experimenter:32, ExpType:32,
               ExpData:DataLength/bytes>> = Data,
+            {ExpType2,ExpData2} = 
+                case Experimenter of 
+                    ?INFOBLOX_EXPERIMENTER -> {ofp_v4_enum:to_atom(multipart_type,ExpType),
+                                               decode_body(multipart_reply, ExpData)};
+                    _                      -> {ExpType,ExpData}
+                end,
             #ofp_experimenter_reply{flags = Flags, experimenter = Experimenter,
-                                    exp_type = ExpType, data = ExpData};
+                                    exp_type = ExpType2, data = ExpData2};
         port_desc_v6 ->
             Ports = decode_port_list_v6(Data),
             #ofp_port_desc_reply_v6{flags = Flags, body = Ports}
