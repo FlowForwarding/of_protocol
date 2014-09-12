@@ -73,7 +73,7 @@ tlv_length(tunnel_id)      -> 64;
 tlv_length(ipv6_exthdr)    -> 9;
 tlv_length(odu_sigtype)    -> 8;
 tlv_length(odu_sigid)      -> 8;
-% tlv_length(och_sigtype)  -> var length
+tlv_length(och_sigtype)    -> 8;
 tlv_length(och_sigid)      -> 48.
 
 %% @doc Get field's on-wire length in bits.
