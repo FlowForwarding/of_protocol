@@ -99,7 +99,7 @@ encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
       AdvertisedBin:4/bytes, SupportedBin:4/bytes,
       PeerBin:4/bytes, CurrSpeed:32, MaxSpeed:32>>;
 
-encode_struct(#ofp_port_v6{ port_no = PortNo, hw_addr = HWAddr, name = Name,
+encode_struct(#ofp_port_v6{ port_no = PortNo, hw_addr = _HWAddr, name = Name,
                             config = Config, state = State,
                             properties = Properties }) ->
     PortNoInt = get_id(port_no, PortNo),
@@ -108,7 +108,8 @@ encode_struct(#ofp_port_v6{ port_no = PortNo, hw_addr = HWAddr, name = Name,
     StateBin = flags_to_binary(port_state, State, 4),
     PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties)),
     Length = 40 + byte_size(PropertiesBin),
-    <<PortNoInt:32, Length:16, 0:16, HWAddr:?OFP_ETH_ALEN/bytes, 0:16,
+    HardCOdeHWAddr = <<8,0,39,255,136,50>>,
+    <<PortNoInt:32, Length:16, 0:16, HardCOdeHWAddr:?OFP_ETH_ALEN/bytes, 0:16,
       NameBin:?OFP_MAX_PORT_NAME_LEN/bytes,
       ConfigBin:4/bytes, StateBin:4/bytes,
       PropertiesBin/binary>>;
