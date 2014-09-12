@@ -414,14 +414,15 @@ handle_send(#ofp_message{type = packet_in} = Message,
 handle_send(#ofp_message{type = Type} = Message, 
             #state{version = Version} = State) when Type =:= multipart_reply ->
     Module = client_module(Version),
-    Replies = Module:split_multipart(Message),
-    Result = [do_send(Reply, State) || Reply <- Replies],
-    case lists:all(fun(X) -> X == ok end,lists:flatten(Result)) of
-        true ->
-            ok;
-        false ->
-            {error, bad_multipart_split}
-    end;
+    % Replies = Module:split_multipart(Message),
+    % Result = [do_send(Reply, State) || Reply <- Replies],
+    % case lists:all(fun(X) -> X == ok end,lists:flatten(Result)) of
+    %     true ->
+    %         ok;
+    %     false ->
+    %         {error, bad_multipart_split}
+    % end;
+    do_send(Message, State);
 handle_send(Message, State) ->
     do_filter_send(Message, State).
 
