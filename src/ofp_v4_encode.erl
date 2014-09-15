@@ -382,9 +382,11 @@ encode_struct(#ofp_meter_config{flags = Flags, meter_id = _MeterId,
     BandsBin = encode_list(Bands),
     Length = ?METER_CONFIG_SIZE + byte_size(BandsBin),
     <<Length:16, FlagsBin:16/bits, MeterIdInt:32, BandsBin/bytes>>;
-encode_struct(#ofp_oxm_experimenter_header{ oxm_header = OxmHeader,
-                                            experimenter = Experimenter }) ->
-    <<OxmHeader:32, Experimenter:32>>;
+encode_struct(#ofp_oxm_experimenter{ body = Body,
+                                     experimenter = Experimenter }) ->
+    OfpFieldBin = encode_struct(Body),
+    <<0:24, Experimenter:16, OfpFieldBin/bytes>>;
+
 encode_struct(#ofp_action_experimenter_header{ type = Type,
                                                experimenter = Experimenter }) ->
     TypeInt = ofp_v4_enum:to_int(action_type, Type),
@@ -443,8 +445,17 @@ encode_body(#ofp_echo_request{data = Data}) ->
     Data;
 encode_body(#ofp_echo_reply{data = Data}) ->
     Data;
+
+encode_body(#ofp_experimenter{experimenter = ?INFOBLOX_EXPERIMENTER,
+                              exp_type = Type,
+                              data = Data}) ->
+    TypeInt = ofp_v4_enum:to_int(multipart_type,Type),
+    DataBin = encode_body(Data),
+    <<?INFOBLOX_EXPERIMENTER:32, TypeInt:32, DataBin/bytes>>;
+
 encode_body(#ofp_experimenter{experimenter = Experimenter,
-                              exp_type = Type, data = Data}) ->
+                              exp_type = Type,
+                              data = Data}) ->
     <<Experimenter:32, Type:32, Data/bytes>>;
 encode_body(#ofp_features_request{}) ->
     <<>>;

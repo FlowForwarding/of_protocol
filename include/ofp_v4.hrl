@@ -1669,10 +1669,5 @@
          }).
 -type ofp_port_desc_property() :: #ofp_port_desc_prop_optical_transport{}.
 
-
--record(ofp_oxm_experimenter_header, {oxm_header,
-                                      experimenter
-}).
-
 -record(ofp_oxm_experimenter, { body,
                                 experimenter }).

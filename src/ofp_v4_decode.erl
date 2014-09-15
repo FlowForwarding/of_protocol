@@ -80,6 +80,13 @@ decode_match_fields(Binary, Fields) ->
     decode_match_fields(Rest, [Field | Fields]).
 
 %% @doc Decode single match field
+
+decode_match_field(<<0:24, Experimenter:16, DataBin/bytes>>) ->
+    {Data,Rest} = decode_match_field(DataBin),
+    {#ofp_oxm_experimenter{ body = Data,
+                           experimenter = Experimenter },
+     Rest};
+
 decode_match_field(<<Header:4/bytes, Binary/bytes>>) ->
     <<ClassInt:16, FieldInt:7, HasMaskInt:1,
       Length:8>> = Header,
@@ -968,8 +975,16 @@ decode_body(echo_reply, Binary) ->
 decode_body(experimenter, Binary) ->
     DataLength = size(Binary) - ?EXPERIMENTER_SIZE + ?OFP_HEADER_SIZE,
     <<Experimenter:32, Type:32, Data:DataLength/bytes>> = Binary,
+    {Type2,Data2} = 
+         case Experimenter of 
+             ?INFOBLOX_EXPERIMENTER ->
+                 {ofp_v4_enum:to_atom(multipart_type,Type),
+                  decode_body(port_status_v6, Data)};
+             _ ->
+                 {Type,Data}
+         end,
     #ofp_experimenter{experimenter = Experimenter,
-                      exp_type = Type, data = Data};
+                      exp_type = Type2, data = Data2};
 decode_body(features_request, _) ->
     #ofp_features_request{};
 decode_body(features_reply, Binary) ->
