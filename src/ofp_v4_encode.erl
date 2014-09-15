@@ -78,7 +78,7 @@ encode_struct(#ofp_field{class = Class, name = Field, has_mask = HasMask,
             Rest = <<Value2/bytes>>,
             Len2 = byte_size(Value2)
     end,
-    <<ClassInt:16, FieldInt:7, HasMaskInt:1, Len2:8, Rest/bytes>>;
+    <<ClassInt:16, FieldInt:7, HasMaskInt:1, Len2:8, Rest/bytes>>; 
 
 encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
                         config = Config, state = State, curr = Curr,
@@ -382,10 +382,14 @@ encode_struct(#ofp_meter_config{flags = Flags, meter_id = _MeterId,
     BandsBin = encode_list(Bands),
     Length = ?METER_CONFIG_SIZE + byte_size(BandsBin),
     <<Length:16, FlagsBin:16/bits, MeterIdInt:32, BandsBin/bytes>>;
-encode_struct(#ofp_oxm_experimenter{ body = Body,
-                                     experimenter = Experimenter }) ->
-    OfpFieldBin = encode_struct(Body),
-    <<0:24, Experimenter:16, OfpFieldBin/bytes>>;
+
+encode_struct(#ofp_oxm_experimenter{ body = Data,
+                                     experimenter = ?INFOBLOX_EXPERIMENTER }) ->
+    #ofp_field{class = Class, name = Field, has_mask = HasMask,
+               value = Value, mask = Mask} = Data,
+    Header = encode_struct(Data),
+    <<ClassInt:16, FieldInt:7, HasMaskInt:1, Len2:8, Rest/bytes>> = Header,
+    <<Header:4/bytes, ?INFOBLOX_EXPERIMENTER:32, Rest/bytes>>;
 
 encode_struct(#ofp_action_experimenter_header{ type = Type,
                                                experimenter = Experimenter }) ->
