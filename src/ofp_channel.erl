@@ -55,6 +55,7 @@ send(SwitchId, Message) when is_integer(SwitchId) ->
 %% send() may fail.
     lists:foreach(fun({main,Pid}) ->
          try
+                % XXX quietly ignores errors returned by send.
                   send(Pid, Message)
          catch _:Error ->
                   io:format("Cannot send message to controller ~p: ~p\n", [Pid,Error]),

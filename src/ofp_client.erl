@@ -190,6 +190,7 @@ handle_call({send, Message}, _From, #state{version = Version} = State) ->
     Message2 = add_type(Message#ofp_message{version = Version}),
     case Message2#ofp_message.type of
         Type when Type == error;
+                  Type == experimenter;
                   Type == echo_reply;
                   Type == features_reply;
                   Type == get_config_reply;
@@ -412,8 +413,8 @@ handle_send(#ofp_message{type = packet_in} = Message,
     end;
 % This was changed for the ONOS demo.
 handle_send(#ofp_message{type = Type} = Message, 
-            #state{version = Version} = State) when Type =:= multipart_reply ->
-    Module = client_module(Version),
+            #state{} = State) when Type =:= multipart_reply ->
+    % Module = client_module(Version),
     % Replies = Module:split_multipart(Message),
     % Result = [do_send(Reply, State) || Reply <- Replies],
     % case lists:all(fun(X) -> X == ok end,lists:flatten(Result)) of
