@@ -92,7 +92,7 @@
                  local,
                  any]}).
 
--enum({port_desc_properties, [optical_transport
+-enum({port_desc_properties, [{optical_transport, 2}
                               ]}).
 
 -enum({port_features, ['10mb_hd',
@@ -122,11 +122,11 @@
                                              {layer_stack,2}
                                             ]}).
 
--enum({optical_interface_class,[ proprietary,
-                                 itut_g698_1,
+-enum({optical_interface_class,[ itut_g698_1,
                                  itut_g698_2,
                                  itut_g959_1,
-                                 itut_g695
+                                 itut_g695,
+                                 {proprietary, 128}
                                ]}).
 
 -enum({port_optical_transport_layer_class,[{port,1},
@@ -411,7 +411,6 @@
                         meter_features,
                         table_features,
                         port_desc,
-                        port_desc_v6,
                         {experimenter, 16#ffff}
                         ]}).
 

@@ -646,7 +646,7 @@ encode_body(#ofp_port_desc_reply{flags = Flags, body = Ports}) ->
     PortsBin = encode_list(Ports),
     <<TypeInt:16, FlagsBin/bytes, 0:32, PortsBin/bytes>>;
 encode_body(#ofp_port_desc_reply_v6{flags = Flags, body = Ports}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, port_desc_v6),
+    TypeInt = ofp_v4_enum:to_int(multipart_type, port_desc),
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     PortsBin = encode_list(Ports),
     <<TypeInt:16, FlagsBin/bytes, 0:32, PortsBin/bytes>>;
@@ -745,7 +745,6 @@ encode_body(#ofp_meter_features_reply{flags = Flags, max_meter = MaxMeter,
     CapabilitiesBin = flags_to_binary(meter_flag, Capabilities, 4),
     <<TypeInt:16, FlagsBin/bytes, 0:32, MaxMeter:32, BandTypesBin:32/bits,
       CapabilitiesBin:32/bits, MaxBands:8, MaxColor:8, 0:16>>;
-
 encode_body(#ofp_experimenter_request{flags = Flags,
                                       experimenter = ?INFOBLOX_EXPERIMENTER,
                                       exp_type = ExpType, data = Data}) ->
@@ -754,7 +753,6 @@ encode_body(#ofp_experimenter_request{flags = Flags,
     ExpTypeInt = ofp_v4_enum:to_int(multipart_type,ExpType),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
       ?INFOBLOX_EXPERIMENTER:32, ExpTypeInt:32, Data/bytes>>;
-
 encode_body(#ofp_experimenter_request{flags = Flags,
                                       experimenter = Experimenter,
                                       exp_type = ExpType, data = Data}) ->
