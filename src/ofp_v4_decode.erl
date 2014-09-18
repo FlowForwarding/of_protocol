@@ -1003,7 +1003,7 @@ decode_body(experimenter, Binary) ->
     {Type2,Data2} = 
          case Experimenter of 
              ?INFOBLOX_EXPERIMENTER ->
-                 {ofp_v4_enum:to_atom(multipart_type,Type),
+                 {ofp_v4_enum:to_atom(type, Type),
                   decode_body(port_status_v6, Data)};
              _ ->
                  {Type,Data}

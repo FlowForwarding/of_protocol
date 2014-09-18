@@ -172,7 +172,7 @@ optical_transport_port_status_test() ->
         xid = 12345,
         body = #ofp_experimenter{
                 experimenter = ?INFOBLOX_EXPERIMENTER,
-                exp_type     = port_desc,
+                exp_type     = port_status,
                 data         = Body
             }
     },

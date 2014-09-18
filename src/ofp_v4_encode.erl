@@ -453,7 +453,7 @@ encode_body(#ofp_echo_reply{data = Data}) ->
 encode_body(#ofp_experimenter{experimenter = ?INFOBLOX_EXPERIMENTER,
                               exp_type = Type,
                               data = Data}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type,Type),
+    TypeInt = ofp_v4_enum:to_int(type, Type),
     DataBin = encode_body(Data),
     <<?INFOBLOX_EXPERIMENTER:32, TypeInt:32, DataBin/bytes>>;
 
