@@ -46,7 +46,7 @@ optical_transport_port_desc_reply_test() ->
             reserved            = 0,
             features            = F
     }],
-    P = [#ofp_port_v6{
+    Data = [#ofp_port_v6{
             port_no     = 1,
             hw_addr     = <<8,0,39,255,136,50>>,
             name        = <<"Port1">>,
@@ -54,7 +54,6 @@ optical_transport_port_desc_reply_test() ->
             state       = [live],
             properties  = Pr
     }],
-    Data = #ofp_port_desc_reply_v6 { body = P },
     Msg = #ofp_message{ 
         version = 4,
         type = multipart_reply,
@@ -69,7 +68,7 @@ optical_transport_port_desc_reply_test() ->
 % ofp_header:
 4,                  % version
 19,                 % type (OFPT_MULTIPART_REPLY)
-0,124,              % length
+0,116,              % length
 0,0,0,1,            % xid
 % ofp_multipart_reply:
 255,255,            % type (OFPMP_EXPERIMENTER)
@@ -78,10 +77,6 @@ optical_transport_port_desc_reply_test() ->
 % ofp_experimenter_multipart_header:
 0,116,135,113,      % experimenter (Infoblox)
 0,0,0,13,           % type (OFPMP_PORT_DESC)
-% ofp_multipart_reply:
-0,13,               % OFPMP_PORT_DESC
-0,0,                % flags
-0,0,0,0,            % pad
 % ofp_port:
 0,0,0,1,            % port_no (1)
 0,92,               % length
@@ -121,8 +116,8 @@ optical_transport_port_desc_reply_test() ->
 >>,
     {ok,EM}      = of_protocol:encode(Msg),
     {ok,DE,<<>>} = of_protocol:decode(EM),
-    ?assertEqual(EM, ExpectedBinary),
-    ?assertEqual(DE,Msg).
+    ?assertEqual(DE,Msg),
+    ?assertEqual(EM, ExpectedBinary).
 
 optical_transport_port_status_test() ->
     %%trace(),
@@ -272,8 +267,8 @@ ofp_oxm_experimenter_header_test() ->
     %% when the list of matches are processed....
 
 trace() ->
-    %% Mods = [ ofp_v4_encode, ofp_v4_deocde ],
-    Mods = [ ofp_v4_enum ],
+    Mods = [ ofp_v4_encode, ofp_v4_deocde ],
+    % Mods = [ ofp_v4_enum ],
     dbg:tracer(),
     dbg:p(all,call),
     [ dbg:tpl(Mod,[{'_',[],[{message,{return_trace}}]}]) || Mod <- Mods ].

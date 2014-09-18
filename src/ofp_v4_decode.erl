@@ -1319,11 +1319,12 @@ decode_body(multipart_reply, Binary) ->
                 ?OFP_HEADER_SIZE,
             <<Experimenter:32, ExpType:32,
               ExpData:DataLength/bytes>> = Data,
+            PortDesc = ofp_v4_enum:to_int(multipart_type, port_desc),
             {ExpType2,ExpData2} = 
-                case Experimenter of 
-                    ?INFOBLOX_EXPERIMENTER ->
+                case {Experimenter, ExpType} of 
+                    {?INFOBLOX_EXPERIMENTER, PortDesc} ->
                         {ofp_v4_enum:to_atom(multipart_type, ExpType),
-                        decode_body(multipart_reply_v6, ExpData)};
+                        decode_port_list_v6(ExpData)};
                     _ ->
                         {ExpType, ExpData}
                 end,

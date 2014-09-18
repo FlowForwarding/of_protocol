@@ -645,11 +645,11 @@ encode_body(#ofp_port_desc_reply{flags = Flags, body = Ports}) ->
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     PortsBin = encode_list(Ports),
     <<TypeInt:16, FlagsBin/bytes, 0:32, PortsBin/bytes>>;
-encode_body(#ofp_port_desc_reply_v6{flags = Flags, body = Ports}) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, port_desc),
-    FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
-    PortsBin = encode_list(Ports),
-    <<TypeInt:16, FlagsBin/bytes, 0:32, PortsBin/bytes>>;
+% encode_body(#ofp_port_desc_reply_v6{flags = Flags, body = Ports}) ->
+%   TypeInt = ofp_v4_enum:to_int(multipart_type, port_desc),
+%   FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
+%   PortsBin = encode_list(Ports),
+%   <<TypeInt:16, FlagsBin/bytes, 0:32, PortsBin/bytes>>;
 encode_body(#ofp_queue_stats_request{flags = Flags,
                                      port_no = Port, queue_id = Queue}) ->
     TypeInt = ofp_v4_enum:to_int(multipart_type, queue_stats),
@@ -760,6 +760,15 @@ encode_body(#ofp_experimenter_request{flags = Flags,
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
       Experimenter:32, ExpType:32, Data/bytes>>;
+encode_body(#ofp_experimenter_reply{flags = Flags,
+                                    experimenter = ?INFOBLOX_EXPERIMENTER,
+                                    exp_type = port_desc, data = Ports}) ->
+    TypeInt = ofp_v4_enum:to_int(multipart_type, experimenter),
+    ExpTypeInt = ofp_v4_enum:to_int(multipart_type, port_desc),
+    FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
+    Data = encode_list(Ports),
+    <<TypeInt:16, FlagsBin:2/bytes, 0:32,
+      ?INFOBLOX_EXPERIMENTER:32, ExpTypeInt:32, Data/bytes>>;
 encode_body(#ofp_experimenter_reply{flags = Flags,
                                     experimenter = ?INFOBLOX_EXPERIMENTER,
                                     exp_type = ExpType, data = UnEncData}) ->
