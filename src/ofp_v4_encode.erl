@@ -387,9 +387,9 @@ encode_struct(#ofp_oxm_experimenter{ body = Data,
                                      experimenter = ?INFOBLOX_EXPERIMENTER }) ->
     #ofp_field{class = Class, name = Field, has_mask = HasMask,
                value = Value, mask = Mask} = Data,
-    Header = encode_struct(Data),
-    <<ClassInt:16, FieldInt:7, HasMaskInt:1, Len2:8, Rest/bytes>> = Header,
-    <<Header:4/bytes, ?INFOBLOX_EXPERIMENTER:32, Rest/bytes>>;
+    Payload = encode_struct(Data),
+    ClassInt = ofp_v4_enum:to_int(oxm_class, experimenter),
+    <<ClassInt:16, 0:16, ?INFOBLOX_EXPERIMENTER:32, Payload/bytes>>;
 
 encode_struct(#ofp_action_experimenter_header{ type = Type,
                                                experimenter = Experimenter }) ->

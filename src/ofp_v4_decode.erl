@@ -80,64 +80,42 @@ decode_match_fields(Binary, Fields) ->
     decode_match_fields(Rest, [Field | Fields]).
 
 %% @doc Decode single match field
-
-decode_match_field(<<Header:4/bytes, ?INFOBLOX_EXPERIMENTER:32, Binary/bytes>>) ->
-    <<ClassInt:16, FieldInt:7, HasMaskInt:1,
-      Length:8>> = Header,
-    Class = ofp_v4_enum:to_atom(oxm_class, ClassInt),
-    HasMask = (HasMaskInt =:= 1),
-    {Field, BitLength} = case Class of
-        openflow_basic ->
-            F = ofp_v4_enum:to_atom(oxm_ofb_match_fields, FieldInt),
-            {F, ofp_v4_map:tlv_length(F)};
-        _ ->
-            {FieldInt, Length * 8}
-    end,
-    case HasMask of
-        false ->
-            <<Value:Length/bytes, Rest/bytes>> = Binary,
-            TLV = #ofp_field{value = ofp_utils:uncut_bits(Value, BitLength)};
-        true ->
-            Length2 = (Length div 2),
-            <<Value:Length2/bytes, Mask:Length2/bytes,
-              Rest/bytes>> = Binary,
-            TLV = #ofp_field{value = ofp_utils:uncut_bits(Value, BitLength),
-                             mask = ofp_utils:uncut_bits(Mask, BitLength)}
-    end,
-    
-    {#ofp_oxm_experimenter{
-        body = TLV#ofp_field{class = Class,
-                   name = Field,
-                   has_mask = HasMask},
-        experimenter = ?INFOBLOX_EXPERIMENTER
-    },Rest};
-
 decode_match_field(<<Header:4/bytes, Binary/bytes>>) ->
     <<ClassInt:16, FieldInt:7, HasMaskInt:1,
       Length:8>> = Header,
     Class = ofp_v4_enum:to_atom(oxm_class, ClassInt),
-    HasMask = (HasMaskInt =:= 1),
-    {Field, BitLength} = case Class of
+    case Class of
+        experimenter ->
+            <<?INFOBLOX_EXPERIMENTER:32, Binary2/bytes>> = Binary,
+            {ExpField, ExpRest} = decode_match_field(Binary2),
+            {#ofp_oxm_experimenter{
+                experimenter = ?INFOBLOX_EXPERIMENTER,
+                body = ExpField
+            }, ExpRest};
         openflow_basic ->
-            F = ofp_v4_enum:to_atom(oxm_ofb_match_fields, FieldInt),
-            {F, ofp_v4_map:tlv_length(F)};
-        _ ->
-            {FieldInt, Length * 8}
-    end,
-    case HasMask of
-        false ->
-            <<Value:Length/bytes, Rest/bytes>> = Binary,
-            TLV = #ofp_field{value = ofp_utils:uncut_bits(Value, BitLength)};
-        true ->
-            Length2 = (Length div 2),
-            <<Value:Length2/bytes, Mask:Length2/bytes,
-              Rest/bytes>> = Binary,
-            TLV = #ofp_field{value = ofp_utils:uncut_bits(Value, BitLength),
-                             mask = ofp_utils:uncut_bits(Mask, BitLength)}
-    end,
-    {TLV#ofp_field{class = Class,
-                   name = Field,
-                   has_mask = HasMask}, Rest}.
+            HasMask = (HasMaskInt =:= 1),
+            {Field, BitLength} = case Class of
+                openflow_basic ->
+                    F = ofp_v4_enum:to_atom(oxm_ofb_match_fields, FieldInt),
+                    {F, ofp_v4_map:tlv_length(F)};
+                _ ->
+                    {FieldInt, Length * 8}
+            end,
+            case HasMask of
+                false ->
+                    <<Value:Length/bytes, Rest/bytes>> = Binary,
+                    TLV = #ofp_field{value = ofp_utils:uncut_bits(Value, BitLength)};
+                true ->
+                    Length2 = (Length div 2),
+                    <<Value:Length2/bytes, Mask:Length2/bytes,
+                      Rest/bytes>> = Binary,
+                    TLV = #ofp_field{value = ofp_utils:uncut_bits(Value, BitLength),
+                                     mask = ofp_utils:uncut_bits(Mask, BitLength)}
+            end,
+            {TLV#ofp_field{class = Class,
+                           name = Field,
+                           has_mask = HasMask}, Rest}
+    end.
 
 %% @doc Decode port structure.
 decode_port(Binary) ->

@@ -255,16 +255,90 @@ ofp_oxm_experimenter_header_test() ->
                                             MatchField2,
                                             MatchField3]},
                instructions = [Instruction]},
-    Msg = #ofp_message{ type = undefined,
+    Msg = #ofp_message{ type = flow_mod,
                         version = 4,
                         body = Body
                       },
+
+    ExpectedBinary = <<
+% ofp_header:
+4,                  % OFP_VERSION
+14,                 % type (OFPT_FLOW_MOD)
+0,144,              % length
+0,0,0,0,            % xid
+% ofp_flow_mod:
+0,0,0,0, 0,0,0,0,   % cookie
+0,0,0,0, 0,0,0,0,   % cookie_mask
+0,                  % table_id
+0,                  % command
+0,0,                % idle_timeout
+0,0,                % hard_timeout
+0,1,                % priority
+255,255,255,255,    % buffer_id (OFP_NO_BUFFER)
+255,255,255,255,    % out_port (OFPP_ANY)
+255,255,255,255,    % out_group (OFPG_ANY)
+0,0,                % flags
+0,0,                % pad
+% ofp_match:
+0,1,                % type (OFPMT_OXM)
+0,43,               % length
+% oxm_fields:
+% field 1:
+128,0,              % oxm_class (OFPXMC_OPENFLOW_BASIC)
+0,                  % oxm_field (OFPXMT_OFB_IN_PORT), oxm_hasmask (0)
+4,                  % length
+0,0,0,3,            % port number (3)
+% field 2:
+255,255,            % oxm_class (OFPXMC_EXPERIMENTER)
+0,0,                % unused
+0,116,135,113,      % experimenter (Infoblox)
+128,0,              % oxm_class (OFPXMC_OPENFLOW_BASIC)
+88,                 % oxm_field (OFPXMT_OFB_OCH_SIGTYPE), oxm_hasmask (0)
+1,                  % length
+10,                 % signal type
+% field 3:
+255,255,            % oxm_class (OFPXMC_EXPERIMENTER)
+0,0,                % unused
+0,116,135,113,      % experimenter (Infoblox)
+128,0,              % oxm_class (OFPXMC_OPENFLOW_BASIC)
+90,                 % oxm_field (OFPXMT_OFB_OCH_SIGID), oxm_hasmask (0)
+6,                  % length
+0,                  % grid
+0,                  % cs
+0,10,               % channel number
+0,0,                % spectral width
+0,0,0,0,0,          %  pad
+% ofp_instruction:
+0,4,                % type (OFPIT_APPLY_ACTIONS)
+0,48,               % length
+0,0,0,0,            % pad
+% ofp_action_header:
+% action 1:
+255,255,            % type (OFPAT_EXPERIMENTER)
+0,24,               % length
+0,116,135,113,      % experimenter (Infoblox)
+0,25,               % type (OFPAT_SET_FIELD),
+0,16,               % length
+128,0,              % oxm_class (OFPXMC_OPENFLOW_BASIC)
+90,                 % oxm_field (OFPXMT_OFB_OCH_SIGID), oxm_hasmask (0)
+6,                  % length
+0,                  % grid
+0,                  % cs
+0,20,               % channel number
+0,0,                % spectral width
+0,0,                % pad
+% ofp_action_header:
+% action 2
+0,0,                % type (OFPAT_OUTPUT)
+0,16,               % length
+0,0,0,4,            % port
+255,255,            % max_len
+0,0,0,0,0,0         % pad
+>>,
     {ok,Enc} = of_protocol:encode(Msg),
-    Ans = of_protocol:decode(Enc).
-    %% {ok,Dec,<<>>} = of_protocol:decode(Enc).
-    %% ?assertEqual(Dec,Msg).
-    %% Cannot assert msg, because matches are not reversed 
-    %% when the list of matches are processed....
+    {ok,Dec,<<>>} = of_protocol:decode(Enc),
+    ?assertEqual(Dec,Msg),
+    ?assertEqual(Enc, ExpectedBinary).
 
 trace() ->
     Mods = [ ofp_v4_encode, ofp_v4_deocde ],
