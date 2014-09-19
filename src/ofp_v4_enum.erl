@@ -126,6 +126,11 @@
 -enum({oxm_class, [nxm_0,
                    nxm_1,
                    {openflow_basic, 16#8000},
+                   % packet_regs is an OF1.5 stuff which should not be here.
+                   % Unfortunately we need to handle this because
+                   % Open vSwitch erroneously produces table-features replies
+                   % including this.
+                   {packet_regs, 16#8001},
                    {experimenter, 16#ffff}]}).
 
 -enum({oxm_ofb_match_fields, [in_port,
