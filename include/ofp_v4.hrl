@@ -1661,7 +1661,10 @@
     name :: binary(),
     config = [] :: [ofp_port_config()],
     state = [] :: [ofp_port_state()],
-    properties = [] :: [ofp_port_desc_property()]
+    properties = [] :: [ofp_port_desc_property()],
+    %% `is_optical` field is not a part of the protocol but a helper one
+    %% for  LINC-OE
+    is_optical = false :: [boolean()]
 }).
 -record(ofp_port_desc_reply_v6, {
           flags = [] :: [ofp_multipart_reply_flag()],

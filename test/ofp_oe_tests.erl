@@ -52,7 +52,8 @@ optical_transport_port_desc_reply_test() ->
             name        = <<"Port1">>,
             config      = [],
             state       = [live],
-            properties  = Pr
+            properties  = Pr,
+            is_optical = true
     }],
     Msg = #ofp_message{ 
         version = 4,
@@ -114,6 +115,106 @@ optical_transport_port_desc_reply_test() ->
 6,                  % adaptation (OFPADAPT_ODUk_ODUij)
 0,0,0,0,0           % pad
 >>,
+    {ok,EM}      = of_protocol:encode(Msg),
+    {ok,DE,<<>>} = of_protocol:decode(EM),
+    ?assertEqual(DE,Msg),
+    ?assertEqual(EM, ExpectedBinary).
+
+optical_transport_port_desc_with_non_optical_marked_reply_test() ->
+    V = [#ofp_port_optical_transport_layer_entry{
+            layer_class = port,
+            signal_type = otsn,
+            adaptation  = ots_oms
+           },
+         #ofp_port_optical_transport_layer_entry{
+            layer_class = och,
+            signal_type = fix_grid,
+            adaptation  = oduk_oduij
+           }
+        ],
+    F = [#ofp_port_optical_transport_application_code{
+            feature_type    = opt_interface_class,
+            oic_type        = proprietary,
+            app_code        = <<"arbitrary">>
+           },
+         #ofp_port_optical_transport_layer_stack{
+            feature_type    = layer_stack,
+            value           = V
+           }],
+    Pr = [#ofp_port_desc_prop_optical_transport {
+             type                = optical_transport,
+             port_signal_type    = otsn,
+             reserved            = 0,
+             features            = F
+            }],
+    Data = [#ofp_port_v6{
+               port_no     = 1,
+               hw_addr     = <<8,0,39,255,136,50>>,
+               name        = <<"Port1">>,
+               config      = [],
+               state       = [live],
+               properties  = Pr,
+               is_optical = false
+              }],
+    Msg = #ofp_message{
+             version = 4,
+             type = multipart_reply,
+             xid = 1,
+             body = #ofp_experimenter_reply{
+                       experimenter    = ?INFOBLOX_EXPERIMENTER,
+                       exp_type        = port_desc,
+                       data            = Data
+                      }
+            },
+    ExpectedBinary =
+        <<
+          %% ofp_header:
+          4,                  % version
+          19,                 % type (OFPT_MULTIPART_REPLY)
+          0,116,              % length
+          0,0,0,1,            % xid
+          %% ofp_multipart_reply:
+          255,255,            % type (OFPMP_EXPERIMENTER)
+          0,0,                % flags
+          0,0,0,0,            % pad
+          %% ofp_experimenter_multipart_header:
+          0,116,135,113,      % experimenter (Infoblox)
+          0,0,0,13,           % type (OFPMP_PORT_DESC)
+          %% ofp_port:
+          0,0,0,1,            % port_no (1)
+          0,92,               % length
+          0,1,                % padding that marks non-optical port
+          8,0,39,255,136,50,  % hw_addr
+          0,0,                % pad
+          80,111,114,116, 49,0,0,0, 0,0,0,0, 0,0,0,0, % name
+          0,0,0,0,            % config
+          0,0,0,4,            % state
+          %% ofp_port_desc_prop_optical_transport:
+          0,2,                % type (OFPPDPT_OPTICAL_TRANSPORT)
+          0,52,               % length
+          1,                  % port_signal_type (OFPOTPT_OTSn)
+          0,                  % reserved
+          0,0,                % pad
+          %% ofp_port_optical_transport_application_code:
+          0,1,                % feature_type (OFPPOTFT_OPT_INTERFACE_CLASS)
+          0,136,              % length
+          128,                % oic_type (OFPOICT_PROPRIETARY)
+          97,114,98,105,116, 114,97,114,121,0, 0,0,0,0,0, % app_code
+          %% ofp_port_optical_transport_layer_stack:
+          0,2,                % feature_type (OFPPOTFT_LAYER_STACK)
+          0,24,               % length
+          0,0,0,0,            % pad
+          %% ofp_port_optical_transport_layer_entry:
+          1,                  % layer_class (OFPPOTL_PORT)
+          1,                  % signal_type (OFPOTPT_OTSn)
+          1,                  % adaptation (OFPADAPT_OTS_OMS)
+          0,0,0,0,0,          % pad
+          %% ofp_port_optical_transport_layer_entry:
+          2,                  % layer_class (OFPPOTL_OCH)
+          1,                  % signal_type (OFPOCHT_FIX_GRID)
+          6,                  % adaptation (OFPADAPT_ODUk_ODUij)
+          0,0,0,0,0           % pad
+        >>,
     {ok,EM}      = of_protocol:encode(Msg),
     {ok,DE,<<>>} = of_protocol:decode(EM),
     ?assertEqual(DE,Msg),

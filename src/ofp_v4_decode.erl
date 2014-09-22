@@ -158,17 +158,18 @@ decode_port_list_v6(Binary, Ports) ->
     decode_port_list_v6(Rest, [Port | Ports]).
 
 decode_port_v6(Binary) ->
-    <<PortNoInt:32, _Length:16, _:16, HWAddr:?OFP_ETH_ALEN/bytes, _:16,
-        NameBin:?OFP_MAX_PORT_NAME_LEN/bytes,
-        ConfigBin:4/bytes, StateBin:4/bytes, 
-        PropertiesBin/binary>> = Binary,
+    <<PortNoInt:32, _Length:16, Padding:2/bytes, HWAddr:?OFP_ETH_ALEN/bytes,
+      _:16, NameBin:?OFP_MAX_PORT_NAME_LEN/bytes, ConfigBin:4/bytes,
+      StateBin:4/bytes, PropertiesBin/binary>> = Binary,
     PortNo = get_id(port_no, PortNoInt),
     Name = ofp_utils:strip_string(NameBin),
     Config = binary_to_flags(port_config, ConfigBin),
     State = binary_to_flags(port_state, StateBin),
     Properties = decode_port_properties(PropertiesBin),
+    IsOptical = is_v6_port_optical(Padding),
     #ofp_port_v6{port_no = PortNo, hw_addr = HWAddr, name = Name,
-              config = Config, state = State, properties = Properties}.
+              config = Config, state = State, properties = Properties,
+              is_optical = IsOptical}.
 
 decode_port_properties(<<>>) ->
     [];
@@ -1376,3 +1377,8 @@ binary_to_flags(Type, Binary) ->
 
 get_id(Enum, Value) ->
     ofp_utils:get_enum_name(ofp_v4_enum, Enum, Value).
+
+is_v6_port_optical(_Padding = <<1:16>>) ->
+    false;
+is_v6_port_optical(<<0:16>>) ->
+    true.
