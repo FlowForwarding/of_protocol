@@ -101,7 +101,7 @@ encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
 
 encode_struct(#ofp_port_v6{ port_no = PortNo, hw_addr = _HWAddr, name = Name,
                             config = Config, state = State,
-                            properties = Properties }) ->
+                            properties = Properties, is_optical = IsOptical }) ->
     PortNoInt = get_id(port_no, PortNo),
     NameBin = ofp_utils:encode_string(Name, ?OFP_MAX_PORT_NAME_LEN),
     ConfigBin = flags_to_binary(port_config, Config, 4),
@@ -109,10 +109,10 @@ encode_struct(#ofp_port_v6{ port_no = PortNo, hw_addr = _HWAddr, name = Name,
     PropertiesBin = list_to_binary(lists:map(fun encode_struct/1, Properties)),
     Length = 40 + byte_size(PropertiesBin),
     HardCOdeHWAddr = <<8,0,39,255,136,50>>,
-    <<PortNoInt:32, Length:16, 0:16, HardCOdeHWAddr:?OFP_ETH_ALEN/bytes, 0:16,
-      NameBin:?OFP_MAX_PORT_NAME_LEN/bytes,
-      ConfigBin:4/bytes, StateBin:4/bytes,
-      PropertiesBin/binary>>;
+    Padding = padding_for_v6_port(IsOptical),
+    <<PortNoInt:32, Length:16, Padding/bytes, HardCOdeHWAddr:?OFP_ETH_ALEN/bytes,
+      0:16, NameBin:?OFP_MAX_PORT_NAME_LEN/bytes, ConfigBin:4/bytes,
+      StateBin:4/bytes, PropertiesBin/binary>>;
 
 encode_struct(#ofp_port_desc_prop_optical_transport{type             = Type,
                                                     port_signal_type = PortSigType,
@@ -1070,6 +1070,11 @@ get_id(Enum, Value) ->
 -spec encode_list(list()) -> binary().
 encode_list(List) ->
     ofp_utils:encode_list(fun encode_struct/1, List, <<>>).
+
+padding_for_v6_port(_IsOptical = true) ->
+    <<0:16>>;
+padding_for_v6_port(false) ->
+    <<1:16>>.
 
 -spec type_int(ofp_message_body()) -> integer().
 type_int(#ofp_hello{}) ->
