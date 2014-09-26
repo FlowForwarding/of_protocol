@@ -53,7 +53,7 @@ optical_transport_port_desc_reply_test() ->
             config      = [],
             state       = [live],
             properties  = Pr,
-            is_optical = true
+            is_optical = false
     }],
     Msg = #ofp_message{ 
         version = 4,
@@ -81,7 +81,8 @@ optical_transport_port_desc_reply_test() ->
 % ofp_port:
 0,0,0,1,            % port_no (1)
 0,92,               % length
-0,0,                % pad
+0,                  % pad
+1,                  % is_optical bit
 8,0,39,255,136,50,  % hw_addr
 0,0,                % pad
 80,111,114,116, 49,0,0,0, 0,0,0,0, 0,0,0,0,
