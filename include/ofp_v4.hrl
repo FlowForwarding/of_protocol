@@ -297,6 +297,12 @@
 
 -type ofp_field_class() :: nxm_0
                          | nxm_1
+                         | bsn
+                         | hp
+                         | freescale
+                         | netronome
+                         | infoblox
+                         | onlab
                          | openflow_basic
                          | experimenter.
 
