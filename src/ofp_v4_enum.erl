@@ -230,8 +230,8 @@
                    hp,
                    freescale,
                    netronome,
-                   infoblox,
                    onlab,
+                   infoblox,
                    {openflow_basic, 16#8000},
                    {experimenter, 16#ffff}]}).
 

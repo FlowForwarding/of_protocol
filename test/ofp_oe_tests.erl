@@ -515,12 +515,12 @@ oe_new_matches_and_set_field_action_test() ->
                        4,                  % length
                        0,0,0,3,            % port number (3)
                        %% field 2:
-                       0,7,                % oxm_class (INFOBLOX)
+                       0,8,                % oxm_class (INFOBLOX)
                        88,                 % oxm_field (OFPXMT_OFB_OCH_SIGTYPE), oxm_hasmask (0)
                        1,                  % length
                        10,                 % signal type
                        %% field 3:
-                       0,7,                %% oxm_class (INFOBLOX)
+                       0,8,                %% oxm_class (INFOBLOX)
                        90,                 % oxm_field (OFPXMT_OFB_OCH_SIGID), oxm_hasmask (0)
                        6,                  % length
                        0,                  % grid
