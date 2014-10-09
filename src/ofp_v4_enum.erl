@@ -226,6 +226,12 @@
 
 -enum({oxm_class, [nxm_0,
                    nxm_1,
+                   {bsn, 3},
+                   hp,
+                   freescale,
+                   netronome,
+                   onlab,
+                   infoblox,
                    {openflow_basic, 16#8000},
                    {experimenter, 16#ffff}]}).
 

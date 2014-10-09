@@ -56,15 +56,16 @@ encode_struct(#ofp_match{fields = Fields}) ->
 encode_struct(#ofp_field{class = Class, name = Field, has_mask = HasMask,
                          value = Value, mask = Mask}) ->
     ClassInt = ofp_v4_enum:to_int(oxm_class, Class),
-    {FieldInt, BitLength, WireBitLength} = case Class of
-        openflow_basic ->
-            {ofp_v4_enum:to_int(oxm_ofb_match_fields, Field),
-             ofp_v4_map:tlv_length(Field),
-             ofp_v4_map:tlv_wire_length(Field)};
-        _ ->
-            Len = bit_size(Value),
-            {Field, Len, Len}
-    end,
+    {FieldInt, BitLength, WireBitLength} =
+        case Class of
+            C when C =:= openflow_basic orelse C =:= infoblox ->
+                {ofp_v4_enum:to_int(oxm_ofb_match_fields, Field),
+                 ofp_v4_map:tlv_length(Field),
+                 ofp_v4_map:tlv_wire_length(Field)};
+            _ ->
+                Len = bit_size(Value),
+                {Field, Len, Len}
+        end,
     WireBitLength2 = (WireBitLength + 7) div 8 * 8,
     Value2 = ofp_utils:cut_bits(Value, BitLength, WireBitLength2),
     case HasMask of
@@ -385,8 +386,7 @@ encode_struct(#ofp_meter_config{flags = Flags, meter_id = _MeterId,
 
 encode_struct(#ofp_oxm_experimenter{ body = Data,
                                      experimenter = ?INFOBLOX_EXPERIMENTER }) ->
-    #ofp_field{class = Class, name = Field, has_mask = HasMask,
-               value = Value, mask = Mask} = Data,
+    #ofp_field{} = Data,
     Payload = encode_struct(Data),
     ClassInt = ofp_v4_enum:to_int(oxm_class, experimenter),
     <<ClassInt:16, 0:16, ?INFOBLOX_EXPERIMENTER:32, Payload/bytes>>;

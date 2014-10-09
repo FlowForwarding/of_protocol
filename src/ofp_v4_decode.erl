@@ -91,16 +91,17 @@ decode_match_field(<<Header:4/bytes, Binary/bytes>>) ->
             {#ofp_oxm_experimenter{
                 experimenter = ?INFOBLOX_EXPERIMENTER,
                 body = ExpField
-            }, ExpRest};
-        openflow_basic ->
+               }, ExpRest};
+        C when C =:= openflow_basic orelse C =:= infoblox ->
             HasMask = (HasMaskInt =:= 1),
-            {Field, BitLength} = case Class of
-                openflow_basic ->
-                    F = ofp_v4_enum:to_atom(oxm_ofb_match_fields, FieldInt),
-                    {F, ofp_v4_map:tlv_length(F)};
-                _ ->
-                    {FieldInt, Length * 8}
-            end,
+            {Field, BitLength} =
+                case Class of
+                    C when C =:= openflow_basic orelse C =:= infoblox ->
+                        F = ofp_v4_enum:to_atom(oxm_ofb_match_fields, FieldInt),
+                        {F, ofp_v4_map:tlv_length(F)};
+                    _ ->
+                        {FieldInt, Length * 8}
+                end,
             case HasMask of
                 false ->
                     <<Value:Length/bytes, Rest/bytes>> = Binary,
