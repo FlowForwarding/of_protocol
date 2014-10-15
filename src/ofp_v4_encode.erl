@@ -130,7 +130,7 @@ encode_struct(#ofp_port_optical_transport_application_code{ oic_type = OICType,
     FeatureTypeInt = ofp_v4_enum:to_int(port_optical_transport_feature_type,opt_interface_class),
     OICTypeInt     = ofp_v4_enum:to_int(optical_interface_class,OICType),
     AppCodeBin     = ofp_utils:encode_string(AppCode, 15),
-    Length         = 16 + (15 * 8),
+    Length         = 20,
     <<FeatureTypeInt:16, Length:16, OICTypeInt:8, AppCodeBin:15/bytes>>;
 
 encode_struct(#ofp_port_optical_transport_layer_stack{ value = Values }) ->

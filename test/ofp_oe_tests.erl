@@ -97,7 +97,7 @@ optical_transport_port_desc_reply_test() ->
 0,0,                % pad
 % ofp_port_optical_transport_application_code:
 0,1,                % feature_type (OFPPOTFT_OPT_INTERFACE_CLASS)
-0,136,              % length
+0,20,               % length
 128,                % oic_type (OFPOICT_PROPRIETARY)
 97,114,98,105,116, 114,97,114,121,0, 0,0,0,0,0,
                     % app_code
@@ -198,7 +198,7 @@ optical_transport_port_desc_with_non_optical_marked_reply_test() ->
           0,0,                % pad
           %% ofp_port_optical_transport_application_code:
           0,1,                % feature_type (OFPPOTFT_OPT_INTERFACE_CLASS)
-          0,136,              % length
+          0,20,               % length
           128,                % oic_type (OFPOICT_PROPRIETARY)
           97,114,98,105,116, 114,97,114,121,0, 0,0,0,0,0, % app_code
           %% ofp_port_optical_transport_layer_stack:
@@ -273,10 +273,59 @@ optical_transport_port_status_test() ->
                 data         = Body
             }
     },
+    ExpectedBinary = <<
+        % ofp_experimenter_header
+        % ofp_header
+        4, % version
+        4, % type (OFPT_EXPERIMENTER)
+        0,116, % length
+        0,0,48,57, % xid
+        0,116,135,113, % experimenter (Infoblox)
+        0,0,0,12, % type (OFPT_PORT_STATUS)
+        % ofp_port_status
+        0, % reason (OFPPR_ADD)
+        0,0,0, 0,0,0,0, % pad
+        % ofp_port
+        0,0,0,1, % port number (1)
+        0,92, % length
+        0,1, % pad
+        8,0,39, 255,136,50, % hw_addr
+        0,0, % pad
+        80,111,114,116, 49,0,0,0, 0,0,0,0, 0,0,0,0, % name
+        0,0,0,0, % config
+        0,0,0,4, % state
+        % ofp_port_desc_prop_optical_transport
+        0,2, % type (OFPPDPT_OPTICAL_TRANSPORT)
+        0,52, % length
+        1, % port_signal_type
+        0, % reserved
+        0,0, % pad
+        % ofp_port_optical_transport_feature_header
+        0,1, % feature_type (OFPPOTFT_OPT_INTERFACE_CLASS)
+        0,20, % length
+        128, % oic_type (OFPOICT_PROPRIETARY)
+        97,114,98,105,116, 114,97,114,121,0, 0,0,0,0,0,
+                            % app_code
+        % ofp_port_optical_transport_layer_stack:
+        0,2, % feature_type (OFPPOTFT_LAYER_STACK)
+        0,24,% length
+        0,0,0,0, % pad
+        % ofp_port_optical_transport_layer_entry:
+        1, % layer_class (OFPPOTL_PORT)
+        1, % signal_type (OFPOTPT_OTSn)
+        1, % adaptation (OFPADAPT_OTS_OMS)
+        0,0,0,0,0, % pad
+        % ofp_port_optical_transport_layer_entry:
+        2, % layer_class (OFPPOTL_OCH)
+        1, % signal_type (OFPOCHT_FIX_GRID)
+        6, % adaptation (OFPADAPT_ODUk_ODUij)
+        0,0,0,0,0 % pad
+>>,
 
     {ok,Enc} = of_protocol:encode(Msg),
     {ok,Dec,<<>>} = of_protocol:decode(Enc),
-    ?assertEqual(Dec,Msg).
+    ?assertEqual(Dec,Msg),
+    ?assertEqual(Enc,ExpectedBinary).
 
 odu_sigid() ->
     MatchField = #ofp_field{class = openflow_basic,

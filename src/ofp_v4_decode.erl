@@ -196,14 +196,9 @@ decode_optical_transport_port_features(BF) ->
 <<FeatureTypeInt:16, Length:16, T1/binary>> = BF,
     
     FeatureType = ofp_v4_enum:to_atom(port_optical_transport_feature_type,FeatureTypeInt),
-    B=case FeatureType of 
-        opt_interface_class ->
-            (Length - 8) div 8;
-        layer_stack ->
-            Length - 4
-    end,
+    B = Length - 4,
     <<Rest:B/bytes, Tail/binary>> = T1,
-    [decode_optical_transport_port_fearures_entry(FeatureType,Rest) | decode_optical_transport_port_features(Tail) ].
+    [decode_optical_transport_port_fearures_entry(FeatureType,Rest) | decode_optical_transport_port_features(Tail)].
 
 decode_optical_transport_port_fearures_entry(opt_interface_class, Bin) ->
     <<OicTypeInt:8, AppCode:15/bytes>> = Bin,
