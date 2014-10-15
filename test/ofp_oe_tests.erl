@@ -327,6 +327,59 @@ optical_transport_port_status_test() ->
     ?assertEqual(Dec,Msg),
     ?assertEqual(Enc,ExpectedBinary).
 
+optical_transport_port_status_simple_test() ->
+    P = #ofp_port_v6{
+            port_no     = 1,
+            hw_addr     = <<8,0,39,255,136,50>>,
+            name        = <<"Port1">>,
+            config      = [],
+            state       = [live],
+            properties  = []
+    },
+    Body = 
+        #ofp_port_status{
+            reason = add,
+            desc = P
+        },
+    Msg = 
+    #ofp_message{
+        version = 4,
+        type = experimenter,
+        xid = 12345,
+        body = #ofp_experimenter{
+                experimenter = ?INFOBLOX_EXPERIMENTER,
+                exp_type     = port_status,
+                data         = Body
+            }
+    },
+    ExpectedBinary = <<
+        % ofp_experimenter_header
+        % ofp_header
+        4, % version
+        4, % type (OFPT_EXPERIMENTER)
+        0,64, % length
+        0,0,48,57, % xid
+        0,116,135,113, % experimenter (Infoblox)
+        0,0,0,12, % type (OFPT_PORT_STATUS)
+        % ofp_port_status
+        0, % reason (OFPPR_ADD)
+        0,0,0, 0,0,0,0, % pad
+        % ofp_port
+        0,0,0,1, % port number (1)
+        0,40, % length
+        0,1, % pad
+        8,0,39, 255,136,50, % hw_addr
+        0,0, % pad
+        80,111,114,116, 49,0,0,0, 0,0,0,0, 0,0,0,0, % name
+        0,0,0,0, % config
+        0,0,0,4 % state
+>>,
+
+    {ok,Enc} = of_protocol:encode(Msg),
+    {ok,Dec,<<>>} = of_protocol:decode(Enc),
+    ?assertEqual(Dec,Msg),
+    ?assertEqual(Enc,ExpectedBinary).
+
 odu_sigid() ->
     MatchField = #ofp_field{class = openflow_basic,
                     has_mask = false,
