@@ -465,6 +465,34 @@ mpls_bos(Val) ->
     #ofp_field{name = mpls_bos,
                value = Val}.
 
+odu_sigtype(Value) ->
+    #ofp_field{
+       class = infoblox,
+       name = odu_sigtype,
+       value = Value,
+       has_mask = false}.
+
+odu_sigid(Value) ->
+    #ofp_field{
+       class = infoblox,
+       name = odu_sigid,
+       value = Value,
+       has_mask = false}.
+
+och_sigtype(Value) ->
+    #ofp_field{
+       class = infoblox,
+       name = och_sigtype,
+       value = Value,
+       has_mask = false}.
+
+och_sigid(Value) ->
+    #ofp_field{
+       class = infoblox,
+       name = och_sigid,
+       value = Value,
+       has_mask = false}.
+
 % eth_type=0x88e7
 %% pbb_isid
 
