@@ -1180,7 +1180,7 @@
 %%% Meter Configuration Statistics (A 3.5.13) ----------------------------------
 
 -record(ofp_meter_config, {
-          flags = [] :: [ofp_meter_mod_command()],
+          flags = [] :: [ofp_meter_flag()],
           meter_id :: meter_id(),
           bands = [] :: [ofp_meter_band()]
          }).

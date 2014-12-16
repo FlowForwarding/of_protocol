@@ -85,12 +85,12 @@
 
 -enum({port_no, [{in_port, 16#fffffff8},
                  {table, 16#fffffff9},
-                 normal,
-                 flood,
-                 all,
-                 controller,
-                 local,
-                 any]}).
+                 {normal, 16#fffffffa},
+                 {flood, 16#fffffffb},
+                 {all, 16#fffffffc},
+                 {controller, 16#fffffffd},
+                 {local, 16#fffffffe},
+                 {any, 16#ffffffff}]}).
 
 -enum({port_desc_properties, [{optical_transport, 2}
                               ]}).
@@ -233,6 +233,11 @@
                    onlab,
                    infoblox,
                    {openflow_basic, 16#8000},
+                   % packet_regs is an OF1.5 stuff which should not be here.
+                   % Unfortunately we need to handle this because
+                   % Open vSwitch erroneously produces table-features replies
+                   % including this.
+                   {packet_regs, 16#8001},
                    {experimenter, 16#ffff}]}).
 
 -enum({oxm_ofb_match_fields, [in_port,
