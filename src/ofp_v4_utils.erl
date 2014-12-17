@@ -2,8 +2,8 @@
 
 -compile(export_all).
 
--include_lib("of_protocol/include/of_protocol.hrl").
--include_lib("of_protocol/include/ofp_v4.hrl").
+-include("of_protocol.hrl").
+-include("ofp_v4.hrl").
 
 mk_msg({flow_add, Opts, {matching,Ms}, {instructions,Is}}) ->
     message(flow_add(Opts, Ms, Is));
