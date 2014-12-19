@@ -12,6 +12,15 @@ Initial backward compatibility for [OpenFlow Protocol 1.0][ofp1] and
 [OpenFlow Protocol 1.1][ofp2] was dropped to support the evolution of the
 OpenFlow standard.
 
+## Multipart messages ##
+
+Some controllers don not understand multipart messages. Thus one can
+disable them in of_protocol by setting appropriate option in client
+application:
+```application:set_env(of_protocol, no_multipart, true)```
+or in app file.
+
+
 [linc-repo]:
 https://github.com/FlowForwarding/LINC-Switch
 [ofp1]:
