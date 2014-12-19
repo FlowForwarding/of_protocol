@@ -47,6 +47,16 @@ update_connection_config_test_() ->
       fun expect_client_will_reconnect_with_new_ip_and_port/1,
       fun expect_client_will_reconnect_with_new_ip_port_and_role/1]}.
 
+multipart_test_() ->
+    [{setup,
+     fun multipart_setup/0,
+     fun multipart_teardown/1,
+     fun should_send_multipart/1},
+    {setup,
+     fun no_multipart_setup/0,
+     fun multipart_teardown/1,
+     fun should_send_no_multipart/1}].
+
 %% Tests ----------------------------------------------------------------------
 
 change_roles(State) ->
@@ -236,6 +246,72 @@ expect_client_will_reconnect_with_new_ip_port_and_role({ClientPid,
                 ClientPid, ListenSocket, NewConfig)
       end}}.
 
+should_send_multipart({ClientPid, ListenSocket}) ->
+    {"Split big message into multipart",
+     fun() ->
+             ControllerSocket  = connect_to_ofp_client_and_request_version(ListenSocket,
+                                                                           4),
+             %% Wait a while so that ofp_client can initialize
+             timer:sleep(2000),
+             assert_ofp_client_agreed_on_version(ClientPid, 4),
+
+             Stats =[#ofp_flow_stats{
+                        table_id = 15,
+                        duration_sec = 100,
+                        duration_nsec = 100,
+                        idle_timeout = 0,
+                        hard_timeout = 0,
+                        flags = [],
+                        packet_count = 1000,
+                        byte_count = 1000,
+                        priority = P,
+                        cookie = <<0,0,0,0,0,0,0,10>>,
+                        match = #ofp_match{}, %%Match,
+                        instructions = []} || P <- lists:seq(1,1500)],
+             SM = #ofp_message{version = 4, xid = get_xid(),
+                               body = #ofp_flow_stats_reply{body = Stats}},
+             ?assert(byte_size(element(2,of_protocol:encode(SM))) >= 70 * 1000),
+             meck:reset(gen_tcp),
+             ok = ofp_client:send(ClientPid, SM),
+
+             ?assertEqual(2, meck:num_calls(gen_tcp, send, 2)),
+
+             gen_tcp:close(ControllerSocket)
+     end}.
+
+should_send_no_multipart({ClientPid, ListenSocket}) ->
+    {"Don't split big message into multipart",
+     fun() ->
+             ControllerSocket  = connect_to_ofp_client_and_request_version(ListenSocket,
+                                                                           4),
+             %% Wait a while so that ofp_client can initialize
+             timer:sleep(2000),
+             assert_ofp_client_agreed_on_version(ClientPid, 4),
+             Stats =[#ofp_flow_stats{
+                        table_id = 15,
+                        duration_sec = 100,
+                        duration_nsec = 100,
+                        idle_timeout = 0,
+                        hard_timeout = 0,
+                        flags = [],
+                        packet_count = 1000,
+                        byte_count = 1000,
+                        priority = P,
+                        cookie = <<0,0,0,0,0,0,0,10>>,
+                        match = #ofp_match{}, %%Match,
+                        instructions = []} || P <- lists:seq(1,1500)],
+             SM = #ofp_message{version = 4, xid = get_xid(),
+                               body = #ofp_flow_stats_reply{body = Stats}},
+             ?assert(byte_size(element(2,of_protocol:encode(SM))) >= 70 * 1000),
+             meck:reset(gen_tcp),
+             ok = ofp_client:send(ClientPid, SM),
+
+             ?assertEqual(1, meck:num_calls(gen_tcp, send, 2)),
+
+             gen_tcp:close(ControllerSocket)
+     end}.
+
+
 %% Fixtures -------------------------------------------------------------------
 
 generation_id_setup() ->
@@ -278,6 +354,27 @@ update_connection_config_setup() ->
 update_connection_config_teardown({OFClientPid, ListenSocket}) ->
     ofp_client:stop(OFClientPid),
     gen_tcp:close(ListenSocket).
+
+multipart_setup() ->
+    meck:new(gen_tcp, [unstick, passthrough]),
+    application:set_env(of_protocol, no_multipart, false),
+    seed_random(),
+    ListenSocket = create_tcp_listen_socket(Port = random_port(), []),
+    OFClientPid = start_ofp_clent(Port),
+    {OFClientPid, ListenSocket}.
+
+no_multipart_setup() ->
+    meck:new(gen_tcp, [unstick, passthrough]),
+    application:set_env(of_protocol, no_multipart, true),
+    seed_random(),
+    ListenSocket = create_tcp_listen_socket(Port = random_port(), []),
+    OFClientPid = start_ofp_clent(Port),
+    {OFClientPid, ListenSocket}.
+
+multipart_teardown({OFClientPid, ListenSocket}) ->
+    ofp_client:stop(OFClientPid),
+    gen_tcp:close(ListenSocket),
+    meck:unload(gen_tcp).
 
 %% Helper functions ------------------------------------------------------------
 
