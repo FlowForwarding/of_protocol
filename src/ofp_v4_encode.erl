@@ -57,6 +57,8 @@ encode_struct(#ofp_field{class = Class, name = Field, has_mask = HasMask,
                          value = Value, mask = Mask}) ->
     ClassInt = ofp_v4_enum:to_int(oxm_class, Class),
     {FieldInt, BitLength, WireBitLength} =
+        %% LINC-OE
+        %% infoblox class is optical extension specific
         case Class of
             C when C =:= openflow_basic orelse C =:= infoblox ->
                 {ofp_v4_enum:to_int(oxm_ofb_match_fields, Field),
@@ -79,7 +81,7 @@ encode_struct(#ofp_field{class = Class, name = Field, has_mask = HasMask,
             Rest = <<Value2/bytes>>,
             Len2 = byte_size(Value2)
     end,
-    <<ClassInt:16, FieldInt:7, HasMaskInt:1, Len2:8, Rest/bytes>>; 
+    <<ClassInt:16, FieldInt:7, HasMaskInt:1, Len2:8, Rest/bytes>>;
 
 encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
                         config = Config, state = State, curr = Curr,
@@ -99,6 +101,8 @@ encode_struct(#ofp_port{port_no = PortNo, hw_addr = HWAddr, name = Name,
       ConfigBin:4/bytes, StateBin:4/bytes, CurrBin:4/bytes,
       AdvertisedBin:4/bytes, SupportedBin:4/bytes,
       PeerBin:4/bytes, CurrSpeed:32, MaxSpeed:32>>;
+
+%% ---BEGIN--- Optical Extensions (LINC-OE)
 
 encode_struct(#ofp_port_v6{ port_no = PortNo, hw_addr = _HWAddr, name = Name,
                             config = Config, state = State,
@@ -138,13 +142,12 @@ encode_struct(#ofp_port_optical_transport_layer_stack{ value = Values }) ->
     ValuesBin      = list_to_binary(lists:map(fun encode_struct/1, Values)),
     Length         = 8 + byte_size(ValuesBin),
     <<FeatureTypeInt:16, Length:16, 0:32, ValuesBin/binary>>;
-    
 encode_struct(#ofp_port_optical_transport_layer_entry{  layer_class = LayerClass,
                                                         signal_type = SignalType,
                                                         adaptation  = Adaptation }) ->
     LayerClassInt = ofp_v4_enum:to_int(port_optical_transport_layer_class,LayerClass),
-    SignalTypeID = 
-        case LayerClass of 
+    SignalTypeID =
+        case LayerClass of
             port    -> ofp_v4_enum:to_int(otport_signal_type, SignalType);
             och     -> ofp_v4_enum:to_int(och_signal_type,    SignalType);
             odu     -> ofp_v4_enum:to_int(odu_signal_type,    SignalType);
@@ -153,12 +156,13 @@ encode_struct(#ofp_port_optical_transport_layer_entry{  layer_class = LayerClass
     AdaptationInt = ofp_v4_enum:to_int(adaptations_type,Adaptation),
     <<LayerClassInt:8, SignalTypeID:8, AdaptationInt:8, 0:40>>;
 
+%% ---END--- Optical Extensions (LINC-OE)
+
 encode_struct(#ofp_packet_queue{queue_id = Queue, port_no = Port,
                                 properties = Props}) ->
     PropsBin = encode_list(Props),
     Length = ?PACKET_QUEUE_SIZE + size(PropsBin),
     <<Queue:32, Port:32, Length:16, 0:48, PropsBin/bytes>>;
-
 encode_struct(#ofp_queue_prop_min_rate{rate = Rate}) ->
     PropertyInt = ofp_v4_enum:to_int(queue_properties, min_rate),
     <<PropertyInt:16, ?QUEUE_PROP_MIN_RATE_SIZE:16, 0:32, Rate:16, 0:48>>;
@@ -259,6 +263,7 @@ encode_struct(#ofp_action_set_field{field = Field}) ->
     Padding = ofp_utils:padding(PartialLength, 8),
     Length = PartialLength + Padding,
     <<Type:16, Length:16, FieldBin/bytes, 0:(Padding*8)>>;
+%% LINC-OE
 encode_struct(#ofp_action_experimenter{
                  experimenter = ?INFOBLOX_EXPERIMENTER = Experimenter,
                  data = #ofp_action_set_field{} = Data}) ->
@@ -383,14 +388,14 @@ encode_struct(#ofp_meter_config{flags = Flags, meter_id = _MeterId,
     BandsBin = encode_list(Bands),
     Length = ?METER_CONFIG_SIZE + byte_size(BandsBin),
     <<Length:16, FlagsBin:16/bits, MeterIdInt:32, BandsBin/bytes>>;
-
+%% LINC-OE
 encode_struct(#ofp_oxm_experimenter{ body = Data,
                                      experimenter = ?INFOBLOX_EXPERIMENTER }) ->
     #ofp_field{} = Data,
     Payload = encode_struct(Data),
     ClassInt = ofp_v4_enum:to_int(oxm_class, experimenter),
     <<ClassInt:16, 0:16, ?INFOBLOX_EXPERIMENTER:32, Payload/bytes>>;
-
+%% LINC-OE
 encode_struct(#ofp_action_experimenter_header{ type = Type,
                                                experimenter = Experimenter }) ->
     TypeInt = ofp_v4_enum:to_int(action_type, Type),
@@ -449,7 +454,7 @@ encode_body(#ofp_echo_request{data = Data}) ->
     Data;
 encode_body(#ofp_echo_reply{data = Data}) ->
     Data;
-
+%% LINC-OE
 encode_body(#ofp_experimenter{experimenter = ?INFOBLOX_EXPERIMENTER,
                               exp_type = Type,
                               data = Data}) ->
@@ -645,11 +650,6 @@ encode_body(#ofp_port_desc_reply{flags = Flags, body = Ports}) ->
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
     PortsBin = encode_list(Ports),
     <<TypeInt:16, FlagsBin/bytes, 0:32, PortsBin/bytes>>;
-% encode_body(#ofp_port_desc_reply_v6{flags = Flags, body = Ports}) ->
-%   TypeInt = ofp_v4_enum:to_int(multipart_type, port_desc),
-%   FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
-%   PortsBin = encode_list(Ports),
-%   <<TypeInt:16, FlagsBin/bytes, 0:32, PortsBin/bytes>>;
 encode_body(#ofp_queue_stats_request{flags = Flags,
                                      port_no = Port, queue_id = Queue}) ->
     TypeInt = ofp_v4_enum:to_int(multipart_type, queue_stats),
@@ -745,6 +745,7 @@ encode_body(#ofp_meter_features_reply{flags = Flags, max_meter = MaxMeter,
     CapabilitiesBin = flags_to_binary(meter_flag, Capabilities, 4),
     <<TypeInt:16, FlagsBin/bytes, 0:32, MaxMeter:32, BandTypesBin:32/bits,
       CapabilitiesBin:32/bits, MaxBands:8, MaxColor:8, 0:16>>;
+%% LINC-OE
 encode_body(#ofp_experimenter_request{flags = Flags,
                                       experimenter = ?INFOBLOX_EXPERIMENTER,
                                       exp_type = ExpType, data = Data}) ->
@@ -760,6 +761,7 @@ encode_body(#ofp_experimenter_request{flags = Flags,
     FlagsBin = flags_to_binary(multipart_request_flags, Flags, 2),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
       Experimenter:32, ExpType:32, Data/bytes>>;
+%% LINC-OE
 encode_body(#ofp_experimenter_reply{flags = Flags,
                                     experimenter = ?INFOBLOX_EXPERIMENTER,
                                     exp_type = port_desc, data = Ports}) ->
@@ -769,6 +771,7 @@ encode_body(#ofp_experimenter_reply{flags = Flags,
     Data = encode_list(Ports),
     <<TypeInt:16, FlagsBin:2/bytes, 0:32,
       ?INFOBLOX_EXPERIMENTER:32, ExpTypeInt:32, Data/bytes>>;
+%% LINC-OE
 encode_body(#ofp_experimenter_reply{flags = Flags,
                                     experimenter = ?INFOBLOX_EXPERIMENTER,
                                     exp_type = ExpType, data = UnEncData}) ->
@@ -822,15 +825,12 @@ encode_body(#ofp_meter_mod{command = Command,
     MeterIdInt = get_id(meter_id, MeterId),
     BandsBin = encode_list(Bands),
     <<CommandInt:16, FlagsBin:2/bytes, MeterIdInt:32, BandsBin/bytes>>;
-encode_body(#ofp_multipart_request{ %%header = Header,
-                                    type = Type,
+%% LINC-OE
+encode_body(#ofp_multipart_request{type = Type,
                                     flags = Flags,
                                     body = Body }) ->
-    %%BinHeader = encode_struct(Header),
     TypeInt = ofp_v4_enum:to_int(multipart_type, Type),
     FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
-    %%, i get a entirly diff message, when i add header
-    %% <<BinHeader/bytes, TypeInt:16, FlagsBin:2/bytes, 0:40, Body/bytes>>;
     EncBody = encode_body(Body),
     <<TypeInt:16, FlagsBin:2/bytes, 0:40, EncBody/bytes>>; 
 
@@ -1071,6 +1071,7 @@ get_id(Enum, Value) ->
 encode_list(List) ->
     ofp_utils:encode_list(fun encode_struct/1, List, <<>>).
 
+%% LINC-OE
 padding_for_v6_port(_IsOptical = true) ->
     <<0:16>>;
 padding_for_v6_port(false) ->
@@ -1191,10 +1192,11 @@ type_int(#ofp_get_async_request{}) ->
     ofp_v4_enum:to_int(type, get_async_request);
 type_int(#ofp_get_async_reply{}) ->
     ofp_v4_enum:to_int(type, get_async_reply);
-type_int(#ofp_set_async{}) ->   
+type_int(#ofp_set_async{}) ->
     ofp_v4_enum:to_int(type, set_async);
 type_int(#ofp_meter_mod{}) ->
     ofp_v4_enum:to_int(type, meter_mod);
+%% LINC-OE
 type_int(#ofp_multipart_request{}) ->
     ofp_v4_enum:to_int(type, multipart_request).
 

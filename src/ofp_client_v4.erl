@@ -228,6 +228,7 @@ type_atom(#ofp_set_async{}) ->
     set_async;
 type_atom(#ofp_meter_mod{}) ->
     meter_mod;
+%% LINC-OE
 type_atom(#ofp_port_desc_reply_v6{}) ->
     port_desc_reply_v6.
 

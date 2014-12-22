@@ -53,6 +53,5 @@ decode(Binary) ->
         ofp_v4_decode:do(Binary)
     catch
         _:Exception ->
-%           {error, Exception, erlang:get_stacktrace()}
             {error, Exception}
     end.

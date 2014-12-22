@@ -72,6 +72,7 @@
           ets :: ets:tid(),
           hello_buffer = <<>> :: binary(),
           reconnect :: true | false,
+          %% LINC-OE
           no_multipart = false :: boolean()
          }).
 
@@ -206,6 +207,8 @@ handle_call({send, Message}, _From, #state{version = Version} = State) ->
                   Type == role_reply;
                   Type == get_async_reply;
                   Type == bundle_ctrl_msg,
+                  %% LINC-OE
+                  %% Port descripton in LINC-OE uses Open Flow 1.5 format
                   Type == port_desc_reply_v6 ->
             {reply, handle_send(Message2, State), State};
         _Else ->
@@ -425,6 +428,8 @@ handle_send(#ofp_message{type = Type} = Message,
         false ->
             {error, bad_multipart_split}
     end;
+%% LINC-OE
+%% ONOS controller is not able to handle multiparts
 handle_send(#ofp_message{type = Type} = Message,
             #state{no_multipart = NoMultipart} = State)
   when Type =:= multipart_reply andalso NoMultipart =:= true ->
@@ -457,6 +462,8 @@ do_send(#ofp_message{type = Type} = Message,
         {error, Reason} ->
             {error, Reason}
     end;
+%% LINC-OE
+%% ONOS controller is not able to handle multiparts
 do_send(#ofp_message{type = Type} = Message, #state{controller = {_, _, Proto},
                                                     socket = Socket,
                                                     parser = Parser,
@@ -709,7 +716,7 @@ init_aux_connections(Tid, _Opts, {aux, AuxId, Pid}, #state{} = State) ->
     State#state{id = AuxId}.
 
 setup_multipart_handling(State) ->
-    %% OPTICAL EXTENSION
+    %% LINC-OE
     %% This flag allows to disable splitting messages into multipart
     %% messages which ONOS controller is not able to handle.
     State#state{

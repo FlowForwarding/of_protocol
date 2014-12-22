@@ -461,6 +461,7 @@ mpls_bos(Val) ->
     #ofp_field{name = mpls_bos,
                value = Val}.
 
+%% ---BEGIN--- LINC-OE
 odu_sigtype(Value) ->
     #ofp_field{
        class = infoblox,
@@ -488,6 +489,7 @@ och_sigid(Value) ->
        name = och_sigid,
        value = Value,
        has_mask = false}.
+%% ---END--- LINC-OE
 
 % eth_type=0x88e7
 %% pbb_isid

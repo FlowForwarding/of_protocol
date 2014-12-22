@@ -71,10 +71,12 @@ tlv_length(mpls_bos)       -> 1;
 tlv_length(pbb_isid)       -> 24;
 tlv_length(tunnel_id)      -> 64;
 tlv_length(ipv6_exthdr)    -> 9;
+%% ---BEGIN--- LINC-OE
 tlv_length(odu_sigtype)    -> 8;
 tlv_length(odu_sigid)      -> 8;
 tlv_length(och_sigtype)    -> 8;
 tlv_length(och_sigid)      -> 48.
+%% ---END--- LINC-OE
 
 %% @doc Get field's on-wire length in bits.
 %%

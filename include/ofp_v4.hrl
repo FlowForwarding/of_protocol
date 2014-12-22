@@ -139,10 +139,6 @@
 -define(OFPVID_PRESENT, 16#1000).
 -define(OFPVID_NONE, 16#0000).
 
-%% Misc -------------------------------------------------------------------------
-
--define(INFOBLOX_EXPERIMENTER, 16#748771).
-
 %%%-----------------------------------------------------------------------------
 %%% OFP Message Body
 %%%-----------------------------------------------------------------------------
@@ -508,15 +504,6 @@
           experimenter :: integer(),
           data = <<>> :: binary()
          }).
-
--record(ofp_action_experimenter_header, {
-            type :: integer(),
-            len :: integer(),
-            experimenter :: integer(),
-            set_field :: ofp_action_set_field()
-        }).
-
--type ofp_action_experimenter_header() :: #ofp_action_experimenter_header{}.
 
 -type ofp_action_type() :: copy_ttl_in
                          | pop_mpls
@@ -1006,44 +993,6 @@
          }).
 -type ofp_port_desc_reply() :: #ofp_port_desc_reply{}.
 
--record(ofp_port_desc_prop_optical_transport, {
-            type :: integer(),
-            length :: integer(),
-            port_signal_type :: integer(),
-            reserved :: integer(),
-            features = [] :: [ofp_port_optical_transport_feature_header()]
-        }).
-
--type ofp_port_desc_prop_optical_transport() :: #ofp_port_desc_prop_optical_transport{}.
-
--record(ofp_port_optical_transport_application_code, {
-            feature_type :: integer(),
-            length :: integer(),
-            oic_type :: integer(),
-            app_code :: binary()
-        }).
-
--type ofp_port_optical_transport_application_code() :: #ofp_port_optical_transport_application_code{}.
-
--record(ofp_port_optical_transport_layer_entry, {
-            layer_class :: integer(),
-            signal_type :: integer(),
-            adaptation :: integer()
-        }).
-
--type ofp_port_optical_transport_layer_entry() :: #ofp_port_optical_transport_layer_entry{}.
-
--record(ofp_port_optical_transport_layer_stack, {
-            feature_type :: integer(),
-            length :: integer(),
-            value = [] :: [ofp_port_optical_transport_layer_entry()]
-        }).
-
--type ofp_port_optical_transport_layer_stack() :: #ofp_port_optical_transport_layer_stack{}.
-
--type ofp_port_optical_transport_feature_header() :: #ofp_port_optical_transport_application_code{} |
-                                                     #ofp_port_optical_transport_layer_stack{}.
-
 %%% Queue Statistics (A 3.5.8) -------------------------------------------------
 
 -record(ofp_queue_stats, {
@@ -1264,38 +1213,6 @@
                              | ofp_meter_config_reply()
                              | ofp_meter_features_reply()
                              | ofp_experimenter_reply().
-
--record(ofp_experimenter_multipart_header,{
-            experimenter :: integer(),
-            exp_type :: integer()
-        }).
-
--type ofp_experimenter_multipart_header() :: #ofp_experimenter_multipart_header{}.
-
--record(ofp_header,{
-            version :: integer(),
-            type :: integer(),
-            length :: integer(),
-            xid :: integer()
-        }).
-
--type ofp_header() :: #ofp_header{}.
-
--record(ofp_multipart_request, {
-           header :: ofp_header(),
-           type :: integer(),
-           flags = [] :: [ofp_multipart_request_flag()],
-           %% 0:40 in encode/decode
-           body = <<>> :: binary()
-        }).
-
--record(ofp_multipart_reply, {
-            header :: ofp_header(),
-            type :: integer(),
-            flags  = [] :: [ofp_multipart_reply_flag()],
-            %% 0:40 in encode/decode
-            body = <<>> :: binary()
-        }).
 
 %%%-----------------------------------------------------------------------------
 %%% Queue Configuration Messages (A 3.6)
@@ -1657,9 +1574,88 @@
          }).
 -type ofp_experimenter() :: #ofp_experimenter{}.
 
-%% -----------------------------------------------------------------------------
-%% Optical Extensions:
-%% -----------------------------------------------------------------------------
+%% ---BEGIN--- Optical Extensions (LINC-OE)
+
+-define(INFOBLOX_EXPERIMENTER, 16#748771).
+
+-record(ofp_experimenter_multipart_header,{
+          experimenter :: integer(),
+          exp_type :: integer()
+         }).
+
+-type ofp_experimenter_multipart_header() :: #ofp_experimenter_multipart_header{}.
+
+-record(ofp_header,{
+          version :: integer(),
+          type :: integer(),
+          length :: integer(),
+          xid :: integer()
+         }).
+
+-type ofp_header() :: #ofp_header{}.
+
+-record(ofp_multipart_request, {
+          header :: ofp_header(),
+          type :: integer(),
+          flags = [] :: [ofp_multipart_request_flag()],
+          %% 0:40 in encode/decode
+          body = <<>> :: binary()
+         }).
+
+-record(ofp_multipart_reply, {
+          header :: ofp_header(),
+          type :: integer(),
+          flags  = [] :: [ofp_multipart_reply_flag()],
+          %% 0:40 in encode/decode
+          body = <<>> :: binary()
+         }).
+
+-record(ofp_action_experimenter_header, {
+          type :: integer(),
+          len :: integer(),
+          experimenter :: integer(),
+          set_field :: ofp_action_set_field()
+         }).
+
+-type ofp_action_experimenter_header() :: #ofp_action_experimenter_header{}.
+
+-record(ofp_port_desc_prop_optical_transport, {
+          type :: integer(),
+          length :: integer(),
+          port_signal_type :: integer(),
+          reserved :: integer(),
+          features = [] :: [ofp_port_optical_transport_feature_header()]
+         }).
+
+-type ofp_port_desc_prop_optical_transport() :: #ofp_port_desc_prop_optical_transport{}.
+
+-record(ofp_port_optical_transport_application_code, {
+          feature_type :: integer(),
+          length :: integer(),
+          oic_type :: integer(),
+          app_code :: binary()
+         }).
+
+-type ofp_port_optical_transport_application_code() :: #ofp_port_optical_transport_application_code{}.
+
+-record(ofp_port_optical_transport_layer_entry, {
+          layer_class :: integer(),
+          signal_type :: integer(),
+          adaptation :: integer()
+         }).
+
+-type ofp_port_optical_transport_layer_entry() :: #ofp_port_optical_transport_layer_entry{}.
+
+-record(ofp_port_optical_transport_layer_stack, {
+          feature_type :: integer(),
+          length :: integer(),
+          value = [] :: [ofp_port_optical_transport_layer_entry()]
+         }).
+
+-type ofp_port_optical_transport_layer_stack() :: #ofp_port_optical_transport_layer_stack{}.
+
+-type ofp_port_optical_transport_feature_header() :: #ofp_port_optical_transport_application_code{} |
+                                                     #ofp_port_optical_transport_layer_stack{}.
 
 -record(ofp_port_v6, {
     port_no :: ofp_port_no(),
@@ -1669,7 +1665,7 @@
     state = [] :: [ofp_port_state()],
     properties = [] :: [ofp_port_desc_property()],
     %% `is_optical` field is not a part of the protocol but a helper one
-    %% for  LINC-OE
+          %% for  LINC-OE
     is_optical = false :: [boolean()]
 }).
 -record(ofp_port_desc_reply_v6, {
@@ -1678,5 +1674,7 @@
          }).
 -type ofp_port_desc_property() :: #ofp_port_desc_prop_optical_transport{}.
 
--record(ofp_oxm_experimenter, { body,
-                                experimenter }).
+-record(ofp_oxm_experimenter, {experimenter :: integer(),
+                               body :: ofp_field()}).
+
+%% ---END--- Optical Extensions (LINC-OE)

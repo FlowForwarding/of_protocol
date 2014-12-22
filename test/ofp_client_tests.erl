@@ -47,6 +47,7 @@ update_connection_config_test_() ->
       fun expect_client_will_reconnect_with_new_ip_and_port/1,
       fun expect_client_will_reconnect_with_new_ip_port_and_role/1]}.
 
+%% LINC-OE
 multipart_test_() ->
     [{setup,
      fun multipart_setup/0,
