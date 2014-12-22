@@ -22,10 +22,7 @@
 %% @private
 -module(ofp_v4_decode).
 
--export([do/1,
-         decode_body/2,
-         decode_port_v6/1
-]).
+-export([do/1]).
 
 -include("of_protocol.hrl").
 -include("ofp_v4.hrl").
