@@ -394,12 +394,7 @@ encode_struct(#ofp_oxm_experimenter{ body = Data,
     #ofp_field{} = Data,
     Payload = encode_struct(Data),
     ClassInt = ofp_v4_enum:to_int(oxm_class, experimenter),
-    <<ClassInt:16, 0:16, ?INFOBLOX_EXPERIMENTER:32, Payload/bytes>>;
-%% LINC-OE
-encode_struct(#ofp_action_experimenter_header{ type = Type,
-                                               experimenter = Experimenter }) ->
-    TypeInt = ofp_v4_enum:to_int(action_type, Type),
-    <<TypeInt:16,?ACTION_EXPERIMENTER_SIZE:16,Experimenter:32>>.
+    <<ClassInt:16, 0:16, ?INFOBLOX_EXPERIMENTER:32, Payload/bytes>>.
 
 encode_async_masks({PacketInMask1, PacketInMask2},
                    {PortStatusMask1, PortStatusMask2},
@@ -825,15 +820,6 @@ encode_body(#ofp_meter_mod{command = Command,
     MeterIdInt = get_id(meter_id, MeterId),
     BandsBin = encode_list(Bands),
     <<CommandInt:16, FlagsBin:2/bytes, MeterIdInt:32, BandsBin/bytes>>;
-%% LINC-OE
-encode_body(#ofp_multipart_request{type = Type,
-                                    flags = Flags,
-                                    body = Body }) ->
-    TypeInt = ofp_v4_enum:to_int(multipart_type, Type),
-    FlagsBin = flags_to_binary(multipart_reply_flags, Flags, 2),
-    EncBody = encode_body(Body),
-    <<TypeInt:16, FlagsBin:2/bytes, 0:40, EncBody/bytes>>; 
-
 encode_body(Other) ->
     throw({bad_message, Other}).
 
@@ -1195,9 +1181,6 @@ type_int(#ofp_get_async_reply{}) ->
 type_int(#ofp_set_async{}) ->
     ofp_v4_enum:to_int(type, set_async);
 type_int(#ofp_meter_mod{}) ->
-    ofp_v4_enum:to_int(type, meter_mod);
-%% LINC-OE
-type_int(#ofp_multipart_request{}) ->
-    ofp_v4_enum:to_int(type, multipart_request).
+    ofp_v4_enum:to_int(type, meter_mod).
 
 

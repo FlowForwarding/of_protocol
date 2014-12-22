@@ -1578,53 +1578,12 @@
 
 -define(INFOBLOX_EXPERIMENTER, 16#748771).
 
--record(ofp_experimenter_multipart_header,{
-          experimenter :: integer(),
-          exp_type :: integer()
-         }).
-
--type ofp_experimenter_multipart_header() :: #ofp_experimenter_multipart_header{}.
-
--record(ofp_header,{
-          version :: integer(),
-          type :: integer(),
-          length :: integer(),
-          xid :: integer()
-         }).
-
--type ofp_header() :: #ofp_header{}.
-
--record(ofp_multipart_request, {
-          header :: ofp_header(),
-          type :: integer(),
-          flags = [] :: [ofp_multipart_request_flag()],
-          %% 0:40 in encode/decode
-          body = <<>> :: binary()
-         }).
-
--record(ofp_multipart_reply, {
-          header :: ofp_header(),
-          type :: integer(),
-          flags  = [] :: [ofp_multipart_reply_flag()],
-          %% 0:40 in encode/decode
-          body = <<>> :: binary()
-         }).
-
--record(ofp_action_experimenter_header, {
-          type :: integer(),
-          len :: integer(),
-          experimenter :: integer(),
-          set_field :: ofp_action_set_field()
-         }).
-
--type ofp_action_experimenter_header() :: #ofp_action_experimenter_header{}.
-
 -record(ofp_port_desc_prop_optical_transport, {
           type :: integer(),
           length :: integer(),
           port_signal_type :: integer(),
           reserved :: integer(),
-          features = [] :: [ofp_port_optical_transport_feature_header()]
+          features = [] :: [ofp_port_optical_transport_feature()]
          }).
 
 -type ofp_port_desc_prop_optical_transport() :: #ofp_port_desc_prop_optical_transport{}.
@@ -1654,8 +1613,8 @@
 
 -type ofp_port_optical_transport_layer_stack() :: #ofp_port_optical_transport_layer_stack{}.
 
--type ofp_port_optical_transport_feature_header() :: #ofp_port_optical_transport_application_code{} |
-                                                     #ofp_port_optical_transport_layer_stack{}.
+-type ofp_port_optical_transport_feature() :: #ofp_port_optical_transport_application_code{} |
+                                              #ofp_port_optical_transport_layer_stack{}.
 
 -record(ofp_port_v6, {
     port_no :: ofp_port_no(),
