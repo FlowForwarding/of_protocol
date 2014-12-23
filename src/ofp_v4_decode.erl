@@ -81,28 +81,41 @@ decode_match_field(<<Header:4/bytes, Binary/bytes>>) ->
     <<ClassInt:16, FieldInt:7, HasMaskInt:1,
       Length:8>> = Header,
     Class = ofp_v4_enum:to_atom(oxm_class, ClassInt),
-    HasMask = (HasMaskInt =:= 1),
-    {Field, BitLength} = case Class of
-        openflow_basic ->
-            F = ofp_v4_enum:to_atom(oxm_ofb_match_fields, FieldInt),
-            {F, ofp_v4_map:tlv_length(F)};
-        _ ->
-            {FieldInt, Length * 8}
-    end,
-    case HasMask of
-        false ->
-            <<Value:Length/bytes, Rest/bytes>> = Binary,
-            TLV = #ofp_field{value = ofp_utils:uncut_bits(Value, BitLength)};
-        true ->
-            Length2 = (Length div 2),
-            <<Value:Length2/bytes, Mask:Length2/bytes,
-              Rest/bytes>> = Binary,
-            TLV = #ofp_field{value = ofp_utils:uncut_bits(Value, BitLength),
-                             mask = ofp_utils:uncut_bits(Mask, BitLength)}
-    end,
-    {TLV#ofp_field{class = Class,
-                   name = Field,
-                   has_mask = HasMask}, Rest}.
+    %% LINC-OE
+    %% experimenter and infoblox classes are optical extension specific
+    case Class of
+        experimenter ->
+            <<?INFOBLOX_EXPERIMENTER:32, Binary2/bytes>> = Binary,
+            {ExpField, ExpRest} = decode_match_field(Binary2),
+            {#ofp_oxm_experimenter{
+                experimenter = ?INFOBLOX_EXPERIMENTER,
+                body = ExpField
+               }, ExpRest};
+        C when C =:= openflow_basic orelse C =:= infoblox ->
+            HasMask = (HasMaskInt =:= 1),
+            {Field, BitLength} =
+                case Class of
+                    C when C =:= openflow_basic orelse C =:= infoblox ->
+                        F = ofp_v4_enum:to_atom(oxm_ofb_match_fields, FieldInt),
+                        {F, ofp_v4_map:tlv_length(F)};
+                    _ ->
+                        {FieldInt, Length * 8}
+                end,
+            case HasMask of
+                false ->
+                    <<Value:Length/bytes, Rest/bytes>> = Binary,
+                    TLV = #ofp_field{value = ofp_utils:uncut_bits(Value, BitLength)};
+                true ->
+                    Length2 = (Length div 2),
+                    <<Value:Length2/bytes, Mask:Length2/bytes,
+                      Rest/bytes>> = Binary,
+                    TLV = #ofp_field{value = ofp_utils:uncut_bits(Value, BitLength),
+                                     mask = ofp_utils:uncut_bits(Mask, BitLength)}
+            end,
+            {TLV#ofp_field{class = Class,
+                           name = Field,
+                           has_mask = HasMask}, Rest}
+    end.
 
 %% @doc Decode port structure.
 decode_port(Binary) ->
@@ -132,6 +145,100 @@ decode_port_list(Binary, Ports) ->
     <<PortBin:?PORT_SIZE/bytes, Rest/bytes>> = Binary,
     Port = decode_port(PortBin),
     decode_port_list(Rest, [Port | Ports]).
+
+%% ---BEGIN--- Optical Extensions (LINC-OE)
+
+decode_port_list_v6(Binary) ->
+    decode_port_list_v6(Binary, []).
+
+decode_port_list_v6(<<>>, Ports) ->
+    lists:reverse(Ports);
+decode_port_list_v6(Binary, Ports) ->
+    <<_PortNo:32, Length:16, _/binary>> = Binary,
+    <<PortBin:Length/bytes, Rest/bytes>> = Binary,
+    Port = decode_port_v6(PortBin),
+    decode_port_list_v6(Rest, [Port | Ports]).
+
+decode_port_v6(Binary) ->
+    <<PortNoInt:32, _Length:16, Padding:2/bytes, HWAddr:?OFP_ETH_ALEN/bytes,
+      _:16, NameBin:?OFP_MAX_PORT_NAME_LEN/bytes, ConfigBin:4/bytes,
+      StateBin:4/bytes, PropertiesBin/binary>> = Binary,
+    PortNo = get_id(port_no, PortNoInt),
+    Name = ofp_utils:strip_string(NameBin),
+    Config = binary_to_flags(port_config, ConfigBin),
+    State = binary_to_flags(port_state, StateBin),
+    Properties = decode_port_properties(PropertiesBin),
+    IsOptical = is_v6_port_optical(Padding),
+    #ofp_port_v6{port_no = PortNo, hw_addr = HWAddr, name = Name,
+              config = Config, state = State, properties = Properties,
+              is_optical = IsOptical}.
+
+decode_port_properties(<<>>) ->
+    [];
+decode_port_properties(<<TypeInt:16, Length:16, Rest/binary>>) ->
+    Type = ofp_v4_enum:to_atom(port_desc_properties, TypeInt),
+    L = Length-4,
+    <<PropBin:L/bytes, Tail/binary>> = Rest,
+    [decode_port_property(Type, PropBin) | decode_port_properties(Tail)].
+
+decode_port_property(Type=optical_transport, Binary) ->
+    <<PortSigType:8, Reserved:8, 0:16, BinFeatures/binary>> = Binary,
+    F = decode_optical_transport_port_features(BinFeatures),
+    #ofp_port_desc_prop_optical_transport{
+        type                = Type,
+        port_signal_type    = ofp_v4_enum:to_atom(otport_signal_type, PortSigType),
+        reserved            = Reserved,
+        features            = F
+    }.
+
+decode_optical_transport_port_features(<<>>) ->
+    [];
+decode_optical_transport_port_features(BF) ->
+    <<FeatureTypeInt:16, Length:16, T1/binary>> = BF,
+    FeatureType = ofp_v4_enum:to_atom(port_optical_transport_feature_type,
+                                      FeatureTypeInt),
+    B = Length - 4,
+    <<Rest:B/bytes, Tail/binary>> = T1,
+    [decode_optical_transport_port_fearures_entry(FeatureType,Rest)
+     | decode_optical_transport_port_features(Tail)].
+
+decode_optical_transport_port_fearures_entry(opt_interface_class, Bin) ->
+    <<OicTypeInt:8, AppCode:15/bytes>> = Bin,
+    #ofp_port_optical_transport_application_code{
+        feature_type    = opt_interface_class,
+        oic_type        = ofp_v4_enum:to_atom(optical_interface_class,OicTypeInt),
+        app_code        = ofp_utils:strip_string(AppCode)
+    };
+decode_optical_transport_port_fearures_entry(layer_stack, Bin) ->
+    <<0:32, LayerEntriesBin/binary>> = Bin,
+    #ofp_port_optical_transport_layer_stack{
+        feature_type    = layer_stack,
+        value           = decode_optical_transport_layer_entries(LayerEntriesBin)
+    }.
+
+decode_optical_transport_layer_entries(<<>>) ->
+    [];
+decode_optical_transport_layer_entries(LayerEntriesBin) ->
+    <<LayerClassInt:8, SignalTypeID:8, AdaptationInt:8, _:40, Tail/binary>> = LayerEntriesBin,
+    [ do_decode_optical_transport_layer_entries(LayerClassInt, SignalTypeID, AdaptationInt) 
+        | decode_optical_transport_layer_entries(Tail) ].
+
+do_decode_optical_transport_layer_entries(LayerClassInt, SignalTypeID, AdaptationInt) ->
+    LayerClass = ofp_v4_enum:to_atom(port_optical_transport_layer_class,LayerClassInt),
+    SignalType =
+    case LayerClass of
+        port    -> ofp_v4_enum:to_atom(otport_signal_type,  SignalTypeID);
+        och     -> ofp_v4_enum:to_atom(och_signal_type,     SignalTypeID);
+        odu     -> ofp_v4_enum:to_atom(odu_signal_type,     SignalTypeID);
+        oduclt  -> ofp_v4_enum:to_atom(oduclt_signal_type,  SignalTypeID)
+    end,
+    #ofp_port_optical_transport_layer_entry{
+        layer_class = LayerClass,
+        signal_type = SignalType,
+        adaptation  = ofp_v4_enum:to_atom(adaptations_type,AdaptationInt)
+      }.
+
+%% ---END--- Optical Extensions (LINC-OE)
 
 %% @doc Decode queues
 decode_queues(Binary) ->
@@ -284,13 +391,23 @@ decode_actions(Binary, Actions) ->
             <<FieldBin:FieldLength/bytes, Rest/bytes>> = Data,
             {Field, _Pad} = decode_match_field(FieldBin),
             Action = #ofp_action_set_field{field = Field};
+        %% LINC-OE
         experimenter ->
             DataLength = Length - ?ACTION_EXPERIMENTER_SIZE,
             <<Experimenter:32, ExpData:DataLength/bytes, Rest/bytes>> = Data,
-            Action = #ofp_action_experimenter{experimenter = Experimenter,
-                                              data = ExpData}
+            Action = decode_experimenter_action(Experimenter, ExpData)
     end,
     decode_actions(Rest, [Action | Actions]).
+
+%% LINC-OE
+decode_experimenter_action(ExpType, ExpData)
+  when ExpType == ?INFOBLOX_EXPERIMENTER ->
+    [#ofp_action_set_field{} = Action] = decode_actions(ExpData),
+    #ofp_action_experimenter{experimenter = ExpType,
+                             data = Action};
+decode_experimenter_action(ExpType, ExpData) ->
+    #ofp_action_experimenter{experimenter = ExpType,
+                             data = ExpData}.
 
 %% @doc Decode instructions
 -spec decode_instructions(binary()) -> [ofp_instruction()].
@@ -827,11 +944,20 @@ decode_body(echo_reply, Binary) ->
     DataLength = size(Binary) - ?ECHO_REPLY_SIZE + ?OFP_HEADER_SIZE,
     <<Data:DataLength/bytes>> = Binary,
     #ofp_echo_reply{data = Data};
+%% LINC-OE
 decode_body(experimenter, Binary) ->
     DataLength = size(Binary) - ?EXPERIMENTER_SIZE + ?OFP_HEADER_SIZE,
     <<Experimenter:32, Type:32, Data:DataLength/bytes>> = Binary,
+    {Type2,Data2} =
+         case Experimenter of
+             ?INFOBLOX_EXPERIMENTER ->
+                 {ofp_v4_enum:to_atom(type, Type),
+                  decode_body(port_status_v6, Data)};
+             _ ->
+                 {Type,Data}
+         end,
     #ofp_experimenter{experimenter = Experimenter,
-                      exp_type = Type, data = Data};
+                      exp_type = Type2, data = Data2};
 decode_body(features_request, _) ->
     #ofp_features_request{};
 decode_body(features_reply, Binary) ->
@@ -886,6 +1012,12 @@ decode_body(port_status, Binary) ->
     <<ReasonInt:8, _Pad:56, PortBin:?PORT_SIZE/bytes>> = Binary,
     Reason = ofp_v4_enum:to_atom(port_reason, ReasonInt),
     Port = decode_port(PortBin),
+    #ofp_port_status{reason = Reason, desc = Port};
+%% LINC-OE
+decode_body(port_status_v6, Binary) ->
+    <<ReasonInt:8, _Pad:56, PortBin/bytes>> = Binary,
+    Reason = ofp_v4_enum:to_atom(port_reason, ReasonInt),
+    Port = decode_port_v6(PortBin),
     #ofp_port_status{reason = Reason, desc = Port};
 decode_body(packet_out, Binary) ->
     <<BufferIdInt:32, PortInt:32, ActionsLength:16,
@@ -1014,13 +1146,18 @@ decode_body(multipart_request, Binary) ->
             #ofp_meter_config_request{flags = Flags, meter_id = MeterId};
         meter_features ->
             #ofp_meter_features_request{flags = Flags};
+        %% LINC-OE
         experimenter ->
             DataLength = size(Binary) - ?EXPERIMENTER_STATS_REQUEST_SIZE + ?OFP_HEADER_SIZE,
-            <<Experimenter:32, ExpType:32,
-              ExpData:DataLength/bytes>> = Data,
+            <<Experimenter:32, ExpType:32, ExpData:DataLength/bytes>> = Data,
+            ExpType2 =
+                case Experimenter of
+                    ?INFOBLOX_EXPERIMENTER -> ofp_v4_enum:to_atom(multipart_type,ExpType);
+                    _                      -> ExpType
+                end,
             #ofp_experimenter_request{flags = Flags,
                                       experimenter = Experimenter,
-                                      exp_type = ExpType, data = ExpData}
+                                      exp_type = ExpType2, data = ExpData}
     end;
 decode_body(multipart_reply, Binary) ->
     <<TypeInt:16, FlagsBin:16/bits, _Pad:32, Data/bytes>> = Binary,
@@ -1124,7 +1261,7 @@ decode_body(multipart_reply, Binary) ->
             Capabilities = binary_to_flags(meter_flag, CapabilitiesBin),
             #ofp_meter_features_reply{flags = Flags, max_meter = MaxMeter,
                                       band_types = BandTypes,
-                                      capabilities = Capabilities, 
+                                      capabilities = Capabilities,
                                       max_bands = MaxBands,
                                       max_color = MaxColor};
         experimenter ->
@@ -1132,8 +1269,32 @@ decode_body(multipart_reply, Binary) ->
                 ?OFP_HEADER_SIZE,
             <<Experimenter:32, ExpType:32,
               ExpData:DataLength/bytes>> = Data,
+            %% LINC-OE
+            PortDesc = ofp_v4_enum:to_int(multipart_type, port_desc),
+            {ExpType2,ExpData2} =
+                case {Experimenter, ExpType} of
+                    {?INFOBLOX_EXPERIMENTER, PortDesc} ->
+                        {ofp_v4_enum:to_atom(multipart_type, ExpType),
+                        decode_port_list_v6(ExpData)};
+                    _ ->
+                        {ExpType, ExpData}
+                end,
             #ofp_experimenter_reply{flags = Flags, experimenter = Experimenter,
-                                    exp_type = ExpType, data = ExpData}
+                                    exp_type = ExpType2, data = ExpData2};
+        %% LINC-OE
+        port_desc_v6 ->
+            Ports = decode_port_list_v6(Data),
+            #ofp_port_desc_reply_v6{flags = Flags, body = Ports}
+    end;
+%% LINC-OE
+decode_body(multipart_reply_v6, Binary) ->
+    <<TypeInt:16, FlagsBin:16/bits, _Pad:32, Data/bytes>> = Binary,
+    Type = ofp_v4_enum:to_atom(multipart_type, TypeInt),
+    Flags = binary_to_flags(multipart_reply_flags, FlagsBin),
+    case Type of
+        port_desc ->
+            Ports = decode_port_list_v6(Data),
+            #ofp_port_desc_reply_v6{flags = Flags, body = Ports}
     end;
 decode_body(barrier_request, _) ->
     #ofp_barrier_request{};
@@ -1190,3 +1351,9 @@ binary_to_flags(Type, Binary) ->
 
 get_id(Enum, Value) ->
     ofp_utils:get_enum_name(ofp_v4_enum, Enum, Value).
+
+%% LINC-OE
+is_v6_port_optical(_Padding = <<1:16>>) ->
+    false;
+is_v6_port_optical(<<0:16>>) ->
+    true.

@@ -1,0 +1,4 @@
+application:start(syntax_tools).
+application:start(compiler).
+application:start(eenum).
+application:start(of_protocol).

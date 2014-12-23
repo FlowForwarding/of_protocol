@@ -71,7 +71,9 @@
           supervisor :: pid(),
           ets :: ets:tid(),
           hello_buffer = <<>> :: binary(),
-          reconnect :: true | false
+          reconnect :: true | false,
+          %% LINC-OE
+          no_multipart = false :: boolean()
          }).
 
 %%------------------------------------------------------------------------------
@@ -173,14 +175,15 @@ init({Tid, ResourceId, ControllerHandle, Parent, Opts, Type, Sup}) ->
     Versions = lists:umerge(get_opt(versions, Opts, []), [Version]),
     Timeout = get_opt(timeout, Opts, ?DEFAULT_TIMEOUT),
     State1 = #state{resource_id = ResourceId,
-                   parent = Parent,
-                   versions = Versions,
-                   timeout = Timeout,
-                   supervisor = Sup,
-                   ets = Tid},
+                    parent = Parent,
+                    versions = Versions,
+                    timeout = Timeout,
+                    supervisor = Sup,
+                    ets = Tid},
     State2 = init_controller_handle(ControllerHandle, State1),
     State3 = init_aux_connections(Tid, Opts, Type, State2),
-    {ok, State3, 0}.
+    State4 = setup_multipart_handling(State3),
+    {ok, State4, 0}.
 
 handle_call({send, _Message}, _From, #state{socket = undefined} = State) ->
     {reply, {error, not_connected}, State};
@@ -190,6 +193,7 @@ handle_call({send, Message}, _From, #state{version = Version} = State) ->
     Message2 = add_type(Message#ofp_message{version = Version}),
     case Message2#ofp_message.type of
         Type when Type == error;
+                  Type == experimenter;
                   Type == echo_reply;
                   Type == features_reply;
                   Type == get_config_reply;
@@ -202,7 +206,10 @@ handle_call({send, Message}, _From, #state{version = Version} = State) ->
                   Type == queue_get_config_reply;
                   Type == role_reply;
                   Type == get_async_reply;
-                  Type == bundle_ctrl_msg ->
+                  Type == bundle_ctrl_msg,
+                  %% LINC-OE
+                  %% Port descripton in LINC-OE uses Open Flow 1.5 format
+                  Type == port_desc_reply_v6 ->
             {reply, handle_send(Message2, State), State};
         _Else ->
             {reply, {error, {bad_message, Message2}}, State}
@@ -409,8 +416,9 @@ handle_send(#ofp_message{type = packet_in} = Message,
         _Else ->
             do_filter_send(Message, State)
     end;
-handle_send(#ofp_message{type = Type} = Message, 
-            #state{version = Version} = State) when Type =:= multipart_reply ->
+handle_send(#ofp_message{type = Type} = Message,
+            #state{version = Version, no_multipart = NoMultipart} = State)
+  when Type =:= multipart_reply andalso NoMultipart == false ->
     Module = client_module(Version),
     Replies = Module:split_multipart(Message),
     Result = [do_send(Reply, State) || Reply <- Replies],
@@ -420,30 +428,55 @@ handle_send(#ofp_message{type = Type} = Message,
         false ->
             {error, bad_multipart_split}
     end;
+%% LINC-OE
+%% ONOS controller is not able to handle multiparts
+handle_send(#ofp_message{type = Type} = Message,
+            #state{no_multipart = NoMultipart} = State)
+  when Type =:= multipart_reply andalso NoMultipart =:= true ->
+    do_send(Message, State);
 handle_send(Message, State) ->
     do_filter_send(Message, State).
 
-do_send(#ofp_message{ type = Type } = Message, #state{controller = {_, _, Proto},
-                      socket = Socket,
-                      parser = Parser,
-                      version = Version} = State) when Type =:= multipart_reply ->
+do_send(#ofp_message{type = Type} = Message,
+        #state{controller = {_, _, Proto},
+               socket = Socket,
+               parser = Parser,
+               version = Version,
+               no_multipart = NoMultipart} = State)
+  when Type =:= multipart_reply andalso NoMultipart =:= false ->
     case ofp_parser:encode(Parser, Message#ofp_message{version = Version}) of
         {ok, Binary} ->
             case byte_size(Binary) < (1 bsl 16) of
-                true ->
+               true ->
                     send(Proto, Socket, Binary);
-                false ->
-                    Module = client_module(Version),
-                    case Module:split_big_multipart(Message) of
-                        false ->
-                            {error, message_too_big};
-                        SplitList ->
-                            lists:map(fun(Msg) -> do_send(Msg,State) end, SplitList)
-                    end
+               false ->
+                   Module = client_module(Version),
+                   case Module:split_big_multipart(Message) of
+                       false ->
+                           {error, message_too_big};
+                       SplitList ->
+                           lists:map(fun(Msg) -> do_send(Msg,State) end,
+                                     SplitList)
+                   end
             end;
         {error, Reason} ->
             {error, Reason}
     end;
+%% LINC-OE
+%% ONOS controller is not able to handle multiparts
+do_send(#ofp_message{type = Type} = Message, #state{controller = {_, _, Proto},
+                                                    socket = Socket,
+                                                    parser = Parser,
+                                                    version = Version,
+                                                    no_multipart = NoMultipart})
+  when Type =:= multipart_reply andalso NoMultipart =:= true ->
+    case ofp_parser:encode(Parser, Message#ofp_message{version = Version}) of
+        {ok, Binary} ->
+            send(Proto, Socket, Binary);
+        {error, Reason} ->
+            {error, Reason}
+    end;
+
 do_send(Message, #state{controller = {_, _, Proto},
                         socket = Socket,
                         parser = Parser,
@@ -681,6 +714,13 @@ init_aux_connections(Tid, Opts, main, #state{} = State) ->
 init_aux_connections(Tid, _Opts, {aux, AuxId, Pid}, #state{} = State) ->
     ets:insert(Tid, {Pid, self()}),
     State#state{id = AuxId}.
+
+setup_multipart_handling(State) ->
+    %% LINC-OE
+    %% This flag allows to disable splitting messages into multipart
+    %% messages which ONOS controller is not able to handle.
+    State#state{
+      no_multipart = application:get_env(of_protocol, no_multipart, false)}.
 
 retrieve_hostname_from_address(Address) ->
     case inet:gethostbyaddr(Address) of

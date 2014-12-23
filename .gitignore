@@ -6,5 +6,6 @@ erl_crash.dump
 /rel/openflow
 /doc/
 /.eunit/
+/.rebar/
 /log
 *~

@@ -2,8 +2,8 @@
 
 -compile(export_all).
 
--include_lib("of_protocol/include/of_protocol.hrl").
--include_lib("of_protocol/include/ofp_v4.hrl").
+-include("of_protocol.hrl").
+-include("ofp_v4.hrl").
 
 mk_msg({flow_add, Opts, {matching,Ms}, {instructions,Is}}) ->
     message(flow_add(Opts, Ms, Is));
@@ -460,6 +460,36 @@ mpls_tc(Val) -> % 3
 mpls_bos(Val) ->
     #ofp_field{name = mpls_bos,
                value = Val}.
+
+%% ---BEGIN--- LINC-OE
+odu_sigtype(Value) ->
+    #ofp_field{
+       class = infoblox,
+       name = odu_sigtype,
+       value = Value,
+       has_mask = false}.
+
+odu_sigid(Value) ->
+    #ofp_field{
+       class = infoblox,
+       name = odu_sigid,
+       value = Value,
+       has_mask = false}.
+
+och_sigtype(Value) ->
+    #ofp_field{
+       class = infoblox,
+       name = och_sigtype,
+       value = Value,
+       has_mask = false}.
+
+och_sigid(Value) ->
+    #ofp_field{
+       class = infoblox,
+       name = och_sigid,
+       value = Value,
+       has_mask = false}.
+%% ---END--- LINC-OE
 
 % eth_type=0x88e7
 %% pbb_isid
