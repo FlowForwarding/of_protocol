@@ -194,8 +194,6 @@ expect_client_will_send_role_status_to_controller({ClientPid, ListenSocket}) ->
      fun() ->
              ControllerSocket  = connect_to_ofp_client_and_request_version(
                                    ListenSocket,5),
-             %% Wait a while so that ofp_client can initialize
-             timer:sleep(2000),
              assert_ofp_client_agreed_on_version(ClientPid, 5),
              [assert_ofp_client_sent_role_status_when_role_changes(
                 ClientPid, ControllerSocket) || _ <- lists:seq(1, 10)],
@@ -409,8 +407,6 @@ change_version_in_of_message(HexVersion, <<_:8, Rest/binary>>) ->
 expect_client_change_role_for_version(ClientPid, ListenSocket, Version) ->
     ControllerSocket  = connect_to_ofp_client_and_request_version(ListenSocket,
                                                                   Version),
-    %% Wait a while so that ofp_client can initialize
-    timer:sleep(2000),
     assert_ofp_client_agreed_on_version(ClientPid, Version),
     assert_ofp_client_has_role(ClientPid, ?DEFAULT_CONTROLLER_ROLE),
     ok = ofp_client:update_connection_config(ClientPid,
@@ -451,7 +447,7 @@ assert_ofp_client_agreed_on_version(RemainingRetries, ClientPid, Version) ->
                                                 ClientPid, Version);
         Version ->
             true;
-        UnexpectedVersion ->
+        _UnexpectedVersion ->
             error(unexpected_OF_version)
     end.
 
@@ -502,10 +498,8 @@ expect_client_will_reconnect_with_new_connection_config(
   ClientPid, ListenSocket, NewConfig) ->
     %% GIVEN
     CtrlSock = connect_to_ofp_client_and_request_version(
-                 ListenSocket, random_list_element([4,5])),
-    %% Wait a while so that ofp_client can initialize
-    timer:sleep(2000),
-    %% NewConfig = create_ofp_client_updated_config(NewConfig, CtrlSock),
+                 ListenSocket, Version = random_list_element([4,5])),
+    assert_ofp_client_agreed_on_version(ClientPid, Version),
 
     %% WHEN
     ok = ofp_client:update_connection_config(ClientPid, NewConfig),
@@ -516,8 +510,6 @@ expect_client_will_reconnect_with_new_connection_config(
     AnotherCtrlSock = connect_to_ofp_client_and_request_version(
                         AnotherListenSock,
                         AnotherVersion = random_list_element([4,5])),
-    %% %% Wait a while so that ofp_client can initialize
-    timer:sleep(2000),
     assert_client_reconnected_with_new_connection_config(
       ClientPid, AnotherVersion, NewConfig),
 
