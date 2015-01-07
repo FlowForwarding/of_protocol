@@ -194,8 +194,6 @@ expect_client_will_send_role_status_to_controller({ClientPid, ListenSocket}) ->
      fun() ->
              ControllerSocket  = connect_to_ofp_client_and_request_version(
                                    ListenSocket,5),
-             %% Wait a while so that ofp_client can initialize
-             timer:sleep(2000),
              assert_ofp_client_agreed_on_version(ClientPid, 5),
              [assert_ofp_client_sent_role_status_when_role_changes(
                 ClientPid, ControllerSocket) || _ <- lists:seq(1, 10)],
@@ -250,68 +248,36 @@ expect_client_will_reconnect_with_new_ip_port_and_role({ClientPid,
 should_send_multipart({ClientPid, ListenSocket}) ->
     {"Split big message into multipart",
      fun() ->
-             ControllerSocket  = connect_to_ofp_client_and_request_version(ListenSocket,
-                                                                           4),
-             %% Wait a while so that ofp_client can initialize
-             timer:sleep(2000),
-             assert_ofp_client_agreed_on_version(ClientPid, 4),
-
-             Stats =[#ofp_flow_stats{
-                        table_id = 15,
-                        duration_sec = 100,
-                        duration_nsec = 100,
-                        idle_timeout = 0,
-                        hard_timeout = 0,
-                        flags = [],
-                        packet_count = 1000,
-                        byte_count = 1000,
-                        priority = P,
-                        cookie = <<0,0,0,0,0,0,0,10>>,
-                        match = #ofp_match{}, %%Match,
-                        instructions = []} || P <- lists:seq(1,1500)],
-             SM = #ofp_message{version = 4, xid = get_xid(),
-                               body = #ofp_flow_stats_reply{body = Stats}},
-             ?assert(byte_size(element(2,of_protocol:encode(SM))) >= 70 * 1000),
-             meck:reset(gen_tcp),
-             ok = ofp_client:send(ClientPid, SM),
-
-             ?assertEqual(2, meck:num_calls(gen_tcp, send, 2)),
-
-             gen_tcp:close(ControllerSocket)
+             should_respect_multipart_messages_policy(split, ClientPid,
+                                                      ListenSocket)
      end}.
 
 should_send_no_multipart({ClientPid, ListenSocket}) ->
     {"Don't split big message into multipart",
      fun() ->
-             ControllerSocket  = connect_to_ofp_client_and_request_version(ListenSocket,
-                                                                           4),
-             %% Wait a while so that ofp_client can initialize
-             timer:sleep(2000),
-             assert_ofp_client_agreed_on_version(ClientPid, 4),
-             Stats =[#ofp_flow_stats{
-                        table_id = 15,
-                        duration_sec = 100,
-                        duration_nsec = 100,
-                        idle_timeout = 0,
-                        hard_timeout = 0,
-                        flags = [],
-                        packet_count = 1000,
-                        byte_count = 1000,
-                        priority = P,
-                        cookie = <<0,0,0,0,0,0,0,10>>,
-                        match = #ofp_match{}, %%Match,
-                        instructions = []} || P <- lists:seq(1,1500)],
-             SM = #ofp_message{version = 4, xid = get_xid(),
-                               body = #ofp_flow_stats_reply{body = Stats}},
-             ?assert(byte_size(element(2,of_protocol:encode(SM))) >= 70 * 1000),
-             meck:reset(gen_tcp),
-             ok = ofp_client:send(ClientPid, SM),
-
-             ?assertEqual(1, meck:num_calls(gen_tcp, send, 2)),
-
-             gen_tcp:close(ControllerSocket)
+             should_respect_multipart_messages_policy(no_split, ClientPid,
+                                                      ListenSocket)
      end}.
 
+should_respect_multipart_messages_policy(Policy, ClientPid, ListenSocket) ->
+    ControllerSocket = connect_to_ofp_client_and_request_version(ListenSocket,
+                                                                 4),
+    assert_ofp_client_agreed_on_version(ClientPid, 4),
+    Msg = generate_flow_stats_messages(1500),
+    assert_encoded_message_should_be_splitted(Msg),
+    meck:reset(gen_tcp),
+    ok = ofp_client:send(ClientPid, Msg),
+    case Policy of
+        split ->
+            ok = meck:wait(2, gen_tcp, send, 2, ClientPid, 1000);
+        no_split ->
+            ok = meck:wait(1, gen_tcp, send, 2, ClientPid, 1000)
+    end,
+    gen_tcp:close(ControllerSocket).
+
+assert_encoded_message_should_be_splitted(Msg) ->
+    {ok, Encoded} = of_protocol:encode(Msg),
+    ?assert(byte_size(Encoded) > (1 bsl 16)).
 
 %% Fixtures -------------------------------------------------------------------
 
@@ -441,8 +407,6 @@ change_version_in_of_message(HexVersion, <<_:8, Rest/binary>>) ->
 expect_client_change_role_for_version(ClientPid, ListenSocket, Version) ->
     ControllerSocket  = connect_to_ofp_client_and_request_version(ListenSocket,
                                                                   Version),
-    %% Wait a while so that ofp_client can initialize
-    timer:sleep(2000),
     assert_ofp_client_agreed_on_version(ClientPid, Version),
     assert_ofp_client_has_role(ClientPid, ?DEFAULT_CONTROLLER_ROLE),
     ok = ofp_client:update_connection_config(ClientPid,
@@ -470,8 +434,22 @@ assert_ofp_client_sent_hello(ControllerSocket) ->
     ?assertMatch(#ofp_message{body = #ofp_hello{}}, DecodedMsg).
 
 assert_ofp_client_agreed_on_version(ClientPid, Version) ->
-    ?assertMatch(#controller_status{current_version = Version},
-                 gen_server:call(ClientPid, get_controller_state)).
+    assert_ofp_client_agreed_on_version(3, ClientPid, Version).
+
+assert_ofp_client_agreed_on_version(0, _, _) ->
+    error(conntroller_not_connected);
+assert_ofp_client_agreed_on_version(RemainingRetries, ClientPid, Version) ->
+    ControllerState = gen_server:call(ClientPid, get_controller_state),
+    case ControllerState#controller_status.current_version of
+        undefined ->
+            timer:sleep(100),
+            assert_ofp_client_agreed_on_version(RemainingRetries - 1,
+                                                ClientPid, Version);
+        Version ->
+            true;
+        _UnexpectedVersion ->
+            error(unexpected_OF_version)
+    end.
 
 assert_ofp_client_has_role(ClientPid, Role) ->
     ?assertMatch(#controller_status{role = Role},
@@ -520,10 +498,8 @@ expect_client_will_reconnect_with_new_connection_config(
   ClientPid, ListenSocket, NewConfig) ->
     %% GIVEN
     CtrlSock = connect_to_ofp_client_and_request_version(
-                 ListenSocket, random_list_element([4,5])),
-    %% Wait a while so that ofp_client can initialize
-    timer:sleep(2000),
-    %% NewConfig = create_ofp_client_updated_config(NewConfig, CtrlSock),
+                 ListenSocket, Version = random_list_element([4,5])),
+    assert_ofp_client_agreed_on_version(ClientPid, Version),
 
     %% WHEN
     ok = ofp_client:update_connection_config(ClientPid, NewConfig),
@@ -534,8 +510,6 @@ expect_client_will_reconnect_with_new_connection_config(
     AnotherCtrlSock = connect_to_ofp_client_and_request_version(
                         AnotherListenSock,
                         AnotherVersion = random_list_element([4,5])),
-    %% %% Wait a while so that ofp_client can initialize
-    timer:sleep(2000),
     assert_client_reconnected_with_new_connection_config(
       ClientPid, AnotherVersion, NewConfig),
 
@@ -566,3 +540,20 @@ create_another_listen_controller_socket(NewConfig, CtrlSock) ->
                          [{ip, NewIP}]
                  end,
     create_tcp_listen_socket(AnotherPort, SocketOpts).
+
+generate_flow_stats_messages(Count) ->
+    Stats =[#ofp_flow_stats{
+               table_id = 15,
+               duration_sec = 100,
+               duration_nsec = 100,
+               idle_timeout = 0,
+               hard_timeout = 0,
+               flags = [],
+               packet_count = 1000,
+               byte_count = 1000,
+               priority = P,
+               cookie = <<0,0,0,0,0,0,0,10>>,
+               match = #ofp_match{},
+               instructions = []} || P <- lists:seq(1, Count)],
+    #ofp_message{version = 4, xid = get_xid(),
+                 body = #ofp_flow_stats_reply{body = Stats}}.
