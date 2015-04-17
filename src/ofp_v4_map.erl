@@ -75,8 +75,10 @@ tlv_length(ipv6_exthdr)    -> 9;
 tlv_length(odu_sigtype)    -> 8;
 tlv_length(odu_sigid)      -> 8;
 tlv_length(och_sigtype)    -> 8;
-tlv_length(och_sigid)      -> 48.
+tlv_length(och_sigid)      -> 48;
 %% ---END--- LINC-OE
+tlv_length(poc_timestamp1) -> 64;
+tlv_length(poc_timestamp2) -> 64.
 
 %% @doc Get field's on-wire length in bits.
 %%

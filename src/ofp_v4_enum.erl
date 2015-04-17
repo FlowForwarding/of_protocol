@@ -281,7 +281,9 @@
                               {odu_sigtype, 42},
                               {odu_sigid,   43},
                               {och_sigtype, 44},
-                              {och_sigid,   45}
+                              {och_sigid,   45},
+                              {poc_timestamp1, 46},
+                              {poc_timestamp2, 47}
                               ]}).
 
 -enum({vlan_id, [none,
