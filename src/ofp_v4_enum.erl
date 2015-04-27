@@ -285,7 +285,9 @@
                               {poc_timestamp1, 46},
                               {poc_timestamp2, 47},
                               {poc_rx_pkt, 48},
-                              {poc_rx_data, 49}
+                              {poc_rx_data, 49},
+                              {poc_tx_pkt, 50},
+                              {poc_tx_data, 51}
                               ]}).
 
 -enum({vlan_id, [none,
