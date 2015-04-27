@@ -283,7 +283,9 @@
                               {och_sigtype, 44},
                               {och_sigid,   45},
                               {poc_timestamp1, 46},
-                              {poc_timestamp2, 47}
+                              {poc_timestamp2, 47},
+                              {poc_rx_pkt, 48},
+                              {poc_rx_data, 49}
                               ]}).
 
 -enum({vlan_id, [none,
