@@ -287,7 +287,10 @@
                               {poc_rx_pkt, 48},
                               {poc_rx_data, 49},
                               {poc_tx_pkt, 50},
-                              {poc_tx_data, 51}
+                              {poc_tx_data, 51},
+                              {poc_queue_state_rmin, 52},
+                              {poc_queue_state_rmax, 53},
+                              {poc_queue_state_r, 54}
                               ]}).
 
 -enum({vlan_id, [none,
