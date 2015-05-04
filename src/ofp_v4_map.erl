@@ -82,7 +82,10 @@ tlv_length(poc_timestamp2) -> 64;
 tlv_length(poc_rx_pkt) -> 64;
 tlv_length(poc_rx_data) -> 64;
 tlv_length(poc_tx_pkt) -> 64;
-tlv_length(poc_tx_data) -> 64.
+tlv_length(poc_tx_data) -> 64;
+tlv_length(poc_queue_state_rmin) -> 32;
+tlv_length(poc_queue_state_rmax) -> 32;
+tlv_length(poc_queue_state_r) -> 32.
 
 %% @doc Get field's on-wire length in bits.
 %%
