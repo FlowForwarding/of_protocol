@@ -1,0 +1,4 @@
+:name "of_protocol_edts"
+:node-sname "ofp_edts"
+:lib-dirs '("deps" "test")
+:app-include-dirs '("include")

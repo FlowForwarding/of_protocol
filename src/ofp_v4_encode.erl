@@ -480,13 +480,12 @@ encode_body(#ofp_set_config{flags = Flags, miss_send_len = Miss}) ->
     FlagsBin = flags_to_binary(config_flags, Flags, 2),
     MissInt = get_id(miss_send_len, Miss),
     <<FlagsBin:16/bits, MissInt:16>>;
-encode_body(#ofp_packet_in{buffer_id = BufferId, reason = Reason,
-                           table_id = TableId, cookie = Cookie,
-                           match = Match, data = Data}) ->
+encode_body(#ofp_packet_in{buffer_id = BufferId, total_len = TotalLen,
+                           reason = Reason, table_id = TableId,
+                           cookie = Cookie, match = Match, data = Data}) ->
     BufferIdInt = get_id(buffer_id, BufferId),
     ReasonInt = ofp_v4_enum:to_int(packet_in_reason, Reason),
     MatchBin = encode_struct(Match),
-    TotalLen = byte_size(Data),
     <<BufferIdInt:32, TotalLen:16, ReasonInt:8, TableId:8, Cookie:64/bits,
       MatchBin/bytes, 0:16, Data/bytes>>;
 encode_body(#ofp_flow_removed{cookie = Cookie, priority = Priority,

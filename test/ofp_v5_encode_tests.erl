@@ -13,11 +13,11 @@ flow_monitor_req_test() ->
                        type    = multipart_request,
                        xid     = 765,
                        body    = #ofp_flow_monitor_request{
-                         flags      = [], 
+                         flags      = [],
                          monitor_id = 1,
                          out_port   = any,
                          out_group  = any,
-                         monitor_flags = [initial, add, removed, modify, 
+                         monitor_flags = [initial, add, removed, modify,
                                           instructions, no_abbrev, only_own],
                          table_id   = 0,
                          command    = add,
@@ -34,9 +34,8 @@ flow_monitor_req_test() ->
                       },
     {ok, EMsg} = of_protocol:encode(Msg),
     {ok, DMsg, <<>>} = of_protocol:decode(EMsg),
-%   ?debugFmt("1 orig: ~p, dec: ~p~n", [Msg, DMsg]),
     ?assertEqual(Msg, DMsg).
-     
+
 flow_updates_test() ->
     Msg = #ofp_message{version = 5,
                        type    = multipart_reply,
@@ -67,7 +66,6 @@ flow_updates_test() ->
                                  ]}},
     {ok, EMsg} = of_protocol:encode(Msg),
     {ok, DMsg, _Rest} = of_protocol:decode(EMsg),
-%   ?debugFmt("2 orig: ~p, dec: ~p~n", [Msg, DMsg]),
     ?assertEqual(Msg, DMsg).
 
 flow_update_paused_test() ->
@@ -77,6 +75,30 @@ flow_update_paused_test() ->
                        body    = #ofp_flow_monitor_reply{
                          flags = [],
                          updates = [#ofp_flow_update_paused{event = resumed}]}},
+    {ok, EMsg} = of_protocol:encode(Msg),
+    {ok, DMsg, _Rest} = of_protocol:decode(EMsg),
+    ?assertEqual(Msg, DMsg).
+
+packet_in_test() ->
+    TotalLen = 50,
+    Msg = #ofp_message{version = 5,
+                       type = packet_in,
+                       xid = 0,
+                       body = #ofp_packet_in{
+                                 buffer_id = 10,
+                                 total_len = TotalLen,
+                                 reason = apply_action,
+                                 table_id = 0,
+                                 cookie = <<10:64>>,
+                                 match = #ofp_match{
+                                            fields = [#ofp_field{
+                                                         class  = openflow_basic,
+                                                         name = in_port,
+                                                         has_mask = false,
+                                                         value = <<1:32>>,
+                                                         mask = undefined}]},
+                                 data = << <<X>>
+                                           || X <- lists:seq(1, TotalLen - 20) >>}},
     {ok, EMsg} = of_protocol:encode(Msg),
     {ok, DMsg, _Rest} = of_protocol:decode(EMsg),
     ?assertEqual(Msg, DMsg).
