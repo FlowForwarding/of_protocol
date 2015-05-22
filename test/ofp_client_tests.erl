@@ -47,6 +47,12 @@ update_connection_config_test_() ->
       fun expect_client_will_reconnect_with_new_ip_and_port/1,
       fun expect_client_will_reconnect_with_new_ip_port_and_role/1]}.
 
+crashing_test_() ->
+    [{setup,
+      fun crashing_setup/0,
+      fun crashing_teardown/1,
+      fun it_not_crashes_on_malformed_packet/1}].
+
 %% LINC-OE
 multipart_test_() ->
     [{setup,
@@ -279,6 +285,27 @@ assert_encoded_message_should_be_splitted(Msg) ->
     {ok, Encoded} = of_protocol:encode(Msg),
     ?assert(byte_size(Encoded) > (1 bsl 16)).
 
+it_not_crashes_on_malformed_packet({ClientPid, ListenSocket}) ->
+    {"Malformed packet",
+     fun() ->
+             CtrlSocket = connect_to_ofp_client_and_request_version(ListenSocket,
+                                                                    4),
+             assert_ofp_client_agreed_on_version(ClientPid, 4),
+             ofp_client:controlling_process(ClientPid, self()),
+             ok = gen_tcp:send(CtrlSocket, malformed_packet_in()),
+             ok = meck:wait(1, ofp_parser, parse, 2, ClientPid, 1000),
+             assert_connection_to_ctrl_not_closed(_TimeoutMs = 2000),
+             gen_tcp:close(CtrlSocket)
+     end}.
+
+assert_connection_to_ctrl_not_closed(Timeout) ->
+    receive
+        {ofp_closed, _, _} ->
+            fail("Controller crashed on receiving malformed OF message")
+    after Timeout ->
+            ok
+    end.
+
 %% Fixtures -------------------------------------------------------------------
 
 generation_id_setup() ->
@@ -321,6 +348,18 @@ update_connection_config_setup() ->
 update_connection_config_teardown({OFClientPid, ListenSocket}) ->
     ofp_client:stop(OFClientPid),
     gen_tcp:close(ListenSocket).
+
+crashing_setup() ->
+    meck:new(ofp_parser, [unstick, passthrough]),
+    seed_random(),
+    ListenSocket = create_tcp_listen_socket(Port = random_port(), []),
+    OFClientPid = start_ofp_clent(Port),
+    {OFClientPid, ListenSocket}.
+
+crashing_teardown({OFClientPid, ListenSocket}) ->
+    ofp_client:stop(OFClientPid),
+    gen_tcp:close(ListenSocket),
+    meck:unload(ofp_parser).
 
 multipart_setup() ->
     meck:new(gen_tcp, [unstick, passthrough]),
@@ -557,3 +596,43 @@ generate_flow_stats_messages(Count) ->
                instructions = []} || P <- lists:seq(1, Count)],
     #ofp_message{version = 4, xid = get_xid(),
                  body = #ofp_flow_stats_reply{body = Stats}}.
+
+%% @doc Creates packet-in message for buffered packet.
+%%
+%% The message is for a packet that is buffered on the switch that
+%% sends only first 30 bytes of the packet in the packet-in message.
+%%
+%% Packet-in explanation:
+%% version: 4
+%% type: OFPT_PACKET_IN (10)
+%% length: 72
+%% xid: 0
+%% buffer_id: 4294967295
+%% total_len: 42
+%% reason: OFPR_ACTION(1)
+%% table_id: 0
+%% cookie: 0
+%% ofp_match
+%%    type: 10 (NONEXISTENT MATCH TYPE)
+%%    length: 12
+%%    of_oxm list
+%%       of_oxm_in_port
+%%          type_len: 2147483652
+%%          value: 1
+%% Ethernet packet - 30 bytes
+malformed_packet_in() ->
+    <<16#04, 16#0a, 16#00, 16#48, 16#00, 16#00, 16#00, 16#00, % ofp_header
+      16#ff, 16#ff, 16#ff, 16#ff,  % packet-in: bueffer_id
+      16#00, 16#2a,  % packet-in: total-len
+      16#01, 16#00,  % packet-in: reason and table_id
+      16#00, 16#00, 16#00, 16#00, 16#00, 16#00, 16#00, 16#00,  % packet-in: cookie
+      16#00, 16#0a,  % packet-in: ofp_match.type
+      16#00, 16#0c,  % packet-in: ofp_match.length
+      16#80, 16#00, 16#00, 16#04, 16#00, 16#00, 16#00, 16#01, % packet-in: ofp_match.oxm_fields
+      16#00, 16#00, 16#00, 16#00, % packet0in: ofp_match.pad
+      16#00, 16#00, % packet-in: 2 byte of all-zero pading
+      %% packet-in: data (30-bytes Ethernet Packet)
+      16#ff, 16#ff, 16#ff, 16#ff, 16#ff, 16#ff, 16#82, 16#17, 16#60,
+      16#f9, 16#43, 16#43, 16#08, 16#06, 16#00, 16#01, 16#08, 16#00,
+      16#06, 16#04, 16#00, 16#01, 16#82, 16#17, 16#60, 16#f9, 16#43,
+      16#43, 16#0a, 16#00>>.

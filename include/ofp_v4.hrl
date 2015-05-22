@@ -1315,6 +1315,12 @@
 
 -record(ofp_packet_in, {
           buffer_id = no_buffer :: ofp_buffer_id(),
+          %% Indicates total length of the frame captured on the switch.
+          %% It does not equals to the length of binary in the data field if:
+          %% 1) switch has buffering enabled
+          %% 2) and the captured frame length is grater than maximum
+          %%    number of bytes the switch is allowed to send in packet in.
+          total_len             :: integer(),
           reason                :: ofp_packet_in_reason(),
           table_id              :: integer(),
           cookie = <<-1:64>>    :: binary(),

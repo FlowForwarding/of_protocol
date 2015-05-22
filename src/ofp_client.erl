@@ -47,6 +47,7 @@
          code_change/3]).
 
 -include("of_protocol.hrl").
+-include("ofp_logger.hrl").
 -include_lib("kernel/include/inet.hrl").
 
 -define(DEFAULT_HOST, "localhost").
@@ -364,8 +365,9 @@ handle_info({Type, Socket, Data}, #state{controller = {_, _, Proto},
                      end,
             NewState = lists:foldl(Handle, State, Messages),
             {noreply, NewState#state{parser = NewParser}};
-        _Else ->
-            terminate_connection_then_reconnect_or_stop(State, {bad_data, Data})
+        {error, Exception} ->
+            ?ERROR("Exception occurred while parsing data ~p", [Exception]),
+            {noreply, State}
     end;
 handle_info({Type, Socket}, #state{socket = Socket} = State)
   when Type == tcp_closed orelse Type == ssl_closed ->
